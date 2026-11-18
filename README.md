@@ -1,54 +1,125 @@
-# sv
+# Orbital Preflight
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Load the keybinds file from your space sim, connect your controllers, test every bind against a mock flight, rebind anything and export a new preset. It runs entirely in the browser tab: files are read with `FileReader`, nothing is uploaded, and there is no account and no analytics.
 
-## Creating a project
+It's also a framework. Fork this repo onto GitHub Pages to show off your own binds: visitors test them with their own stick and keyboard, and download them as they are or after changing them.
 
-If you're seeing this, you've probably already done this step. Congrats!
+Elite Dangerous `.binds` files work today. Star Citizen and X4 are listed as coming soon; DCS comes later.
 
-```sh
-# create a new project
-npx sv create my-app
+Desktop only: below 1280 px wide the page shows a short notice, with your presets still downloadable from it.
+
+## Fork it
+
+1. **Fork** this repository on GitHub.
+2. **Edit `orbital-preflight.config.ts`** at the repo root: your title, description, name, where Leave goes, and your presets. It's the only file you need to change.
+3. **Drop your `.binds` files into `static/binds/`** and list them under `presets`. In Elite Dangerous they live in `%LOCALAPPDATA%\Frontier Developments\Elite Dangerous\Options\Bindings\`.
+4. **Enable Pages**: Settings → Pages → Source: _GitHub Actions_.
+5. **Done.** Every push to `main` deploys to `https://<you>.github.io/<repo>/`. The workflow sets the base path from the repo name.
+
+Optionally replace `static/og.png` (1200 × 630) with your own share image.
+
+### The config
+
+```ts
+import { defineConfig } from './src/lib/orbital-preflight/config.ts';
+
+export default defineConfig({
+	title: 'CMDR Vex’s binds: test them in your browser',
+	description:
+		'My Elite Dangerous HOTAS binds. Test every one with your own gear and download them.',
+	siteName: 'CMDR Vex',
+	siteUrl: 'https://vex.github.io/my-binds',
+	homeUrl: 'https://github.com/vex',
+	sim: 'elite-dangerous',
+	presets: [
+		{ file: 'hotas.binds', label: 'My HOTAS setup' },
+		{ file: 'keyboard.binds', label: 'Keyboard only' }
+	],
+	brand: { wordmark: 'Vex Preflight' },
+	theme: { '--color-trail': '#ff6a00' },
+	poweredBy: true
+});
 ```
 
-To recreate this project with the same configuration:
+| Field         | Required | What it does                                                                                                                                                                                                                                                                                                                   |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `title`       | yes      | The page title, in the head and on the share card. Name what people search for.                                                                                                                                                                                                                                                |
+| `description` | yes      | One plain sentence for the meta description and the share card.                                                                                                                                                                                                                                                                |
+| `siteName`    | yes      | You or your site. Used in the hidden page heading ("‹siteName› Preflight"), the share card and "Back to ‹siteName›".                                                                                                                                                                                                           |
+| `siteUrl`     | no       | The absolute URL the app is served from. With it, the head gets a canonical link and Open Graph `og:url` and `og:image` tags.                                                                                                                                                                                                  |
+| `homeUrl`     | yes      | Where Leave goes: your page or your GitHub profile. Leave asks first if there are unsaved changes.                                                                                                                                                                                                                             |
+| `sim`         | no       | The sim your presets are for. Default `'elite-dangerous'`, the only one that loads today.                                                                                                                                                                                                                                      |
+| `presets`     | no       | Binds files in `static/binds/`, each with a `label`. With one or more, a first visit opens with the first one loaded and the top bar reads "Pilot's binds · ‹label›". Visitors can still load their own file, and download each preset as it is from the Game & binds drawer. With none, a first visit shows the upload state. |
+| `brand`       | no       | The top bar's `wordmark` (default "Orbital Preflight"), an optional `mark` (an inline SVG string, drawn at 28 px), an optional heavier `markSmall` for the favicon, and an accessible `label`.                                                                                                                                 |
+| `theme`       | no       | CSS variable overrides, applied after the theme package. Use the package's own names (`--color-trail`, `--color-course`, `--font-display`…); its README lists them.                                                                                                                                                            |
+| `poweredBy`   | no       | A small "Powered by Orbital Preflight" link in the drawers and the desktop-only notice. On unless set to `false`.                                                                                                                                                                                                              |
+
+The look comes from [`@orbital-controls/theme`](https://www.npmjs.com/package/@orbital-controls/theme), installed from npm: Tailwind v4 tokens, the motif utilities and three self-hosted font families. Re-theme through `theme`, not by copying its values.
+
+## Phil's instance: Preflight on orbitalcontrols.com
+
+Phil's instance lives in `instances/orbitalcontrols/`: its own config (title, `homeUrl: https://orbitalcontrols.com`, the Orbital Controls mark copied from the site's `Mark.svelte`). It builds with:
 
 ```sh
-# recreate this project
-pnpm dlx sv@1.4.0 create --template minimal --types ts --add prettier eslint vitest="usages:unit" playwright="demo:no" tailwindcss="plugins:none" sveltekit-adapter="adapter:static" --install pnpm .
+ORBITAL_PREFLIGHT_CONFIG=instances/orbitalcontrols/orbital-preflight.config.ts pnpm build
 ```
 
-## Adding features
+and deploys to Cloudflare Workers static assets at `preflight.orbitalcontrols.com` through `.github/workflows/deploy-cloudflare.yml` and `wrangler.jsonc`. To switch it on in Phil's repository:
 
-Add features to your project with `sv add`:
+1. Set the repository variable `CLOUDFLARE_DEPLOY` to `true`. This also skips the GitHub Pages workflow there.
+2. Add the secrets `CLOUDFLARE_API_TOKEN` (with Workers Scripts: Edit and the zone's Workers Routes: Edit) and `CLOUDFLARE_ACCOUNT_ID`.
+3. Push to `main`. The first deploy creates the custom domain route.
+
+The build output is plain static files either way, so any static host works.
+
+## Develop
+
+Node 24 and pnpm.
 
 ```sh
-npx sv add
+pnpm install
+pnpm dev            # http://localhost:5173
+pnpm check          # svelte-check and TypeScript
+pnpm lint           # Prettier and ESLint
+pnpm test:unit      # Vitest
+pnpm test:e2e       # builds root, base-path and theme variants, then Playwright
+pnpm build          # static output in build/
 ```
 
-For example, to add Tailwind CSS:
+`pnpm test:e2e` uses Playwright's Chromium (`pnpm exec playwright install chromium`). To use a Chromium you already have, set `PW_CHROMIUM_PATH`.
 
-```sh
-npx sv add tailwindcss
-```
+### Where things are
 
-## Developing
+| Path                                        | What                                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------------------- |
+| `orbital-preflight.config.ts`               | The fork's config.                                                              |
+| `src/lib/orbital-preflight/sims/`           | Sim adapters: parse and write. `elite/` is the Elite Dangerous one.             |
+| `src/lib/orbital-preflight/xml.ts`          | An XML scanner that keeps offsets, so the writer splices instead of rebuilding. |
+| `src/lib/orbital-preflight/bindings.ts`     | Clashes, Move / Swap / Keep both, filter counts. Pure.                          |
+| `src/lib/orbital-preflight/binds.svelte.ts` | The bind store: the file, the edits, undo per action, reset per mode, export.   |
+| `src/lib/orbital-preflight/flight.ts`       | The mock flight state machine and the HUD values. Pure.                         |
+| `src/lib/orbital-preflight/inputs/`         | Keyboard, mouse and Gamepad API input, and controller pairing.                  |
+| `src/lib/components/`                       | One component per UI piece.                                                     |
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Plugging in the 3D scene
 
-```sh
-npm run dev
+`Viewport.svelte` takes an optional `scene` snippet. It receives `SceneProps` from `flight.ts`, `{ flight, mode }`, renders, and reports nothing back. The HUD is DOM on top and reads the same state, so it doesn't depend on the scene. Until a scene is passed, the boards' 2D placeholder draws.
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+### Exports
 
-## Building
+Export new preset writes a new file: the original text with the changed slots and the `PresetName` replaced, and every other byte left as it was. The file you loaded is never modified. The new preset is named "‹original name› rebound", and the file "‹name›.‹major›.‹minor›.binds".
 
-To create a production version of your app:
+## Unverified
 
-```sh
-npm run build
-```
+These were written from memory, not checked against real files or devices, and are marked `UNVERIFIED` in the code:
 
-You can preview the production build with `npm run preview`.
+- **The `.binds` format details**: action ids, the `_Buggy` and `Humanoid` naming, key names (`Key_LeftShift`, `Key_Numpad_7`…), `Joy_POV1Up`, `Pos_`/`Neg_` axis halves, mouse wheel keys, and DirectInput mouse numbering. The test fixtures in `tests/fixtures/` and the demo preset are **synthetic**.
+- **Device names and USB ids** used to pair browser controllers with the devices in a file (`T16000M` → `044f:b10a`, and so on).
+- **The "Where's my file?" paths** for all four sims.
+- **Export file naming** (`‹name›.4.0.binds`) and whether the game accepts any `PresetName`.
+- **Browser HOTAS limits**: how many buttons and axes Chrome and Firefox expose for a stick with 32+ buttons, axis order, and how each reports POV hats.
+- **Throttle axis direction**: full forward is taken as −1.
+
+## Licence
+
+MIT, see [LICENSE](./LICENSE). The fonts that come with the theme package are under the SIL Open Font License 1.1.
