@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      # While @orbital-controls/theme is linked from a local checkout of the site, install
+      # it from npm instead, the way a fork would. Remove once package.json uses the npm range.
+      - name: Install the theme package from npm
+        run: |
+          if grep -q '"@orbital-controls/theme": "link:' package.json; then
+            pnpm pkg set 'dependencies.@orbital-controls/theme=^0.1.0'
+            echo "INSTALL_FLAGS=--no-frozen-lockfile" >> "$GITHUB_ENV"
+          fi
+      - run: pnpm install ${INSTALL_FLAGS:---frozen-lockfile}
+      - run: pnpm check
+      - run: pnpm lint
+      - run: pnpm test:unit --run
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
