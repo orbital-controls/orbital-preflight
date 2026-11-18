@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { fakeGamepads, press } from './controllers.ts';
 import { exportAndParse, ready, rebind } from './helpers.ts';
 
 test('the pilot’s default preset loads on first visit', async ({ page }) => {
@@ -81,4 +82,33 @@ test('below 1280 px the desktop notice shows instead of the tool', async ({ page
 	await page.goto('./');
 	await expect(page.getByRole('heading', { name: /Preflight needs a desktop/ })).toBeVisible();
 	await expect(page.getByRole('link', { name: /Demo HOTAS setup/ })).toBeVisible();
+});
+
+test('controllers show up on the deck under their own names as they’re detected', async ({
+	page
+}) => {
+	await fakeGamepads(page, [
+		{ id: 'T.16000M (Vendor: 044f Product: b10a)', buttons: 16 },
+		{ id: 'VKBsim Gladiator EVO (Vendor: 1234 Product: 5678)', buttons: 32 }
+	]);
+	await page.goto('./');
+	await ready(page);
+	const deck = page.getByRole('region', { name: 'Input deck' });
+	await expect(deck.getByRole('heading', { name: 'T.16000M' })).toBeVisible();
+	await expect(deck.getByRole('heading', { name: 'VKBsim Gladiator EVO' })).toBeVisible();
+	await expect(deck.getByText('Stick 1')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: '2 controllers connected' })).toBeVisible();
+
+	// The T.16000M pairs with the file's T16000M by USB id, so its trigger fires Primary fire.
+	await press(page, 0, 0);
+	await expect(page.locator('[aria-live="polite"]')).toContainText('Primary fire');
+});
+
+test('with no controllers detected, the deck asks for a button press', async ({ page }) => {
+	await page.goto('./');
+	await ready(page);
+	await expect(
+		page.getByText('Press a button on your stick or throttle and it shows up here.')
+	).toBeVisible();
+	await expect(page.getByRole('button', { name: 'No controllers connected' })).toBeVisible();
 });

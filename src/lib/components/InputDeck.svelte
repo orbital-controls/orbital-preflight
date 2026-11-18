@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { inputKey, sameInput } from '#lib/orbital-preflight/bindings.ts';
-	import { deviceDecks, keyboardRows, MOUSE_DECK } from '#lib/orbital-preflight/deck.ts';
+	import { controllerDecks, keyboardRows, MOUSE_DECK } from '#lib/orbital-preflight/deck.ts';
 	import { inputLabel } from '#lib/orbital-preflight/labels.ts';
 	import type { InputId } from '#lib/orbital-preflight/types.ts';
 	import DeckKey from './DeckKey.svelte';
@@ -15,7 +15,7 @@
 	const app = useOrbitalPreflight();
 	const owners = $derived(ownersByInput(app));
 	const rows = keyboardRows();
-	const decks = $derived(deviceDecks(app.roles, app.store.bindings));
+	const decks = $derived(controllerDecks(app.hub.pads, app.roles, app.store.bindings));
 	const foot = $derived(app.mode === 'foot');
 
 	function state(input: InputId): KeyState {
@@ -27,16 +27,22 @@
 		return o?.clash ? 'clash' : o ? 'bound' : 'spare';
 	}
 
-	function aria(input: InputId): string {
+	/** The deck's own short label: "B5", "H↑", "TRG", without the device prefix. */
+	function short(input: InputId): string {
+		return inputLabel(input, app.roles).replace(/^\S+ (?=H|TRG|B\d)/, '');
+	}
+
+	function aria(input: InputId, device?: string): string {
 		const names = owners.get(inputKey(input))?.names;
-		return `${inputLabel(input, app.roles, true)}: ${names?.length ? names.join(', ') : 'spare'}`;
+		const name = device ? `${device} ${short(input)}` : inputLabel(input, app.roles, true);
+		return `${name}: ${names?.length ? names.join(', ') : 'spare'}`;
 	}
 </script>
 
-{#snippet key(input: InputId, width?: number)}
+{#snippet key(input: InputId, width?: number, device?: string)}
 	<DeckKey
-		label={inputLabel(input, app.roles).replace(/^\S+ (?=H|TRG|B\d)/, '')}
-		aria={aria(input)}
+		label={short(input)}
+		aria={aria(input, device)}
 		state={state(input)}
 		{width}
 		onpress={() => tap(app, input)}
@@ -57,12 +63,26 @@
 		</div>
 
 		{#if !foot}
-			{#each decks as deck (deck.role.id)}
-				<div class="flex flex-col gap-2">
-					<h2 class="op-lbl">{deck.role.long}</h2>
+			{#each decks as deck (deck.key)}
+				<div class="flex max-w-[260px] flex-col gap-2">
+					<h2 class="truncate op-lbl" title={deck.name}>{deck.name}</h2>
+					{#if !deck.deviceId && app.loaded}
+						<p class="font-mono text-[11px] text-ink-900">Not paired yet: open Controllers</p>
+					{/if}
 					<div class="grid grid-cols-[repeat(4,44px)] gap-[6px]">
-						{#each deck.inputs as input (inputKey(input))}{@render key(input)}{/each}
+						{#each deck.inputs as input (inputKey(input))}{@render key(
+								input,
+								undefined,
+								deck.name
+							)}{/each}
 					</div>
+				</div>
+			{:else}
+				<div class="flex max-w-[220px] flex-col gap-2">
+					<h2 class="op-lbl">Controllers</h2>
+					<p class="text-[14px] text-ink-900">
+						Press a button on your stick or throttle and it shows up here.
+					</p>
 				</div>
 			{/each}
 		{:else}

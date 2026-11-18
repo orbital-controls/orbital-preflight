@@ -7,7 +7,7 @@
 		sameInput,
 		type ShowFilter
 	} from '#lib/orbital-preflight/bindings.ts';
-	import { deviceDecks, keyboardRows } from '#lib/orbital-preflight/deck.ts';
+	import { controllerDecks, keyboardRows } from '#lib/orbital-preflight/deck.ts';
 	import { bindLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import type { Action, InputId } from '#lib/orbital-preflight/types.ts';
@@ -104,7 +104,9 @@
 	];
 
 	const kb = keyboardRows(true);
-	const decks = $derived(app.mode === 'foot' ? [] : deviceDecks(app.roles, app.store.bindings));
+	const decks = $derived(
+		app.mode === 'foot' ? [] : controllerDecks(app.hub.pads, app.roles, app.store.bindings)
+	);
 
 	function keyState(input: InputId): KeyState {
 		const o = owners.get(inputKey(input));
@@ -119,12 +121,15 @@
 	const btn = 'cursor-pointer font-mono notch op-notch-xs';
 </script>
 
-{#snippet mapKey(input: InputId, width?: number)}
+{#snippet mapKey(input: InputId, width?: number, device?: string)}
 	{@const names = owners.get(inputKey(input))?.names}
+	{@const short = inputLabel(input, app.roles).replace(/^\S+ (?=H|TRG|B\d)/, '')}
 	<DeckKey
 		compact
-		label={inputLabel(input, app.roles).replace(/^\S+ (?=H|TRG|B\d)/, '')}
-		aria="{inputLabel(input, app.roles, true)}: {names?.length ? names.join(', ') : 'spare'}"
+		label={short}
+		aria="{device ? `${device} ${short}` : inputLabel(input, app.roles, true)}: {names?.length
+			? names.join(', ')
+			: 'spare'}"
 		state={keyState(input)}
 		{width}
 		onpress={() => tap(app, input)}
@@ -426,12 +431,14 @@
 							{/each}
 						</div>
 						<div class="flex flex-wrap gap-[22px]">
-							{#each decks as deck (deck.role.id)}
-								<div class="flex flex-col gap-1">
-									<span class="op-hud">{deck.role.long}</span>
+							{#each decks as deck (deck.key)}
+								<div class="flex max-w-[180px] flex-col gap-1">
+									<span class="truncate op-hud" title={deck.name}>{deck.name}</span>
 									<div class="grid grid-cols-[repeat(4,36px)] gap-1">
 										{#each deck.inputs.slice(0, 12) as input (inputKey(input))}{@render mapKey(
-												input
+												input,
+												undefined,
+												deck.name
 											)}{/each}
 									</div>
 								</div>

@@ -21,7 +21,7 @@
 	const modeName = $derived({ ship: 'Ship', srv: 'SRV', foot: 'On foot' }[app.mode]);
 	const changedFromFile = $derived(label(now) !== label(file));
 	const devices = $derived(
-		app.mode === 'foot' ? ['Keyboard', 'Mouse'] : ['Keyboard', ...app.roles.map((r) => r.long)]
+		app.mode === 'foot' ? ['Keyboard', 'Mouse'] : ['Keyboard', ...app.hub.pads.map((p) => p.name)]
 	);
 	const btn = 'cursor-pointer font-mono notch op-notch-xs';
 </script>

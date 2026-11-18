@@ -13,9 +13,8 @@
 	const devices = $derived(app.store.file?.parsed.devices ?? []);
 	const rows = $derived(
 		devices.map((device) => {
-			const role = app.roles.find((r) => r.id === device.id);
 			const pad = app.hub.pads.find((p) => p.deviceId === device.id) ?? null;
-			return { device, role, pad };
+			return { device, pad };
 		})
 	);
 	const listeningFor = $derived(rows.find((r) => !r.pad)?.device.id ?? null);
@@ -68,7 +67,7 @@
 			>
 			<span class="font-mono text-[13px] text-ink-900">Works whenever this tab has focus</span>
 		</li>
-		{#each rows as { device, role, pad } (device.id)}
+		{#each rows as { device, pad } (device.id)}
 			{@const waiting = !pad && listeningFor === device.id}
 			<li
 				class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border px-4 py-[14px] notch {waiting
@@ -76,7 +75,7 @@
 					: 'border-course/20 bg-panel/78'}"
 			>
 				<span class="font-display text-[24px] leading-none font-extrabold uppercase"
-					>{role?.long ?? device.name}</span
+					>{pad?.name ?? device.name}</span
 				>
 				<span
 					class="border px-[10px] py-1 font-mono text-[12px] font-bold notch op-notch-xs {pad
@@ -87,11 +86,11 @@
 					>{pad ? 'Paired' : waiting ? 'Press any button' : 'Waiting'}</span
 				>
 				<span class="font-mono text-[13px] text-ink-900"
-					>{device.name}{pad
-						? ` ↔ browser controller ${pad.index + 1}${pad.pairedBy === 'usb' ? ' (matched by USB id)' : ''}`
+					>{pad
+						? `${device.name} in your file${pad.pairedBy === 'usb' ? ', matched by USB id' : ''}`
 						: waiting
-							? ' · waiting for a press'
-							: ' · pairs after the one above'}</span
+							? `${device.name} · waiting for a press`
+							: `${device.name} · pairs after the one above`}</span
 				>
 				{#if pad}
 					<button

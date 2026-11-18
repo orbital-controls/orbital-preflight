@@ -1,3 +1,4 @@
+import type { BrowserPad } from './inputs/hub.svelte.ts';
 import type { DeviceRole } from './labels.ts';
 import type { BindingMap, InputId } from './types.ts';
 
@@ -75,5 +76,47 @@ export function deviceDecks(roles: DeviceRole[], bindings: BindingMap): DeviceDe
 			inputs.push({ kind: 'button', deviceId: role.id, button });
 		}
 		return { role, inputs };
+	});
+}
+
+/** A controller the browser has detected, as one block on the deck. */
+export interface ControllerDeck {
+	/** Stable key for the block. */
+	key: string;
+	/** The controller's own name from `Gamepad.id`, e.g. "T.16000M". */
+	name: string;
+	/** The file device it's paired with, if any. */
+	deviceId: string | null;
+	inputs: InputId[];
+}
+
+/**
+ * One block per detected controller, named after the controller. A controller paired
+ * with a device in the file shows that device's hats and bound buttons; one that isn't
+ * paired yet shows its first buttons, which fire nothing until it's paired. Identical
+ * names get a number ("T.16000M 2").
+ */
+export function controllerDecks(
+	pads: BrowserPad[],
+	roles: DeviceRole[],
+	bindings: BindingMap,
+	maxUnpaired = 12
+): ControllerDeck[] {
+	const seen = new Map<string, number>();
+	return pads.map((pad) => {
+		const count = (seen.get(pad.name) ?? 0) + 1;
+		seen.set(pad.name, count);
+		const name = count > 1 ? `${pad.name} ${count}` : pad.name;
+		const role = pad.deviceId ? roles.find((r) => r.id === pad.deviceId) : undefined;
+		if (role) {
+			const [deck] = deviceDecks([role], bindings);
+			return { key: `pad-${pad.index}`, name, deviceId: role.id, inputs: deck.inputs };
+		}
+		const deviceId = `browser-${pad.index}`;
+		const inputs: InputId[] = [];
+		for (let b = 1; b <= Math.min(pad.buttons, maxUnpaired); b++) {
+			inputs.push({ kind: 'button', deviceId, button: b });
+		}
+		return { key: `pad-${pad.index}`, name, deviceId: null, inputs };
 	});
 }

@@ -179,6 +179,16 @@ export class OrbitalPreflight {
 		this.ed = { ...this.ed, sel: null, cat: 'All', pend: null };
 	}
 
+	/**
+	 * What to call a device from the file: the name of the controller paired with it, or
+	 * the file's own name for it until one is.
+	 */
+	deviceName(fileDeviceId: string): string {
+		const pad = this.hub.pads.find((p) => p.deviceId === fileDeviceId);
+		if (pad) return pad.name;
+		return this.store.file?.parsed.devices.find((d) => d.id === fileDeviceId)?.name ?? fileDeviceId;
+	}
+
 	actionById(id: string): Action | undefined {
 		return this.store.actions.find((a) => a.id === id);
 	}

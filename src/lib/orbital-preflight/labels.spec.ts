@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deviceDecks } from './deck.ts';
+import { controllerDecks, deviceDecks } from './deck.ts';
 import { bindLabel, deviceRoles, inputLabel } from './labels.ts';
 
 const roles = deviceRoles([
@@ -45,5 +45,39 @@ describe('labels', () => {
 			deviceId: 'T16000MTHROTTLE',
 			button: 12
 		});
+	});
+});
+
+describe('controller decks', () => {
+	const pad = (index: number, name: string, deviceId: string | null, buttons = 16) => ({
+		index,
+		id: name,
+		name,
+		buttons,
+		axes: 4,
+		deviceId,
+		pairedBy: deviceId ? ('usb' as const) : null
+	});
+
+	it('has one block per detected controller, named after it', () => {
+		const decks = controllerDecks(
+			[
+				pad(0, 'T.16000M', 'T16000M'),
+				pad(1, 'VKBsim Gladiator', null, 30),
+				pad(2, 'T.16000M', null, 4)
+			],
+			roles,
+			{}
+		);
+		expect(decks.map((d) => d.name)).toEqual(['T.16000M', 'VKBsim Gladiator', 'T.16000M 2']);
+		expect(decks[0]).toMatchObject({ deviceId: 'T16000M' });
+		expect(decks[0].inputs[0]).toEqual({ kind: 'hat', deviceId: 'T16000M', hat: 1, dir: 'up' });
+		expect(decks[1]).toMatchObject({ deviceId: null });
+		expect(decks[1].inputs).toHaveLength(12);
+		expect(decks[2].inputs).toHaveLength(4);
+	});
+
+	it('is empty until a controller is detected', () => {
+		expect(controllerDecks([], roles, {})).toEqual([]);
 	});
 });

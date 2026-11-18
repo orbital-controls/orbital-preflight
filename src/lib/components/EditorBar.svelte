@@ -13,7 +13,7 @@
 	const devices = $derived([
 		{ name: 'Keyboard', ready: true },
 		...app.roles.map((r) => ({
-			name: r.long,
+			name: app.deviceName(r.id),
 			ready: app.hub.pads.some((p) => p.deviceId === r.id)
 		}))
 	]);

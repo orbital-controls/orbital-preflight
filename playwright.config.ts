@@ -31,6 +31,7 @@ export default defineConfig({
 	webServer: VARIANTS.map((v) => ({
 		command: `node scripts/serve.ts build-e2e/${v.name} ${v.port} ${v.base}`,
 		url: `http://localhost:${v.port}${v.base}/`,
-		reuseExistingServer: !process.env.CI
+		// Never reuse: a server left running on these ports would serve a stale build.
+		reuseExistingServer: false
 	}))
 });
