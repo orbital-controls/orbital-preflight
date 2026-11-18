@@ -1,5 +1,6 @@
 <script lang="ts">
 	import App from '#lib/components/App.svelte';
+	import { pageName } from '#lib/orbital-preflight/config.ts';
 	import { site } from '#lib/orbital-preflight/site.ts';
 </script>
 
@@ -20,5 +21,5 @@
 	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
-<h1 class="op-sr-only">{site.siteName} Preflight</h1>
+<h1 class="op-sr-only">{pageName(site.siteName)}</h1>
 <App />

@@ -121,10 +121,15 @@ function resolveBrand(config: OrbitalPreflightConfig): ResolvedConfig['brand'] {
 			: (brand.markSmall ?? (brand.mark === undefined ? MARK_SMALL : mark));
 	return {
 		wordmark: brand.wordmark ?? 'Preflight',
-		label: brand.label ?? `${config.siteName} Preflight`,
+		label: brand.label ?? pageName(config.siteName),
 		mark,
 		markSmall: small
 	};
+}
+
+/** "CMDR Vex Preflight", without doubling a name that already ends in Preflight. */
+export function pageName(siteName: string): string {
+	return /\bpreflight$/i.test(siteName.trim()) ? siteName.trim() : `${siteName.trim()} Preflight`;
 }
 
 /** The theme overrides as one `:root` rule, applied after the theme package import. */

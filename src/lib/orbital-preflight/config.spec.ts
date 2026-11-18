@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveConfig, themeCss } from './config.ts';
+import { pageName, resolveConfig, themeCss } from './config.ts';
 import shipped from '#orbital-preflight-config';
 
 const base = {
@@ -56,5 +56,12 @@ describe('config', () => {
 	it('the shipped config resolves', () => {
 		const config = resolveConfig(shipped);
 		expect(config.presets[0]).toMatchObject({ file: 'demo.binds' });
+	});
+});
+
+describe('page name', () => {
+	it('adds Preflight once', () => {
+		expect(pageName('CMDR Vex')).toBe('CMDR Vex Preflight');
+		expect(pageName('Orbital Preflight')).toBe('Orbital Preflight');
 	});
 });

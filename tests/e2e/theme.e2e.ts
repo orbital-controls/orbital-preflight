@@ -31,6 +31,15 @@ test('a theme override takes effect and the fonts come from the package', async 
 	);
 });
 
+test('the favicon takes its colours from the theme, overrides included', async ({ page }) => {
+	await page.goto('./');
+	const href = await page.locator('link[rel="icon"]').getAttribute('href');
+	const svg = decodeURIComponent((href ?? '').split(',')[1] ?? '');
+	expect(svg).toContain('<svg');
+	expect(svg).not.toContain('var(');
+	expect(svg).toContain('#ff6a00');
+});
+
 test('with no presets, the first visit is the upload state', async ({ page }) => {
 	await page.goto('./');
 	await expect(page.getByText('Bring your binds.')).toBeVisible();

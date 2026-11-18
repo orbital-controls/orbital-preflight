@@ -1,7 +1,7 @@
 <script lang="ts">
 	import './layout.css';
-	import favicon from '#lib/assets/favicon.svg';
 	import { themeCss } from '#lib/orbital-preflight/config.ts';
+	import { faviconHref } from '#lib/orbital-preflight/favicon.ts';
 	import { site } from '#lib/orbital-preflight/site.ts';
 	import type { LayoutProps } from './$types';
 
@@ -10,23 +10,7 @@
 	// The config's theme overrides, after the theme package's own variables.
 	const theme = themeCss(site.theme);
 
-	// A favicon can't read CSS variables, so the mark's colours are filled in from the
-	// theme package's defaults.
-	const FALLBACK: Record<string, string> = {
-		course: '#8b88ff',
-		trail: '#ffc21a',
-		'ink-200': '#e6e8f6',
-		void: '#090b1c',
-		abyss: '#06071a'
-	};
-	const icon = site.brand.markSmall
-		? `data:image/svg+xml,${encodeURIComponent(
-				site.brand.markSmall.replace(
-					/var\(--color-([a-z0-9-]+)\)/g,
-					(_, name: string) => FALLBACK[name] ?? FALLBACK.course
-				)
-			)}`
-		: favicon;
+	const icon = faviconHref(site.brand.markSmall, site.theme);
 </script>
 
 <svelte:head>
