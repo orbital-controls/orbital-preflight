@@ -26,3 +26,6 @@ test-results
 /design/
 /.shot.mjs
 /.flow.mjs
+/build-e2e
+/.og.mjs
+/playwright-report

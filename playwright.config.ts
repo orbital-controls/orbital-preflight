@@ -1,6 +1,32 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
+
+// `pnpm test:e2e` builds three variants first (scripts/build-e2e.ts); each is served as
+// plain static files, the way Pages or Cloudflare would serve it.
+const VARIANTS = [
+	{ name: 'root', port: 4173, base: '' },
+	{ name: 'base', port: 4174, base: '/orbital-preflight' },
+	{ name: 'theme', port: 4175, base: '' }
+];
 
 export default defineConfig({
-	webServer: { command: 'npm run build && npm run preview', port: 4173 },
-	testMatch: '**/*.e2e.{ts,js}'
+	testDir: 'tests/e2e',
+	testMatch: '**/*.e2e.ts',
+	fullyParallel: true,
+	reporter: process.env.CI ? 'github' : 'list',
+	use: {
+		trace: 'off',
+		viewport: { width: 1440, height: 1150 },
+		// Lets a local run use an already installed Chromium (PW_CHROMIUM_PATH).
+		launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined }
+	},
+	projects: VARIANTS.map((v) => ({
+		name: v.name,
+		testMatch: `**/${v.name}.e2e.ts`,
+		use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1150 }, baseURL: `http://localhost:${v.port}${v.base}/` }
+	})),
+	webServer: VARIANTS.map((v) => ({
+		command: `node scripts/serve.ts build-e2e/${v.name} ${v.port} ${v.base}`,
+		url: `http://localhost:${v.port}${v.base}/`,
+		reuseExistingServer: !process.env.CI
+	}))
 });
