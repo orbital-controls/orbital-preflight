@@ -10,7 +10,11 @@ import { execFileSync } from 'node:child_process';
 export const VARIANTS = {
 	root: { port: 4173, base: '', env: {} },
 	base: { port: 4174, base: '/orbital-preflight', env: { BASE_PATH: '/orbital-preflight' } },
-	theme: { port: 4175, base: '', env: { ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/theme.config.ts' } }
+	theme: {
+		port: 4175,
+		base: '',
+		env: { ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/theme.config.ts' }
+	}
 } as const;
 
 if (import.meta.main) {

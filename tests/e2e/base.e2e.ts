@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { exportAndParse, ready, rebind } from './helpers.ts';
+import { exportAndParse, rebind } from './helpers.ts';
 
 const BASE = '/orbital-preflight';
 

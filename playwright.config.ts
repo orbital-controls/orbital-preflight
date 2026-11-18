@@ -22,7 +22,11 @@ export default defineConfig({
 	projects: VARIANTS.map((v) => ({
 		name: v.name,
 		testMatch: `**/${v.name}.e2e.ts`,
-		use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1150 }, baseURL: `http://localhost:${v.port}${v.base}/` }
+		use: {
+			...devices['Desktop Chrome'],
+			viewport: { width: 1440, height: 1150 },
+			baseURL: `http://localhost:${v.port}${v.base}/`
+		}
 	})),
 	webServer: VARIANTS.map((v) => ({
 		command: `node scripts/serve.ts build-e2e/${v.name} ${v.port} ${v.base}`,
