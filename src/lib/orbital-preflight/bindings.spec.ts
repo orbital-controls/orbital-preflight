@@ -99,3 +99,31 @@ describe('filter counts', () => {
 		});
 	});
 });
+
+describe('contexts', () => {
+	it('menu binds share keys with flight binds without clashing', () => {
+		const withMenu = [...actions, { ...action('UI_Up'), context: 'menus' }];
+		const bindings: BindingMap = { ...original, UI_Up: [key('KeyL'), null] };
+		expect(clashingActions(withMenu, bindings, 'ship').size).toBe(0);
+		expect(
+			findHolders(withMenu, bindings, 'ship', key('KeyL'), { actionId: 'UI_Up', slot: 0 })
+		).toEqual([]);
+	});
+});
+
+describe('resolve with an existing clash', () => {
+	it('Swap and Move touch the first holder only', () => {
+		const bindings: BindingMap = {
+			...original,
+			Lights: [key('KeyL'), null],
+			Scoop: [key('KeyV'), null]
+		};
+		const target = { actionId: 'Scoop', slot: 0 } as const;
+		const swapped = resolve(bindings, original, actions, target, { kind: 'swap' }, key('KeyL'));
+		expect(swapped.Gear).toEqual([key('KeyV'), null]);
+		expect(swapped.Lights).toEqual([key('KeyL'), null]);
+		const moved = resolve(bindings, original, actions, target, { kind: 'move' }, key('KeyL'));
+		expect(moved.Gear).toEqual([null, null]);
+		expect(moved.Lights).toEqual([key('KeyL'), null]);
+	});
+});

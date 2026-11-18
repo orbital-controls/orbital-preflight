@@ -105,7 +105,8 @@ export function parseEliteBinds(source: string): ParsedBinds {
 
 	if (!actions.length) throw new BindsFormatError('No binds found in this file');
 
-	const devices: FileDevice[] = [...deviceIds].sort().map(describeDevice);
+	// In the order the file first uses them: usually stick, then throttle.
+	const devices: FileDevice[] = [...deviceIds].map(describeDevice);
 	return {
 		sim: 'elite-dangerous',
 		presetName: attribute(root, 'PresetName')?.value ?? '',
@@ -233,17 +234,12 @@ export const elite: SimAdapter = {
 	short: 'ED',
 	status: 'ready',
 	extensions: ['.binds'],
+	fileLabel: '.binds file',
 	// UNVERIFIED: flagged for Phil to confirm.
-	fileLocations: [
-		{
-			os: 'Windows',
-			path: '%LOCALAPPDATA%\\Frontier Developments\\Elite Dangerous\\Options\\Bindings\\'
-		},
-		{
-			os: 'Linux (Steam Proton)',
-			path: '~/.local/share/Steam/steamapps/compatdata/359320/pfx/drive_c/users/steamuser/AppData/Local/Frontier Developments/Elite Dangerous/Options/Bindings/'
-		}
-	],
+	help: {
+		path: '%LOCALAPPDATA%\\Frontier Developments\\Elite Dangerous\\Options\\Bindings\\',
+		tip: 'Pick the newest .binds file in that folder. That is the preset you last saved in game.'
+	},
 	parse: parseEliteBinds,
 	write: writeEliteBinds,
 	fileName: eliteFileName

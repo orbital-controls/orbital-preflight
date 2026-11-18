@@ -1,9 +1,11 @@
 import type { BindingMap, ParsedBinds, SimId } from '../types.ts';
 
-/** Where a sim keeps its binds, as shown under "Where's my file?". */
-export interface FileLocation {
-	os: string;
+/** "Where's my file?" in the Load drawer. UNVERIFIED: flagged for Phil to confirm. */
+export interface FileHelp {
+	/** A step to take in game first, if any. */
+	step?: string;
 	path: string;
+	tip: string;
 }
 
 /**
@@ -18,8 +20,9 @@ export interface SimAdapter {
 	status: 'ready' | 'soon' | 'later';
 	/** File extensions the drop zone accepts, with the dot. */
 	extensions: string[];
-	/** Not verified against the sims themselves: see the README. */
-	fileLocations: FileLocation[];
+	/** What the picker says under the name, e.g. ".binds file". */
+	fileLabel: string;
+	help: FileHelp;
 	parse?(source: string): ParsedBinds;
 	/**
 	 * A new file: `parsed.source` with the changed slots and the preset name replaced and

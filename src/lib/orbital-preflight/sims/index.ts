@@ -4,7 +4,8 @@ import type { SimAdapter } from './types.ts';
 
 /**
  * Star Citizen and X4 are listed so the picker shows them, but neither format has been
- * checked against real files, so neither parses yet. DCS comes later.
+ * checked against real files, so neither parses yet. DCS comes later. Copy is the
+ * StandFly board's.
  */
 const starCitizen: SimAdapter = {
 	id: 'star-citizen',
@@ -12,12 +13,12 @@ const starCitizen: SimAdapter = {
 	short: 'SC',
 	status: 'soon',
 	extensions: ['.xml'],
-	fileLocations: [
-		{
-			os: 'Windows',
-			path: 'C:\\Program Files\\Roberts Space Industries\\StarCitizen\\LIVE\\user\\client\\0\\controls\\mappings\\'
-		}
-	]
+	fileLabel: 'Coming soon',
+	help: {
+		step: 'Export first, in game: Options → Keybindings → Advanced controls customization → Control profiles → Save.',
+		path: '…\\StarCitizen\\LIVE\\USER\\Client\\0\\Controls\\Mappings\\',
+		tip: 'Pick the layout_…_exported.xml file you just saved.'
+	}
 };
 
 const x4: SimAdapter = {
@@ -26,7 +27,11 @@ const x4: SimAdapter = {
 	short: 'X4',
 	status: 'soon',
 	extensions: ['.xml'],
-	fileLocations: [{ os: 'Windows', path: 'Documents\\Egosoft\\X4\\<id>\\inputmap.xml' }]
+	fileLabel: 'Coming soon',
+	help: {
+		path: 'Documents\\Egosoft\\X4\\[your id number]\\inputmap.xml',
+		tip: 'The number folder is your player id. There is usually only one.'
+	}
 };
 
 const dcs: SimAdapter = {
@@ -35,7 +40,11 @@ const dcs: SimAdapter = {
 	short: 'DCS',
 	status: 'later',
 	extensions: ['.lua'],
-	fileLocations: []
+	fileLabel: 'Coming later',
+	help: {
+		path: 'Saved Games\\DCS\\Config\\Input\\[aircraft]\\',
+		tip: 'DCS keeps one file per aircraft per device. Support comes after the first three.'
+	}
 };
 
 export const SIMS: readonly SimAdapter[] = [elite, starCitizen, x4, dcs];

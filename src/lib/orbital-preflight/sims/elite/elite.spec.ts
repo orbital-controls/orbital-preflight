@@ -117,8 +117,8 @@ describe('Elite Dangerous .binds', () => {
 			{ input: { kind: 'axis', deviceId: 'T16000MTHROTTLE', axis: 'Z' } },
 			null
 		]);
-		expect(parsed.devices.map((d) => d.id)).toEqual(['231D0200', 'T16000M', 'T16000MTHROTTLE']);
-		expect(parsed.devices[0]).toMatchObject({ vendor: '231d', product: '0200', name: 'VKB 0200' });
+		expect(parsed.devices.map((d) => d.id)).toEqual(['T16000M', 'T16000MTHROTTLE', '231D0200']);
+		expect(parsed.devices[2]).toMatchObject({ vendor: '231d', product: '0200', name: 'VKB 0200' });
 	});
 
 	it('rejects files that are not binds', () => {
@@ -161,6 +161,7 @@ describe('inputs', () => {
 		['Keyboard', 'Key_LeftShift'],
 		['Keyboard', 'Key_Numpad_7'],
 		['Keyboard', 'Key_F12'],
+		['Mouse', 'Mouse_2'],
 		['Mouse', 'Mouse_3'],
 		['Mouse', 'Neg_Mouse_ZAxis'],
 		['T16000M', 'Joy_12'],
@@ -171,6 +172,11 @@ describe('inputs', () => {
 		['Keyboard', 'Key_SomethingOdd']
 	])('%s %s round-trips', (device, key) => {
 		expect(encodeInput(decodeInput(device, key))).toEqual({ device, key });
+	});
+
+	it('maps ED mouse buttons to browser buttons', () => {
+		expect(decodeInput('Mouse', 'Mouse_2')).toEqual({ kind: 'mouse', button: 2 });
+		expect(decodeInput('Mouse', 'Mouse_3')).toEqual({ kind: 'mouse', button: 1 });
 	});
 
 	it('maps browser key codes', () => {

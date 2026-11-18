@@ -84,6 +84,12 @@ export function codeForKeyName(name: string): string | null {
 	return null;
 }
 
+/**
+ * ED numbers mouse buttons the DirectInput way (1 left, 2 right, 3 middle); the browser's
+ * `MouseEvent.button` is 0 left, 1 middle, 2 right. UNVERIFIED against a real file.
+ */
+const DI_TO_BROWSER = [0, 2, 1, 3, 4];
+
 const HATS: Record<string, HatDirection> = { Up: 'up', Down: 'down', Left: 'left', Right: 'right' };
 
 /** One Device/Key pair → an input, or null for an empty slot. */
@@ -97,7 +103,9 @@ export function decodeInput(device: string, key: string): InputId | null {
 
 	if (device === 'Mouse') {
 		let m = /^Mouse_(\d)$/.exec(key);
-		if (m) return { kind: 'mouse', button: Number(m[1]) - 1 };
+		if (m && DI_TO_BROWSER[Number(m[1]) - 1] !== undefined) {
+			return { kind: 'mouse', button: DI_TO_BROWSER[Number(m[1]) - 1] };
+		}
 		m = /^(Pos|Neg)_Mouse_ZAxis$/.exec(key);
 		if (m) return { kind: 'wheel', dir: m[1] === 'Pos' ? 'up' : 'down' };
 		return { kind: 'raw', device, key };
@@ -122,7 +130,7 @@ export function encodeInput(input: InputId | null): { device: string; key: strin
 		case 'key':
 			return { device: 'Keyboard', key: keyNameForCode(input.code) ?? input.code };
 		case 'mouse':
-			return { device: 'Mouse', key: `Mouse_${input.button + 1}` };
+			return { device: 'Mouse', key: `Mouse_${DI_TO_BROWSER.indexOf(input.button) + 1}` };
 		case 'wheel':
 			return { device: 'Mouse', key: `${input.dir === 'up' ? 'Pos' : 'Neg'}_Mouse_ZAxis` };
 		case 'button':

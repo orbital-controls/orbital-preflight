@@ -10,139 +10,159 @@ import type { Action, Mode } from '../../types.ts';
  * a real file just isn't listed.
  */
 
-type Entry = [id: string, name: string, axis?: true];
+/** `[id, name, effect?, axis?]`. Effects are the mock flight's, from the StandFly board. */
+type Entry = [id: string, name: string, effect?: string, axis?: true];
 
 const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 	ship: {
 		Flight: [
-			['PitchAxisRaw', 'Pitch', true],
-			['RollAxisRaw', 'Roll', true],
-			['YawAxisRaw', 'Yaw', true],
-			['LateralThrustRaw', 'Lateral thrust', true],
-			['VerticalThrustRaw', 'Vertical thrust', true],
+			['ForwardKey', 'Throttle up', 'thrUp'],
+			['BackwardKey', 'Throttle down', 'thrDn'],
+			['SetSpeedZero', 'Throttle to zero', 'thrZero'],
+			['YawLeftButton', 'Yaw left', 'yawL'],
+			['YawRightButton', 'Yaw right', 'yawR'],
+			['RollLeftButton', 'Roll left', 'rollL'],
+			['RollRightButton', 'Roll right', 'rollR'],
+			['UpThrustButton', 'Thrust up', 'up'],
+			['DownThrustButton', 'Thrust down', 'down'],
+			['UseBoostJuice', 'Boost', 'boost'],
+			['LandingGearToggle', 'Landing gear', 'gear'],
+			['ToggleFlightAssist', 'Flight assist off', 'fa'],
+			['ThrottleAxis', 'Throttle', 'throttle', true],
+			['YawAxisRaw', 'Yaw', 'yawL|yawR', true],
+			['RollAxisRaw', 'Roll', 'rollL|rollR', true],
+			['PitchAxisRaw', 'Pitch', undefined, true],
+			['VerticalThrustRaw', 'Vertical thrust', 'down|up', true],
+			['LateralThrustRaw', 'Lateral thrust', undefined, true],
 			['PitchUpButton', 'Pitch up'],
 			['PitchDownButton', 'Pitch down'],
-			['RollLeftButton', 'Roll left'],
-			['RollRightButton', 'Roll right'],
-			['YawLeftButton', 'Yaw left'],
-			['YawRightButton', 'Yaw right'],
 			['LeftThrustButton', 'Thrust left'],
 			['RightThrustButton', 'Thrust right'],
-			['UpThrustButton', 'Thrust up'],
-			['DownThrustButton', 'Thrust down'],
-			['ToggleFlightAssist', 'Flight assist'],
-			['UseBoostJuice', 'Boost']
-		],
-		Throttle: [
-			['ThrottleAxis', 'Throttle', true],
-			['ForwardKey', 'Throttle up'],
-			['BackwardKey', 'Throttle down'],
-			['SetSpeedZero', 'Throttle 0%'],
-			['SetSpeed50', 'Throttle 50%'],
-			['SetSpeed100', 'Throttle 100%'],
+			['SetSpeed50', 'Throttle to 50%'],
+			['SetSpeed100', 'Throttle to 100%'],
 			['ToggleReverseThrottleInput', 'Reverse throttle']
 		],
-		Weapons: [
-			['PrimaryFire', 'Primary fire'],
-			['SecondaryFire', 'Secondary fire'],
-			['DeployHardpointToggle', 'Hardpoints'],
+		Navigation: [
+			['HyperSuperCombination', 'Frame shift drive', 'fsd'],
+			['Supercruise', 'Supercruise', 'sc'],
+			['GalaxyMapOpen', 'Galaxy map', 'panel'],
+			['TargetNextRouteSystem', 'Target next system in route', 'route'],
+			['OrbitLinesToggle', 'Orbit lines', 'orbit'],
+			['Hyperspace', 'Hyperspace jump', 'fsd'],
+			['WingNavLock', 'Wing nav lock'],
+			['SystemMapOpen', 'System map', 'panel']
+		],
+		Combat: [
+			['PrimaryFire', 'Primary fire', 'fire'],
+			['SecondaryFire', 'Secondary fire', 'fire2'],
+			['DeployHardpointToggle', 'Deploy hardpoints', 'hp'],
+			['SelectTarget', 'Target ahead', 'tgt'],
+			['CycleNextHostileTarget', 'Next hostile', 'tgt'],
+			['FireChaffLauncher', 'Deploy chaff', 'chaff'],
+			['CycleNextTarget', 'Next target', 'tgt'],
+			['CyclePreviousTarget', 'Previous target', 'tgt'],
+			['SelectHighestThreat', 'Highest threat', 'tgt'],
+			['CycleNextSubsystem', 'Next subsystem'],
 			['CycleFireGroupNext', 'Next fire group'],
 			['CycleFireGroupPrevious', 'Previous fire group']
 		],
-		Targeting: [
-			['SelectTarget', 'Target ahead'],
-			['CycleNextTarget', 'Next target'],
-			['CyclePreviousTarget', 'Previous target'],
-			['SelectHighestThreat', 'Highest threat'],
-			['CycleNextSubsystem', 'Next subsystem']
-		],
 		Systems: [
-			['LandingGearToggle', 'Landing gear'],
-			['ShipSpotLightToggle', 'Ship lights'],
-			['ToggleCargoScoop', 'Cargo scoop'],
-			['NightVisionToggle', 'Night vision'],
-			['ToggleButtonUpInput', 'Silent running'],
-			['DeployHeatSink', 'Heat sink'],
-			['FireChaffLauncher', 'Chaff'],
+			['DeployHeatSink', 'Deploy heat sink', 'heatsink'],
+			['ToggleButtonUpInput', 'Silent running', 'silent'],
+			['ToggleCargoScoop', 'Cargo scoop', 'scoop'],
+			['ShipSpotLightToggle', 'Ship lights', 'lights'],
+			['NightVisionToggle', 'Night vision', 'nv'],
+			['IncreaseSystemsPower', 'Power to systems', 'pSys'],
+			['IncreaseEnginesPower', 'Power to engines', 'pEng'],
+			['IncreaseWeaponsPower', 'Power to weapons', 'pWep'],
+			['ResetPowerDistribution', 'Balance power', 'pBal'],
 			['UseShieldCell', 'Shield cell']
 		],
-		Power: [
-			['IncreaseSystemsPower', 'Pip to systems'],
-			['IncreaseEnginesPower', 'Pip to engines'],
-			['IncreaseWeaponsPower', 'Pip to weapons'],
-			['ResetPowerDistribution', 'Balance power']
-		],
-		Navigation: [
-			['Supercruise', 'Supercruise'],
-			['Hyperspace', 'Hyperspace jump'],
-			['HyperSuperCombination', 'Frame shift drive'],
-			['TargetNextRouteSystem', 'Next system in route'],
-			['GalaxyMapOpen', 'Galaxy map'],
-			['SystemMapOpen', 'System map']
+		Panels: [
+			['FocusLeftPanel', 'Left panel', 'panel'],
+			['FocusCommsPanel', 'Comms panel', 'panel'],
+			['FocusRadarPanel', 'Role panel', 'panel'],
+			['FocusRightPanel', 'Right panel', 'panel'],
+			['HeadLookReset', 'Reset head look', 'panel']
 		]
 	},
 	srv: {
 		Driving: [
-			['SteeringAxis', 'Steering', true],
-			['DriveSpeedAxis', 'Drive speed', true],
-			['SteerLeftButton', 'Steer left'],
-			['SteerRightButton', 'Steer right'],
-			['IncreaseSpeedButtonMax', 'Accelerate'],
-			['DecreaseSpeedButtonMax', 'Reverse'],
-			['AutoBreakBuggyButton', 'Handbrake'],
-			['ToggleDriveAssist', 'Drive assist'],
-			['VerticalThrustersButton', 'Vertical thrusters'],
+			['IncreaseSpeedButtonMax', 'Accelerate', 'drvFwd'],
+			['DecreaseSpeedButtonMax', 'Reverse', 'drvRev'],
+			['SteerLeftButton', 'Steer left', 'steerL'],
+			['SteerRightButton', 'Steer right', 'steerR'],
+			['AutoBreakBuggyButton', 'Handbrake', 'brake'],
+			['VerticalThrustersButton', 'Vertical thrusters', 'jets'],
+			['ToggleDriveAssist', 'Drive assist', 'da'],
+			['SteeringAxis', 'Steering', 'steerL|steerR', true],
+			['DriveSpeedAxis', 'Drive speed', undefined, true],
 			['BuggyRollLeftButton', 'Roll left'],
 			['BuggyRollRightButton', 'Roll right'],
 			['BuggyPitchUpButton', 'Pitch up'],
 			['BuggyPitchDownButton', 'Pitch down']
 		],
 		Turret: [
-			['ToggleBuggyTurretButton', 'Turret mode'],
-			['BuggyPrimaryFireButton', 'Primary fire'],
-			['BuggySecondaryFireButton', 'Secondary fire'],
+			['ToggleBuggyTurretButton', 'Turret mode', 'turret'],
+			['BuggyPrimaryFireButton', 'Primary fire', 'tFire'],
+			['BuggySecondaryFireButton', 'Secondary fire', 'tFire2'],
+			['SelectTarget_Buggy', 'Target ahead', 'tgt'],
 			['BuggyTurretYawLeftButton', 'Turret left'],
 			['BuggyTurretYawRightButton', 'Turret right'],
 			['BuggyTurretPitchUpButton', 'Turret up'],
 			['BuggyTurretPitchDownButton', 'Turret down']
 		],
 		Systems: [
-			['HeadlightsBuggyButton', 'Headlights'],
-			['RecallDismissShip', 'Recall ship'],
-			['ToggleCargoScoop_Buggy', 'Cargo scoop'],
-			['IncreaseSystemsPower_Buggy', 'Pip to systems'],
-			['IncreaseEnginesPower_Buggy', 'Pip to engines'],
-			['IncreaseWeaponsPower_Buggy', 'Pip to weapons'],
-			['ResetPowerDistribution_Buggy', 'Balance power']
+			['HeadlightsBuggyButton', 'Headlights', 'sLights'],
+			['ToggleCargoScoop_Buggy', 'Cargo scoop', 'sScoop'],
+			['RecallDismissShip', 'Recall / dismiss ship', 'recall'],
+			['IncreaseSystemsPower_Buggy', 'Power to systems', 'pSys'],
+			['IncreaseEnginesPower_Buggy', 'Power to engines', 'pEng'],
+			['IncreaseWeaponsPower_Buggy', 'Power to weapons', 'pWep'],
+			['ResetPowerDistribution_Buggy', 'Balance power', 'pBal']
+		],
+		Panels: [
+			['FocusLeftPanel_Buggy', 'Left panel', 'panel'],
+			['FocusCommsPanel_Buggy', 'Comms panel', 'panel'],
+			['FocusRadarPanel_Buggy', 'Role panel', 'panel'],
+			['FocusRightPanel_Buggy', 'Right panel', 'panel'],
+			['GalaxyMapOpen_Buggy', 'Galaxy map', 'panel']
 		]
 	},
 	foot: {
-		Movement: [
-			['HumanoidForwardButton', 'Forward'],
-			['HumanoidBackwardButton', 'Backward'],
-			['HumanoidStrafeLeftButton', 'Strafe left'],
-			['HumanoidStrafeRightButton', 'Strafe right'],
-			['HumanoidSprintButton', 'Sprint'],
-			['HumanoidCrouchButton', 'Crouch'],
-			['HumanoidJumpButton', 'Jump']
+		Moving: [
+			['HumanoidForwardButton', 'Move forward', 'walk'],
+			['HumanoidBackwardButton', 'Move back', 'walk'],
+			['HumanoidStrafeLeftButton', 'Strafe left', 'walk'],
+			['HumanoidStrafeRightButton', 'Strafe right', 'walk'],
+			['HumanoidSprintButton', 'Sprint', 'sprint'],
+			['HumanoidJumpButton', 'Jump', 'jump'],
+			['HumanoidCrouchButton', 'Crouch', 'crouch']
 		],
 		Combat: [
-			['HumanoidPrimaryFireButton', 'Fire'],
-			['HumanoidZoomButton', 'Aim'],
-			['HumanoidReloadButton', 'Reload'],
-			['HumanoidHolsterWeaponButton', 'Holster'],
-			['HumanoidMeleeButton', 'Melee'],
-			['HumanoidThrowGrenadeButton', 'Grenade'],
+			['HumanoidPrimaryFireButton', 'Fire weapon', 'primary'],
+			['HumanoidZoomButton', 'Aim down sights', 'aim'],
+			['HumanoidReloadButton', 'Reload', 'reload'],
+			['HumanoidMeleeButton', 'Melee', 'melee'],
+			['HumanoidThrowGrenadeButton', 'Throw grenade', 'grenade'],
+			['HumanoidSelectNextWeaponButton', 'Next weapon', 'wNext'],
+			['HumanoidSelectPreviousWeaponButton', 'Previous weapon', 'wPrev'],
+			['HumanoidHolsterWeaponButton', 'Holster weapon', 'holster'],
 			['HumanoidSelectPrimaryWeaponButton', 'Primary weapon'],
 			['HumanoidSelectSecondaryWeaponButton', 'Secondary weapon']
 		],
 		Tools: [
-			['HumanoidToggleFlashlightButton', 'Flashlight'],
-			['HumanoidPrimaryInteractButton', 'Interact'],
-			['HumanoidHealthPack', 'Medkit'],
-			['HumanoidBattery', 'Energy cell'],
-			['HumanoidToggleShieldsButton', 'Shields'],
-			['HumanoidToggleNightVisionButton', 'Night vision']
+			['HumanoidPrimaryInteractButton', 'Interact', 'interact'],
+			['HumanoidHealthPack', 'Use medkit', 'medkit'],
+			['HumanoidBattery', 'Use energy cell', 'cell'],
+			['HumanoidToggleFlashlightButton', 'Flashlight', 'flash'],
+			['HumanoidToggleNightVisionButton', 'Night vision', 'fNv'],
+			['HumanoidToggleShieldsButton', 'Toggle suit shield']
+		],
+		Panels: [
+			['HumanoidEmoteWheelButton', 'Emote wheel', 'panel'],
+			['HumanoidItemWheelButton', 'Item wheel', 'panel'],
+			['GalaxyMapOpen_Humanoid', 'Galaxy map', 'panel']
 		]
 	}
 };
@@ -152,6 +172,7 @@ interface Known {
 	category: string;
 	mode: Mode;
 	axis: boolean;
+	effect?: string;
 	order: number;
 }
 
@@ -159,13 +180,13 @@ const KNOWN = new Map<string, Known>();
 let order = 0;
 for (const [mode, categories] of Object.entries(CATALOGUE) as [Mode, Record<string, Entry[]>][]) {
 	for (const [category, entries] of Object.entries(categories)) {
-		for (const [id, name, axis] of entries) {
-			KNOWN.set(id, { name, category, mode, axis: Boolean(axis), order: order++ });
+		for (const [id, name, effect, axis] of entries) {
+			KNOWN.set(id, { name, category, mode, axis: Boolean(axis), effect, order: order++ });
 		}
 	}
 }
 
-/** Categories per mode, in panel order. Actions we don't know go under "Other". */
+/** Categories per mode, in the boards' order. Actions we don't know go under "Other". */
 export const CATEGORIES: Record<Mode, string[]> = {
 	ship: [...Object.keys(CATALOGUE.ship), 'Other'],
 	srv: [...Object.keys(CATALOGUE.srv), 'Other'],
@@ -200,7 +221,18 @@ export function prettify(id: string): string {
 	return words ? words[0].toUpperCase() + words.slice(1) : id;
 }
 
+/** ED contexts that read keys apart from flight. UNVERIFIED prefixes. */
+function contextOf(id: string): string | undefined {
+	if (/^UI_|^CycleNextPanel|^CyclePreviousPanel|^CyclePreviousPage|^CycleNextPage/.test(id))
+		return 'menus';
+	if (/^Cam|^ToggleFreeCam|^FreeCam|^VanityCamera|^PhotoCamera/.test(id)) return 'camera';
+	if (/^(Explorer|FSS|Saa|ExplorationFSS|ExplorationSAA)/.test(id)) return 'scanner';
+	if (/^(Store|Galnet|Multicrew|Commander)/.test(id)) return 'panels';
+	return undefined;
+}
+
 export function describeAction(id: string, axisInFile: boolean): Action {
+	const context = contextOf(id);
 	const known = KNOWN.get(id);
 	if (known) {
 		return {
@@ -208,7 +240,9 @@ export function describeAction(id: string, axisInFile: boolean): Action {
 			name: known.name,
 			category: known.category,
 			mode: known.mode,
-			...(known.axis && { axis: true })
+			...(known.axis && { axis: true }),
+			...(known.effect && { effect: known.effect }),
+			...(context && { context })
 		};
 	}
 	return {
@@ -216,7 +250,8 @@ export function describeAction(id: string, axisInFile: boolean): Action {
 		name: prettify(id),
 		category: 'Other',
 		mode: classifyMode(id),
-		...(axisInFile && { axis: true })
+		...(axisInFile && { axis: true }),
+		...(context && { context })
 	};
 }
 

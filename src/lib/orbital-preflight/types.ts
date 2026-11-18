@@ -20,6 +20,16 @@ export interface Action {
 	mode: Mode;
 	/** Analogue actions take an axis in their primary slot and have no secondary slot. */
 	axis?: boolean;
+	/**
+	 * What the action does in the mock flight (`flight.ts`), e.g. `gear`. Axis actions
+	 * name one effect per direction, `neg|pos` (`yawL|yawR`), or `throttle`.
+	 */
+	effect?: string;
+	/**
+	 * Binds in the same mode only clash within the same context. Menus, the camera suite
+	 * and scanners read keys separately from flight, so W can steer menus and pitch.
+	 */
+	context?: string;
 }
 
 export type HatDirection = 'up' | 'down' | 'left' | 'right';

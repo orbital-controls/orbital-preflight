@@ -99,6 +99,17 @@ export class BindStore {
 		this.bindings = { ...this.bindings, [actionId]: previous };
 	}
 
+	/** Replaces one action's binds outright (the editor's swap and clear). */
+	set(actionId: string, binding: Binding) {
+		this.#commit({ ...this.bindings, [actionId]: binding });
+	}
+
+	/** One action back to the file. */
+	revert(actionId: string) {
+		const original = this.original[actionId];
+		if (original) this.set(actionId, original);
+	}
+
 	/** Every action in `mode` back to the file. */
 	resetMode(mode: Mode) {
 		const next = { ...this.bindings };

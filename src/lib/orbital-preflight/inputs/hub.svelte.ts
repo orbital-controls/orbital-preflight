@@ -284,13 +284,10 @@ export class InputHub {
 					const is = value * sign > AXIS_PRESS;
 					if (was === is) continue;
 					const input: InputId = { kind: 'axis', deviceId, axis: name, half };
-					if (is) {
-						if (this.capturing) this.press({ kind: 'axis', deviceId, axis: name });
-						else this.press(input);
-					} else {
-						this.release(input);
-						this.release({ kind: 'axis', deviceId, axis: name });
-					}
+					// While listening this becomes the candidate; an axis action keeps the
+					// whole axis (the session drops the half), a button action keeps the half.
+					if (is) this.press(input);
+					else this.release(input);
 				}
 			});
 		}

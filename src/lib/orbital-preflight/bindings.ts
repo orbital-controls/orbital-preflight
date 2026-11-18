@@ -51,8 +51,8 @@ export interface SlotRef {
 
 /**
  * Every slot in `mode` that holds `bind`, except `except`. Binds only clash within a
- * mode: the game reads ship, SRV and on-foot binds in different contexts, so the same
- * key in two of them is normal.
+ * mode and context: the game reads ship, SRV and on-foot binds separately, and menus or
+ * the camera separately from flight, so the same key in two of them is normal.
  */
 export function findHolders(
 	actions: Action[],
@@ -63,8 +63,10 @@ export function findHolders(
 ): SlotRef[] {
 	const key = bindKey(bind);
 	const holders: SlotRef[] = [];
+	const context = except && actions.find((a) => a.id === except.actionId)?.context;
 	for (const action of actions) {
 		if (action.mode !== mode) continue;
+		if (except && action.context !== context) continue;
 		const binding = bindings[action.id];
 		if (!binding) continue;
 		([0, 1] as const).forEach((slot) => {
@@ -84,7 +86,7 @@ export function clashingActions(actions: Action[], bindings: BindingMap, mode: M
 		if (action.mode !== mode) continue;
 		for (const slot of bindings[action.id] ?? []) {
 			if (!slot) continue;
-			const key = bindKey(slot);
+			const key = `${action.context ?? ''}|${bindKey(slot)}`;
 			const set = byBind.get(key) ?? new Set();
 			set.add(action.id);
 			byBind.set(key, set);
@@ -137,12 +139,12 @@ export function resolve(
 		case 'swap': {
 			if (!candidate || !mode) return bindings;
 			const previous = bindings[target.actionId]?.[target.slot] ?? null;
-			const holders = findHolders(actions, bindings, mode, candidate, target);
-			let next = setSlot(bindings, target, candidate);
-			for (const holder of holders) {
-				next = setSlot(next, holder, resolution.kind === 'swap' ? previous : null);
-			}
-			return next;
+			// The first holder only, as on the boards: if the input already clashed, the
+			// other holders keep it.
+			const holder = findHolders(actions, bindings, mode, candidate, target)[0];
+			const next = setSlot(bindings, target, candidate);
+			if (!holder) return next;
+			return setSlot(next, holder, resolution.kind === 'swap' ? previous : null);
 		}
 	}
 }
