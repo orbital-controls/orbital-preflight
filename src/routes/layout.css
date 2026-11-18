@@ -46,3 +46,41 @@
 	white-space: nowrap;
 	border: 0;
 }
+
+/* The boards' type roles. `op-hud` is instrumentation; `op-lbl` is a section eyebrow. */
+@utility op-hud {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--color-ink-900);
+}
+
+@utility op-lbl {
+	font-family: var(--font-mono);
+	font-weight: 500;
+	font-size: 13px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--color-course);
+}
+
+/* The smallest cut on the boards: keys, chips and slot buttons. Use with `notch`. */
+@utility op-notch-xs {
+	--notch: 7px;
+}
+
+/* The page's content column: the boards' 1280–1360 px desktop width. */
+@utility op-wrap {
+	max-width: 1360px;
+	min-width: 1280px;
+	margin-inline: auto;
+	padding-inline: 40px;
+	box-sizing: border-box;
+}
+
+/* Thin scrollbars inside the binds list and the editor table. */
+@utility op-scroll {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--color-course) 30%, transparent) transparent;
+}

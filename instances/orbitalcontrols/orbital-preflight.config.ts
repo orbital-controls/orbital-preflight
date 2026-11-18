@@ -19,5 +19,5 @@ export default defineConfig({
 	sim: 'elite-dangerous',
 	// Phil's own presets go in static/binds/ and here once there are real files.
 	presets: [],
-	brand: { wordmark: 'Orbital Controls', mark, markSmall, label: 'Orbital Controls Preflight' }
+	brand: { wordmark: 'Preflight', mark, markSmall, label: 'Orbital Controls Preflight' }
 });

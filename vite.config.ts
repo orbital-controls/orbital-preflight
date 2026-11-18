@@ -34,6 +34,7 @@ export default defineConfig({
 			prerender: { entries: ['*'] }
 		})
 	],
+	define: { __OP_BASE__: JSON.stringify(base) },
 	resolve: {
 		alias: { '#orbital-preflight-config': configFile }
 	},
