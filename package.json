@@ -49,6 +49,6 @@
 		"node": ">=24"
 	},
 	"dependencies": {
-		"@orbital-controls/theme": "link:../orbital-controls/packages/theme"
+		"@orbital-controls/theme": "^0.1.0"
 	}
 }

@@ -1,3 +1,7 @@
 engineStrict: true
 allowBuilds:
   esbuild: true
+# pnpm holds back packages published in the last day. The theme is our own package and
+# a new release should be usable straight away, so it's exempt.
+minimumReleaseAgeExclude:
+  - '@orbital-controls/theme'

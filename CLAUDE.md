@@ -15,7 +15,7 @@ On Phil's instance the feature is "Preflight"; the framework is "Orbital Preflig
 ## Theme
 
 - The look comes from `@orbital-controls/theme` (npm): `@import 'tailwindcss'` then `@import '@orbital-controls/theme'` in `src/routes/layout.css`. Never copy or recreate its tokens, utilities or fonts. Its CSS variable names (`--color-trail`, `--font-display`…) are the public API; don't invent parallel ones.
-- Until the package is on npm it is linked from `../orbital-controls/packages/theme`. CI swaps the link for the npm range, so CI never needs the sibling checkout. Switch `package.json` to `^0.1.0` once it's published.
+- It is installed from npm (`^0.1.0`), never linked from `../orbital-controls`: forks don't have that checkout. To try an unreleased theme change, publish it first. `pnpm-workspace.yaml` exempts it from pnpm's one-day hold on new releases.
 - Config `theme` overrides are those same variables, applied after the import.
 
 ## Stack and rules
