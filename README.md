@@ -64,13 +64,14 @@ Phil's instance lives in `instances/orbitalcontrols/`: its own config (title, `h
 ORBITAL_PREFLIGHT_CONFIG=instances/orbitalcontrols/orbital-preflight.config.ts pnpm build
 ```
 
-and deploys to Cloudflare Workers static assets at `preflight.orbitalcontrols.com` through `.github/workflows/deploy-cloudflare.yml` and `wrangler.jsonc`. To switch it on in Phil's repository:
+and deploys with the same GitHub Pages workflow as a fork, served at `preflight.orbitalcontrols.com`. To set it up in Phil's repository:
 
-1. Set the repository variable `CLOUDFLARE_DEPLOY` to `true`. This also skips the GitHub Pages workflow there.
-2. Add the secrets `CLOUDFLARE_API_TOKEN` (with Workers Scripts: Edit and the zone's Workers Routes: Edit) and `CLOUDFLARE_ACCOUNT_ID`.
-3. Push to `main`. The first deploy creates the custom domain route.
+1. Set the repository variable `ORBITAL_PREFLIGHT_CONFIG` to `instances/orbitalcontrols/orbital-preflight.config.ts` (Settings → Secrets and variables → Actions → Variables). The Pages workflow builds with it.
+2. Settings → Pages: Source _GitHub Actions_, custom domain `preflight.orbitalcontrols.com`, then tick _Enforce HTTPS_ once the certificate is issued.
+3. At the DNS host for orbitalcontrols.com, add a `CNAME` record from `preflight` to `orbital-controls.github.io`. Verifying the domain for the `orbital-controls` organisation (Settings → Pages → Verified domains) stops anyone else claiming it.
+4. Push to `main`. With a custom domain the base path is empty, so the app is served at the root.
 
-The build output is plain static files either way, so any static host works.
+The build output is plain static files, so any static host works too.
 
 ## Develop
 

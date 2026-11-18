@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // `pnpm test:e2e` builds three variants first (scripts/build-e2e.ts); each is served as
-// plain static files, the way Pages or Cloudflare would serve it.
+// plain static files, the way GitHub Pages would serve it.
 const VARIANTS = [
 	{ name: 'root', port: 4173, base: '' },
 	{ name: 'base', port: 4174, base: '/orbital-preflight' },

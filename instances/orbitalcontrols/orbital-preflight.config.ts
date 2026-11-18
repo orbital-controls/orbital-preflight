@@ -7,7 +7,8 @@ import markSmall from './mark-small.svg?raw';
 /**
  * Phil's instance: "Preflight" on orbitalcontrols.com. Built with
  * ORBITAL_PREFLIGHT_CONFIG=instances/orbitalcontrols/orbital-preflight.config.ts and
- * deployed by .github/workflows/deploy-cloudflare.yml.
+ * deployed by .github/workflows/pages.yml to GitHub Pages at preflight.orbitalcontrols.com
+ * (the repository variable ORBITAL_PREFLIGHT_CONFIG points the workflow here).
  */
 export default defineConfig({
 	title: 'Preflight: test your Elite Dangerous binds | Orbital Controls',

@@ -23,7 +23,7 @@ On Phil's instance the feature is "Preflight"; the framework is "Orbital Preflig
 - SvelteKit + Svelte 5 runes (shared state in `.svelte.ts`), TypeScript strict, Tailwind v4, pnpm, Vitest, Playwright, Prettier, ESLint. This repo uses pnpm and Svelte by design, whatever a global default says.
 - **Static only.** `adapter-static`, everything prerendered, everything interactive on the client. No server code, no runtime network calls, no analytics. Files are read with FileReader; nothing is uploaded.
 - **Base path.** `BASE_PATH` feeds `paths.base`. Every link and asset goes through `resolve()` / `asset()` from `$app/paths` (SvelteKit 3 has no `base` export).
-- **Config.** `orbital-preflight.config.ts` is the only file a fork edits. `ORBITAL_PREFLIGHT_CONFIG` swaps in another (Phil's instance lives in `instances/orbitalcontrols/`). Document every new field in the README.
+- **Config.** `orbital-preflight.config.ts` is the only file a fork edits. `ORBITAL_PREFLIGHT_CONFIG` swaps in another (Phil's instance lives in `instances/orbitalcontrols/`; the Pages workflow reads it from a repository variable of the same name). Document every new field in the README.
 - **Logic stays pure.** Parsers, writers, bind resolution and the mock flight are plain TS modules under `src/lib/orbital-preflight/` with Vitest specs beside them. The writer splices into the original file text; never rebuild a binds file from the model.
 - Anything taken from memory rather than a real file or device (binds format details, file paths, browser HOTAS limits) is marked `UNVERIFIED` in code and listed in the README.
 - Ask Phil before adding a dependency beyond the stack above.
