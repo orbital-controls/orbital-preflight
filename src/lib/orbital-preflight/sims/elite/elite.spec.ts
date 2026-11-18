@@ -1,0 +1,170 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import type { BindingMap } from '../../types.ts';
+import { parseXml } from '../../xml.ts';
+import { classifyMode, prettify } from './actions.ts';
+import { cleanPresetName, eliteFileName, parseEliteBinds, writeEliteBinds } from './index.ts';
+import { decodeInput, encodeInput, keyNameForCode } from './inputs.ts';
+
+const fixture = (name: string) => readFileSync(`tests/fixtures/${name}`, 'utf8');
+const FIXTURES = ['hotas.binds', 'keyboard-only.binds'];
+
+/** Splits both strings into lines and returns the lines that differ. */
+function changedLines(a: string, b: string): [string, string][] {
+	const la = a.split('\n');
+	const lb = b.split('\n');
+	const out: [string, string][] = [];
+	for (let i = 0; i < Math.max(la.length, lb.length); i++) {
+		if (la[i] !== lb[i]) out.push([la[i], lb[i]]);
+	}
+	return out;
+}
+
+describe('Elite Dangerous .binds', () => {
+	it.each(FIXTURES)('%s: writing unchanged binds under the same name gives the same bytes', (name) => {
+		const source = fixture(name);
+		const parsed = parseEliteBinds(source);
+		expect(writeEliteBinds(parsed, parsed.bindings, parsed.presetName)).toBe(source);
+	});
+
+	it.each(FIXTURES)('%s: a new name changes only PresetName', (name) => {
+		const source = fixture(name);
+		const parsed = parseEliteBinds(source);
+		const out = writeEliteBinds(parsed, parsed.bindings, 'My New Preset');
+		const diff = changedLines(source, out);
+		expect(diff).toHaveLength(1);
+		expect(diff[0][1]).toContain('PresetName="My New Preset"');
+	});
+
+	it.each(FIXTURES)('%s: changing one bind changes only that slot', (name) => {
+		const source = fixture(name);
+		const parsed = parseEliteBinds(source);
+		const bindings: BindingMap = {
+			...parsed.bindings,
+			SetSpeedZero: [{ input: { kind: 'key', code: 'KeyP' } }, parsed.bindings.SetSpeedZero[1]]
+		};
+		const out = writeEliteBinds(parsed, bindings, parsed.presetName);
+		const diff = changedLines(source, out);
+		expect(diff).toEqual([
+			['\t\t<Primary Device="Keyboard" Key="Key_X" />', '\t\t<Primary Device="Keyboard" Key="Key_P" />'].map(
+				(line) => (source.includes('\r\n') ? `${line}\r` : line)
+			)
+		]);
+		expect(parseEliteBinds(out).bindings.SetSpeedZero[0]).toEqual({ input: { kind: 'key', code: 'KeyP' } });
+	});
+
+	it('adds and removes modifiers, keeping indentation and line endings', () => {
+		const source = fixture('keyboard-only.binds');
+		const parsed = parseEliteBinds(source);
+		const bindings: BindingMap = {
+			...parsed.bindings,
+			SetSpeedZero: [
+				{ input: { kind: 'key', code: 'KeyX' }, modifier: { kind: 'key', code: 'AltLeft' } },
+				null
+			],
+			ForwardKey: [{ input: { kind: 'key', code: 'KeyW' } }, null]
+		};
+		const out = writeEliteBinds(parsed, bindings, parsed.presetName);
+		expect(out).toContain(
+			'\t\t<Primary Device="Keyboard" Key="Key_X">\r\n\t\t\t<Modifier Device="Keyboard" Key="Key_LeftAlt" />\r\n\t\t</Primary>\r\n'
+		);
+		expect(out.split('\r\n').every((line) => !line.includes('\n'))).toBe(true);
+		const reparsed = parseEliteBinds(out);
+		expect(reparsed.bindings.SetSpeedZero).toEqual(bindings.SetSpeedZero);
+		expect(reparsed.bindings.ForwardKey).toEqual(bindings.ForwardKey);
+		// The rest of the file still parses to the same model.
+		for (const id of Object.keys(parsed.bindings)) {
+			if (id === 'SetSpeedZero' || id === 'ForwardKey') continue;
+			expect(reparsed.bindings[id]).toEqual(parsed.bindings[id]);
+		}
+	});
+
+	it('clears a slot to {NoDevice}', () => {
+		const parsed = parseEliteBinds(fixture('hotas.binds'));
+		const out = writeEliteBinds(parsed, { ...parsed.bindings, ToggleFlightAssist: [null, null] }, 'x');
+		expect(parseEliteBinds(out).bindings.ToggleFlightAssist).toEqual([null, null]);
+		expect(out).toContain('<ToggleFlightAssist>\n\t\t<Primary Device="{NoDevice}" Key="" />');
+		parseXml(out);
+	});
+
+	it('reads modes, axes, modifiers, devices and the preset name', () => {
+		const parsed = parseEliteBinds(fixture('hotas.binds'));
+		expect(parsed.presetName).toBe('Demo HOTAS');
+		const byId = Object.fromEntries(parsed.actions.map((a) => [a.id, a]));
+		expect(byId.ThrottleAxis).toMatchObject({ mode: 'ship', axis: true, name: 'Throttle' });
+		expect(byId.SteeringAxis).toMatchObject({ mode: 'srv', axis: true });
+		expect(byId.HumanoidJumpButton).toMatchObject({ mode: 'foot', name: 'Jump' });
+		expect(byId.EjectAllCargo_Buggy).toMatchObject({ mode: 'srv', category: 'Other' });
+		expect(byId.UI_Up).toMatchObject({ mode: 'ship', category: 'Other' });
+		expect(parsed.bindings.ToggleFlightAssist).toEqual([
+			{ input: { kind: 'key', code: 'KeyZ' }, modifier: { kind: 'key', code: 'ShiftLeft' } },
+			{ input: { kind: 'button', deviceId: 'T16000M', button: 7 } }
+		]);
+		expect(parsed.bindings.YawLeftButton[1]).toEqual({
+			input: { kind: 'hat', deviceId: 'T16000M', hat: 1, dir: 'left' }
+		});
+		expect(parsed.bindings.ThrottleAxis).toEqual([
+			{ input: { kind: 'axis', deviceId: 'T16000MTHROTTLE', axis: 'Z' } },
+			null
+		]);
+		expect(parsed.devices.map((d) => d.id)).toEqual(['231D0200', 'T16000M', 'T16000MTHROTTLE']);
+		expect(parsed.devices[0]).toMatchObject({ vendor: '231d', product: '0200', name: 'VKB 0200' });
+	});
+
+	it('rejects files that are not binds', () => {
+		expect(() => parseEliteBinds('<Other />')).toThrow(/Expected an Elite Dangerous binds file/);
+		expect(() => parseEliteBinds('not xml <')).toThrow(/doesn't read as a binds file/);
+		expect(() => parseEliteBinds('<Root PresetName="x"><A Value="1" /></Root>')).toThrow(/No binds/);
+	});
+
+	it('names the export after the preset and the file version', () => {
+		const parsed = parseEliteBinds(fixture('hotas.binds'));
+		expect(eliteFileName(parsed, 'My HOTAS / v2')).toBe('My HOTAS  v2.4.0.binds');
+		expect(cleanPresetName('<>')).toBe('Custom');
+	});
+});
+
+describe('mode classification', () => {
+	it.each([
+		['HumanoidSomethingNewButton', 'foot'],
+		['SomethingNew_Buggy', 'srv'],
+		['BuggyNewThing', 'srv'],
+		['SteerLeftButton', 'srv'],
+		['RecallDismissShip', 'srv'],
+		['SomethingNew', 'ship']
+	] as const)('%s → %s', (id, mode) => {
+		expect(classifyMode(id)).toBe(mode);
+	});
+
+	it('prettifies unknown ids', () => {
+		expect(prettify('HumanoidToggleShieldsButton')).toBe('Toggle shields');
+		expect(prettify('IncreaseEnginesPower_Buggy')).toBe('Increase engines power');
+		expect(prettify('UI_Up')).toBe('Ui up');
+	});
+});
+
+describe('inputs', () => {
+	it.each([
+		['Keyboard', 'Key_A'],
+		['Keyboard', 'Key_LeftShift'],
+		['Keyboard', 'Key_Numpad_7'],
+		['Keyboard', 'Key_F12'],
+		['Mouse', 'Mouse_3'],
+		['Mouse', 'Neg_Mouse_ZAxis'],
+		['T16000M', 'Joy_12'],
+		['T16000M', 'Joy_POV2Right'],
+		['T16000M', 'Joy_RZAxis'],
+		['T16000MTHROTTLE', 'Neg_Joy_ZAxis'],
+		['GamePad', 'GamePad_FaceA'],
+		['Keyboard', 'Key_SomethingOdd']
+	])('%s %s round-trips', (device, key) => {
+		expect(encodeInput(decodeInput(device, key))).toEqual({ device, key });
+	});
+
+	it('maps browser key codes', () => {
+		expect(keyNameForCode('KeyQ')).toBe('Key_Q');
+		expect(keyNameForCode('Digit0')).toBe('Key_0');
+		expect(keyNameForCode('ArrowUp')).toBe('Key_UpArrow');
+		expect(keyNameForCode('IntlBackslash')).toBeNull();
+	});
+});

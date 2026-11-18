@@ -1,0 +1,78 @@
+/**
+ * The model every sim adapter reads into and writes out of. Nothing here knows about
+ * any one game's file format: the Elite Dangerous adapter (`sims/elite`) maps its
+ * Device/Key pairs onto these, and back.
+ */
+
+export type SimId = 'elite-dangerous' | 'star-citizen' | 'x4' | 'dcs';
+
+/** Where an action applies. Every sim we support has a ship, a ground vehicle and a body. */
+export type Mode = 'ship' | 'srv' | 'foot';
+
+export const MODES: readonly Mode[] = ['ship', 'srv', 'foot'];
+
+export interface Action {
+	/** The sim's own id for the action, e.g. `ToggleFlightAssist`. */
+	id: string;
+	/** A readable name, e.g. "Flight assist". */
+	name: string;
+	category: string;
+	mode: Mode;
+	/** Analogue actions take an axis in their primary slot and have no secondary slot. */
+	axis?: boolean;
+}
+
+export type HatDirection = 'up' | 'down' | 'left' | 'right';
+
+/**
+ * One physical input. Keyboard keys use the browser's `KeyboardEvent.code` ("KeyA",
+ * "ShiftLeft"); `deviceId` is the device's name in the binds file (e.g. `T16000M`,
+ * `231D0200`), so a bind can name a device the browser hasn't seen yet. `raw` keeps any
+ * Device/Key pair we don't understand, so it survives a round trip and still shows up.
+ */
+export type InputId =
+	| { kind: 'key'; code: string }
+	| { kind: 'mouse'; button: number }
+	| { kind: 'wheel'; dir: 'up' | 'down' }
+	| { kind: 'button'; deviceId: string; button: number }
+	| { kind: 'hat'; deviceId: string; hat: number; dir: HatDirection }
+	| { kind: 'axis'; deviceId: string; axis: string; half?: 'pos' | 'neg' }
+	| { kind: 'raw'; device: string; key: string };
+
+/** One slot: an input, optionally held with a modifier. `null` is an empty slot. */
+export interface Bind {
+	input: InputId;
+	modifier?: InputId;
+}
+
+export type Slot = Bind | null;
+
+/** Primary and secondary. Axis actions only use the primary slot. */
+export type Binding = [Slot, Slot];
+
+export type SlotIndex = 0 | 1;
+
+/** Bindings keyed by action id. */
+export type BindingMap = Record<string, Binding>;
+
+/** A device named in a binds file. */
+export interface FileDevice {
+	/** The name the file uses, e.g. `T16000M`. */
+	id: string;
+	/** A readable name where we know one. */
+	name: string;
+	/** USB vendor and product id (lowercase hex) where the file name gives them away. */
+	vendor?: string;
+	product?: string;
+}
+
+/** What a sim adapter hands back from a file. */
+export interface ParsedBinds {
+	sim: SimId;
+	presetName: string;
+	actions: Action[];
+	bindings: BindingMap;
+	devices: FileDevice[];
+	/** The file exactly as read, for the writer to splice into. */
+	source: string;
+}

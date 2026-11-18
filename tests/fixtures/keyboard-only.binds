@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Root PresetName="Keyboard Only" MajorVersion="4" MinorVersion="0">
+	<KeyboardLayout>en-US</KeyboardLayout>
+	<MouseXMode Value="" />
+	<MouseXDecay Value="0" />
+	<MouseSensitivity Value="1.00000000" />
+	<PitchAxisRaw>
+		<Binding Device="{NoDevice}" Key="" />
+		<Inverted Value="0" />
+		<Deadzone Value="0.00000000" />
+	</PitchAxisRaw>
+	<RollAxisRaw>
+		<Binding Device="{NoDevice}" Key="" />
+		<Inverted Value="0" />
+		<Deadzone Value="0.00000000" />
+	</RollAxisRaw>
+	<YawAxisRaw>
+		<Binding Device="{NoDevice}" Key="" />
+		<Inverted Value="0" />
+		<Deadzone Value="0.00000000" />
+	</YawAxisRaw>
+	<ThrottleAxis>
+		<Binding Device="{NoDevice}" Key="" />
+		<Inverted Value="0" />
+		<Deadzone Value="0.00000000" />
+	</ThrottleAxis>
+	<PitchUpButton>
+		<Primary Device="Keyboard" Key="Key_S" />
+		<Secondary Device="Keyboard" Key="Key_Numpad_8" />
+	</PitchUpButton>
+	<PitchDownButton>
+		<Primary Device="Keyboard" Key="Key_W" />
+		<Secondary Device="Keyboard" Key="Key_Numpad_2" />
+	</PitchDownButton>
+	<RollLeftButton>
+		<Primary Device="Keyboard" Key="Key_A" />
+		<Secondary Device="Keyboard" Key="Key_Numpad_4" />
+	</RollLeftButton>
+	<RollRightButton>
+		<Primary Device="Keyboard" Key="Key_D" />
+		<Secondary Device="Keyboard" Key="Key_Numpad_6" />
+	</RollRightButton>
+	<YawLeftButton>
+		<Primary Device="Keyboard" Key="Key_Q" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</YawLeftButton>
+	<YawRightButton>
+		<Primary Device="Keyboard" Key="Key_E" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</YawRightButton>
+	<UpThrustButton>
+		<Primary Device="Keyboard" Key="Key_R" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</UpThrustButton>
+	<DownThrustButton>
+		<Primary Device="Keyboard" Key="Key_F" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</DownThrustButton>
+	<ToggleFlightAssist>
+		<Primary Device="Keyboard" Key="Key_Z" />
+		<Secondary Device="{NoDevice}" Key="" />
+		<ToggleOn Value="1" />
+	</ToggleFlightAssist>
+	<UseBoostJuice>
+		<Primary Device="Keyboard" Key="Key_Tab" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</UseBoostJuice>
+	<ForwardKey>
+		<Primary Device="Keyboard" Key="Key_W">
+			<Modifier Device="Keyboard" Key="Key_LeftShift" />
+		</Primary>
+		<Secondary Device="{NoDevice}" Key="" />
+	</ForwardKey>
+	<BackwardKey>
+		<Primary Device="Keyboard" Key="Key_S">
+			<Modifier Device="Keyboard" Key="Key_LeftShift" />
+		</Primary>
+		<Secondary Device="{NoDevice}" Key="" />
+	</BackwardKey>
+	<SetSpeedZero>
+		<Primary Device="Keyboard" Key="Key_X" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</SetSpeedZero>
+	<SetSpeed50>
+		<Primary Device="Keyboard" Key="Key_C" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</SetSpeed50>
+	<SetSpeed100>
+		<Primary Device="Keyboard" Key="Key_V" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</SetSpeed100>
+	<PrimaryFire>
+		<Primary Device="Mouse" Key="Mouse_1" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</PrimaryFire>
+	<SecondaryFire>
+		<Primary Device="Mouse" Key="Mouse_2" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</SecondaryFire>
+	<DeployHardpointToggle>
+		<Primary Device="Keyboard" Key="Key_U" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</DeployHardpointToggle>
+	<SelectTarget>
+		<Primary Device="Keyboard" Key="Key_T" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</SelectTarget>
+	<LandingGearToggle>
+		<Primary Device="Keyboard" Key="Key_L" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</LandingGearToggle>
+	<ShipSpotLightToggle>
+		<Primary Device="Keyboard" Key="Key_L">
+			<Modifier Device="Keyboard" Key="Key_LeftControl" />
+		</Primary>
+		<Secondary Device="{NoDevice}" Key="" />
+	</ShipSpotLightToggle>
+	<ToggleCargoScoop>
+		<Primary Device="Keyboard" Key="Key_Home" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</ToggleCargoScoop>
+	<NightVisionToggle>
+		<Primary Device="{NoDevice}" Key="" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</NightVisionToggle>
+	<ToggleButtonUpInput>
+		<Primary Device="Keyboard" Key="Key_Delete" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</ToggleButtonUpInput>
+	<DeployHeatSink>
+		<Primary Device="Keyboard" Key="Key_V" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</DeployHeatSink>
+	<IncreaseSystemsPower>
+		<Primary Device="Keyboard" Key="Key_LeftArrow" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</IncreaseSystemsPower>
+	<IncreaseEnginesPower>
+		<Primary Device="Keyboard" Key="Key_UpArrow" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</IncreaseEnginesPower>
+	<IncreaseWeaponsPower>
+		<Primary Device="Keyboard" Key="Key_RightArrow" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</IncreaseWeaponsPower>
+	<ResetPowerDistribution>
+		<Primary Device="Keyboard" Key="Key_DownArrow" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</ResetPowerDistribution>
+	<Supercruise>
+		<Primary Device="Keyboard" Key="Key_J">
+			<Modifier Device="Keyboard" Key="Key_LeftShift" />
+		</Primary>
+		<Secondary Device="{NoDevice}" Key="" />
+	</Supercruise>
+	<HyperSuperCombination>
+		<Primary Device="Keyboard" Key="Key_J" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HyperSuperCombination>
+	<SteerLeftButton>
+		<Primary Device="Keyboard" Key="Key_A" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</SteerLeftButton>
+	<SteerRightButton>
+		<Primary Device="Keyboard" Key="Key_D" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</SteerRightButton>
+	<IncreaseSpeedButtonMax>
+		<Primary Device="Keyboard" Key="Key_W" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</IncreaseSpeedButtonMax>
+	<DecreaseSpeedButtonMax>
+		<Primary Device="Keyboard" Key="Key_S" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</DecreaseSpeedButtonMax>
+	<VerticalThrustersButton>
+		<Primary Device="Keyboard" Key="Key_Space" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</VerticalThrustersButton>
+	<ToggleBuggyTurretButton>
+		<Primary Device="Keyboard" Key="Key_U" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</ToggleBuggyTurretButton>
+	<HeadlightsBuggyButton>
+		<Primary Device="Keyboard" Key="Key_L" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HeadlightsBuggyButton>
+	<RecallDismissShip>
+		<Primary Device="{NoDevice}" Key="" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</RecallDismissShip>
+	<HumanoidForwardButton>
+		<Primary Device="Keyboard" Key="Key_W" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidForwardButton>
+	<HumanoidBackwardButton>
+		<Primary Device="Keyboard" Key="Key_S" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidBackwardButton>
+	<HumanoidSprintButton>
+		<Primary Device="Keyboard" Key="Key_LeftShift" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidSprintButton>
+	<HumanoidCrouchButton>
+		<Primary Device="Keyboard" Key="Key_C" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidCrouchButton>
+	<HumanoidJumpButton>
+		<Primary Device="Keyboard" Key="Key_Space" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidJumpButton>
+	<HumanoidZoomButton>
+		<Primary Device="Mouse" Key="Mouse_2" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidZoomButton>
+	<HumanoidReloadButton>
+		<Primary Device="Keyboard" Key="Key_R" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidReloadButton>
+	<HumanoidToggleFlashlightButton>
+		<Primary Device="Keyboard" Key="Key_L" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidToggleFlashlightButton>
+	<HumanoidPrimaryInteractButton>
+		<Primary Device="Keyboard" Key="Key_E" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidPrimaryInteractButton>
+	<HumanoidHealthPack>
+		<Primary Device="{NoDevice}" Key="" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidHealthPack>
+	<HumanoidBattery>
+		<Primary Device="{NoDevice}" Key="" />
+		<Secondary Device="{NoDevice}" Key="" />
+	</HumanoidBattery>
+	<MouseGUI Value="0" />
+	<EnableMenuGroupsSRV Value="1" />
+</Root>
