@@ -1,0 +1,48 @@
+@import 'tailwindcss' source(none);
+/* The look comes from the theme package: tokens, motifs and the three font families.
+   Never copy its values here. Re-theming goes through `theme` in the config, which sets
+   the package's own variables after this import. */
+@import '@orbital-controls/theme';
+
+/* Classes are read from the app only. The theme package ships no markup, so it needs no
+   @source of its own. */
+@source '../';
+
+@layer base {
+	html {
+		background: var(--color-void);
+		color-scheme: dark;
+	}
+
+	body {
+		background: var(--color-void);
+		color: var(--color-ink-500);
+		font-family: var(--font-sans);
+		-webkit-font-smoothing: antialiased;
+	}
+
+	::selection {
+		background: var(--color-course);
+		color: var(--color-void);
+	}
+
+	/* Gold, as on the boards: the ring has to read over the dark instruments and the
+	   viewport alike. */
+	:focus-visible {
+		outline: 2px solid var(--color-trail);
+		outline-offset: 2px;
+	}
+}
+
+/* Visually hidden but read by screen readers: the page's H1 and live regions. */
+@utility op-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
