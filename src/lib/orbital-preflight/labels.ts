@@ -120,5 +120,6 @@ export function inputLabel(input: InputId, roles: DeviceRole[], long = false): s
 export function bindLabel(bind: Slot | Bind, roles: DeviceRole[], long = false): string {
 	if (!bind) return '—';
 	const main = inputLabel(bind.input, roles, long);
-	return bind.modifier ? `${inputLabel(bind.modifier, roles, long)}+${main}` : main;
+	const mods = (bind.modifiers ?? []).map((m) => inputLabel(m, roles, long));
+	return [...mods, main].join('+');
 }

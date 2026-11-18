@@ -27,7 +27,7 @@ describe('labels', () => {
 		);
 		expect(
 			bindLabel(
-				{ input: { kind: 'key', code: 'KeyZ' }, modifier: { kind: 'key', code: 'ShiftLeft' } },
+				{ input: { kind: 'key', code: 'KeyZ' }, modifiers: [{ kind: 'key', code: 'ShiftLeft' }] },
 				roles
 			)
 		).toBe('Shift+Z');

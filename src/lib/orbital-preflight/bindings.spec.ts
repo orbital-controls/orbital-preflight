@@ -29,7 +29,7 @@ describe('clashes', () => {
 		const bindings: BindingMap = {
 			...original,
 			Lights: [
-				{ input: { kind: 'key', code: 'KeyL' }, modifier: { kind: 'key', code: 'ShiftLeft' } },
+				{ input: { kind: 'key', code: 'KeyL' }, modifiers: [{ kind: 'key', code: 'ShiftLeft' }] },
 				null
 			]
 		};

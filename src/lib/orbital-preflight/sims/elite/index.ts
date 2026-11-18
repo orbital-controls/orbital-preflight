@@ -13,7 +13,14 @@ import {
 } from '../../xml.ts';
 import { BindsFormatError, type SimAdapter } from '../types.ts';
 import { compareActions, describeAction } from './actions.ts';
-import { decodeInput, describeDevice, encodeInput, isPairableDevice } from './inputs.ts';
+import {
+	cannotBind,
+	decodeInput,
+	describeDevice,
+	encodeInput,
+	isPairableDevice,
+	newDeviceId
+} from './inputs.ts';
 
 /**
  * Elite Dangerous `.binds`. The shape, as this reads it:
@@ -46,14 +53,11 @@ function slotFromElement(element: XmlElement | undefined): Slot {
 		attribute(element, 'Key')?.value ?? ''
 	);
 	if (!input) return null;
-	const modifierElement = child(element, 'Modifier');
-	const modifier = modifierElement
-		? decodeInput(
-				attribute(modifierElement, 'Device')?.value ?? '',
-				attribute(modifierElement, 'Key')?.value ?? ''
-			)
-		: null;
-	return modifier ? { input, modifier } : { input };
+	const modifiers = element.children
+		.filter((c) => c.name === 'Modifier')
+		.map((m) => decodeInput(attribute(m, 'Device')?.value ?? '', attribute(m, 'Key')?.value ?? ''))
+		.filter((m): m is NonNullable<typeof m> => m !== null);
+	return modifiers.length ? { input, modifiers } : { input };
 }
 
 function readRoot(source: string): XmlElement {
@@ -117,55 +121,127 @@ export function parseEliteBinds(source: string): ParsedBinds {
 	};
 }
 
-/** The slot element written fresh, indented to match the line it sits on. */
-function slotMarkup(source: string, element: XmlElement, bind: Bind): string {
-	const { device, key } = encodeInput(bind.input);
-	const open = `<${element.name} Device="${encodeAttribute(device)}" Key="${encodeAttribute(key)}"`;
-	if (!bind.modifier) return `${open} />`;
-	const indent = lineIndent(source, element.start);
-	const unit = indent.includes('\t') || !indent ? '\t' : '  ';
-	const newline = source.includes('\r\n') ? '\r\n' : '\n';
-	const mod = encodeInput(bind.modifier);
-	return (
-		`${open}>${newline}${indent}${unit}<Modifier Device="${encodeAttribute(mod.device)}" Key="${encodeAttribute(mod.key)}" />` +
-		`${newline}${indent}</${element.name}>`
-	);
+function newline(source: string): string {
+	return source.includes('\r\n') ? '\r\n' : '\n';
 }
 
-/** Edits that turn `element` into `bind`, touching as few bytes as possible. */
+/** One indent step, in the file's own style. */
+function indentUnit(indent: string): string {
+	return indent.includes('\t') || !indent ? '\t' : '  ';
+}
+
+function modifierMarkup(input: Bind['input']): string {
+	const { device, key } = encodeInput(input);
+	return `<Modifier Device="${encodeAttribute(device)}" Key="${encodeAttribute(key)}" />`;
+}
+
+/** Device and Key values replaced inside `element`'s own start tag, other attributes kept. */
+function startTag(source: string, element: XmlElement, input: Bind['input'] | null): string {
+	const { device, key } = encodeInput(input);
+	let tag = source.slice(element.start, element.startTagEnd);
+	const swaps: [number, number, string][] = [];
+	for (const [name, value] of [
+		['Device', device],
+		['Key', key]
+	] as const) {
+		const attr = attribute(element, name);
+		if (attr)
+			swaps.push([
+				attr.valueStart - element.start,
+				attr.valueEnd - element.start,
+				encodeAttribute(value)
+			]);
+		else
+			swaps.push([
+				element.name.length + 1,
+				element.name.length + 1,
+				` ${name}="${encodeAttribute(value)}"`
+			]);
+	}
+	for (const [from, to, text] of swaps.sort((x, y) => y[0] - x[0])) {
+		tag = tag.slice(0, from) + text + tag.slice(to);
+	}
+	return tag;
+}
+
+/**
+ * Edits that turn a Primary, Secondary or Binding element into `after`. Changing only
+ * the input, or modifiers one for one, touches only attribute values. Otherwise the
+ * element is rewritten from its own start tag (so extra attributes stay) with its
+ * modifiers and any other children it had (settings the game keeps there).
+ */
 function slotEdits(source: string, element: XmlElement, before: Slot, after: Slot): Splice[] {
 	if (sameBind(before, after)) return [];
-	const modifierElement = child(element, 'Modifier');
+	const oldMods = element.children.filter((c) => c.name === 'Modifier');
+	const others = element.children.filter((c) => c.name !== 'Modifier');
+	const newMods = after?.modifiers ?? [];
+
 	const valueEdits = (el: XmlElement, input: Bind['input'] | null): Splice[] => {
 		const { device, key } = encodeInput(input);
-		const edits: Splice[] = [];
 		const d = attribute(el, 'Device');
 		const k = attribute(el, 'Key');
 		if (!d || !k) return [];
-		edits.push({ start: d.valueStart, end: d.valueEnd, text: encodeAttribute(device) });
-		edits.push({ start: k.valueStart, end: k.valueEnd, text: encodeAttribute(key) });
-		return edits;
+		return [
+			{ start: d.valueStart, end: d.valueEnd, text: encodeAttribute(device) },
+			{ start: k.valueStart, end: k.valueEnd, text: encodeAttribute(key) }
+		];
 	};
-
-	const hadModifier = Boolean(modifierElement);
-	const hasModifier = Boolean(after?.modifier);
 	const attrsPresent = attribute(element, 'Device') && attribute(element, 'Key');
-
-	if (attrsPresent && !hadModifier && !hasModifier)
-		return valueEdits(element, after?.input ?? null);
-	if (
-		attrsPresent &&
-		hadModifier &&
-		hasModifier &&
-		modifierElement &&
-		element.children.length === 1
-	) {
-		return [...valueEdits(element, after!.input), ...valueEdits(modifierElement, after!.modifier!)];
+	const modsHaveAttrs = oldMods.every((m) => attribute(m, 'Device') && attribute(m, 'Key'));
+	if (attrsPresent && modsHaveAttrs && oldMods.length === newMods.length) {
+		return [
+			...valueEdits(element, after?.input ?? null),
+			...oldMods.flatMap((m, i) => valueEdits(m, newMods[i]))
+		];
 	}
-	const text = after
-		? slotMarkup(source, element, after)
-		: `<${element.name} Device="{NoDevice}" Key="" />`;
-	return [{ start: element.start, end: element.end, text }];
+
+	const tag = startTag(source, element, after?.input ?? null);
+	const open = tag.replace(/\s*\/>$/, '>');
+	const children = [
+		...newMods.map(modifierMarkup),
+		...others.map((c) => source.slice(c.start, c.end))
+	];
+	if (!children.length) {
+		const text = element.selfClosing ? tag : open.replace(/\s*>$/, ' />');
+		return [{ start: element.start, end: element.end, text }];
+	}
+	const indent = lineIndent(source, element.start);
+	const nl = newline(source);
+	const inner = children.map((c) => `${nl}${indent}${indentUnit(indent)}${c}`).join('');
+	return [
+		{
+			start: element.start,
+			end: element.end,
+			text: `${open}${inner}${nl}${indent}</${element.name}>`
+		}
+	];
+}
+
+/**
+ * A Primary or Secondary the file doesn't have, written after its sibling (or at the top
+ * of the action) on a line of its own.
+ */
+function insertSlot(
+	source: string,
+	action: XmlElement,
+	tag: (typeof SLOT_TAGS)[number],
+	bind: Bind
+): Splice {
+	const primary = child(action, 'Primary');
+	const firstChild = action.children[0];
+	const anchor = tag === 'Secondary' && primary ? primary : null;
+	const indent = firstChild
+		? lineIndent(source, firstChild.start)
+		: lineIndent(source, action.start) + indentUnit(lineIndent(source, action.start));
+	const nl = newline(source);
+	const mods = bind.modifiers ?? [];
+	const { device, key } = encodeInput(bind.input);
+	const open = `<${tag} Device="${encodeAttribute(device)}" Key="${encodeAttribute(key)}"`;
+	const markup = mods.length
+		? `${open}>${mods.map((m) => `${nl}${indent}${indentUnit(indent)}${modifierMarkup(m)}`).join('')}${nl}${indent}</${tag}>`
+		: `${open} />`;
+	const at = anchor ? anchor.end : action.startTagEnd;
+	return { start: at, end: at, text: `${nl}${indent}${markup}` };
 }
 
 /** A preset name the game will accept as a file name. */
@@ -213,6 +289,7 @@ export function writeEliteBinds(
 		SLOT_TAGS.forEach((tag, index) => {
 			const slotElement = child(element, tag);
 			if (slotElement) edits.push(...slotEdits(source, slotElement, original[index], next[index]));
+			else if (next[index]) edits.push(insertSlot(source, element, tag, next[index]!));
 		});
 	}
 
@@ -242,5 +319,7 @@ export const elite: SimAdapter = {
 	},
 	parse: parseEliteBinds,
 	write: writeEliteBinds,
+	cannotBind,
+	newDeviceId,
 	fileName: eliteFileName
 };

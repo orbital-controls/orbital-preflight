@@ -1,4 +1,4 @@
-import type { BindingMap, ParsedBinds, SimId } from '../types.ts';
+import type { BindingMap, InputId, ParsedBinds, SimId } from '../types.ts';
 
 /** "Where's my file?" in the Load drawer. UNVERIFIED: flagged for Phil to confirm. */
 export interface FileHelp {
@@ -29,6 +29,13 @@ export interface SimAdapter {
 	 * every other byte left as it was.
 	 */
 	write?(parsed: ParsedBinds, bindings: BindingMap, presetName: string): string;
+	/**
+	 * Why the sim's files can't hold `input`, or null when they can. A rebind refuses an
+	 * input the export couldn't write.
+	 */
+	cannotBind?(input: InputId): string | null;
+	/** The device id the sim's files use for a controller they don't name, from its USB ids. */
+	newDeviceId?(vendor: string, product: string): string | null;
 	/** The download's file name for a preset name. */
 	fileName?(parsed: ParsedBinds, presetName: string): string;
 }

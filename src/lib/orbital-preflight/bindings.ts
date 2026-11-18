@@ -21,8 +21,8 @@ export function inputKey(input: InputId): string {
 }
 
 export function bindKey(bind: Bind): string {
-	return bind.modifier
-		? `${inputKey(bind.modifier)}+${inputKey(bind.input)}`
+	return bind.modifiers?.length
+		? `${bind.modifiers.map(inputKey).sort().join('+')}+${inputKey(bind.input)}`
 		: inputKey(bind.input);
 }
 
@@ -66,13 +66,15 @@ export function findHolders(
 	const context = except && actions.find((a) => a.id === except.actionId)?.context;
 	for (const action of actions) {
 		if (action.mode !== mode) continue;
+		// The action being rebound doesn't clash with itself: its other slot can hold the
+		// same input, as on the boards (`owner()` skips the whole action).
+		if (except && action.id === except.actionId) continue;
 		if (except && action.context !== context) continue;
 		const binding = bindings[action.id];
 		if (!binding) continue;
 		([0, 1] as const).forEach((slot) => {
 			const held = binding[slot];
 			if (!held || bindKey(held) !== key) return;
-			if (except && except.actionId === action.id && except.slot === slot) return;
 			holders.push({ actionId: action.id, slot });
 		});
 	}

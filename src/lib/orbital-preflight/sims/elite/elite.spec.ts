@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import type { BindingMap } from '../../types.ts';
 import { parseXml } from '../../xml.ts';
 import { classifyMode, prettify } from './actions.ts';
-import { cleanPresetName, eliteFileName, parseEliteBinds, writeEliteBinds } from './index.ts';
+import {
+	cleanPresetName,
+	elite,
+	eliteFileName,
+	parseEliteBinds,
+	writeEliteBinds
+} from './index.ts';
 import { decodeInput, encodeInput, keyNameForCode } from './inputs.ts';
 
 const fixture = (name: string) => readFileSync(`tests/fixtures/${name}`, 'utf8');
@@ -65,7 +71,7 @@ describe('Elite Dangerous .binds', () => {
 		const bindings: BindingMap = {
 			...parsed.bindings,
 			SetSpeedZero: [
-				{ input: { kind: 'key', code: 'KeyX' }, modifier: { kind: 'key', code: 'AltLeft' } },
+				{ input: { kind: 'key', code: 'KeyX' }, modifiers: [{ kind: 'key', code: 'AltLeft' }] },
 				null
 			],
 			ForwardKey: [{ input: { kind: 'key', code: 'KeyW' } }, null]
@@ -107,7 +113,7 @@ describe('Elite Dangerous .binds', () => {
 		expect(byId.EjectAllCargo_Buggy).toMatchObject({ mode: 'srv', category: 'Other' });
 		expect(byId.UI_Up).toMatchObject({ mode: 'ship', category: 'Other' });
 		expect(parsed.bindings.ToggleFlightAssist).toEqual([
-			{ input: { kind: 'key', code: 'KeyZ' }, modifier: { kind: 'key', code: 'ShiftLeft' } },
+			{ input: { kind: 'key', code: 'KeyZ' }, modifiers: [{ kind: 'key', code: 'ShiftLeft' }] },
 			{ input: { kind: 'button', deviceId: 'T16000M', button: 7 } }
 		]);
 		expect(parsed.bindings.YawLeftButton[1]).toEqual({
@@ -184,5 +190,65 @@ describe('inputs', () => {
 		expect(keyNameForCode('Digit0')).toBe('Key_0');
 		expect(keyNameForCode('ArrowUp')).toBe('Key_UpArrow');
 		expect(keyNameForCode('IntlBackslash')).toBeNull();
+	});
+});
+
+describe('writer edge cases', () => {
+	const file = (body: string) =>
+		`<?xml version="1.0" encoding="UTF-8" ?>\n<Root PresetName="T" MajorVersion="4" MinorVersion="0">\n${body}\n</Root>\n`;
+	const key = (code: string) => ({ kind: 'key', code }) as const;
+
+	it('reads every modifier and keeps them all through an edit', () => {
+		const source = file(
+			'\t<A>\n\t\t<Primary Device="Keyboard" Key="Key_B">\n\t\t\t<Modifier Device="Keyboard" Key="Key_LeftShift" />\n\t\t\t<Modifier Device="Keyboard" Key="Key_LeftControl" />\n\t\t</Primary>\n\t\t<Secondary Device="{NoDevice}" Key="" />\n\t</A>'
+		);
+		const parsed = parseEliteBinds(source);
+		expect(parsed.bindings.A[0]).toEqual({
+			input: key('KeyB'),
+			modifiers: [key('ShiftLeft'), key('ControlLeft')]
+		});
+		const out = writeEliteBinds(
+			parsed,
+			{ A: [{ input: key('KeyN'), modifiers: [key('ShiftLeft'), key('ControlLeft')] }, null] },
+			'T'
+		);
+		expect(out).toBe(source.replace('Key_B', 'Key_N'));
+	});
+
+	it('keeps extra attributes and children when the modifiers change', () => {
+		const source = file(
+			'\t<A>\n\t\t<Primary Device="Keyboard" Key="Key_B" Hold="1">\n\t\t\t<Setting Value="2" />\n\t\t</Primary>\n\t\t<Secondary Device="{NoDevice}" Key="" />\n\t</A>'
+		);
+		const parsed = parseEliteBinds(source);
+		const out = writeEliteBinds(
+			parsed,
+			{ A: [{ input: key('KeyB'), modifiers: [key('AltLeft')] }, null] },
+			'T'
+		);
+		expect(out).toContain(
+			'\t\t<Primary Device="Keyboard" Key="Key_B" Hold="1">\n\t\t\t<Modifier Device="Keyboard" Key="Key_LeftAlt" />\n\t\t\t<Setting Value="2" />\n\t\t</Primary>'
+		);
+		expect(parseEliteBinds(out).bindings.A[0]).toEqual({
+			input: key('KeyB'),
+			modifiers: [key('AltLeft')]
+		});
+	});
+
+	it('writes a Secondary the file never had', () => {
+		const source = file('\t<A>\n\t\t<Primary Device="Keyboard" Key="Key_B" />\n\t</A>');
+		const parsed = parseEliteBinds(source);
+		const out = writeEliteBinds(parsed, { A: [parsed.bindings.A[0], { input: key('KeyM') }] }, 'T');
+		expect(out).toContain(
+			'\t\t<Primary Device="Keyboard" Key="Key_B" />\n\t\t<Secondary Device="Keyboard" Key="Key_M" />\n\t</A>'
+		);
+		expect(parseEliteBinds(out).bindings.A[1]).toEqual({ input: key('KeyM') });
+	});
+
+	it('names keys and controllers the game can read, and refuses the rest', () => {
+		expect(elite.cannotBind?.(key('KeyQ'))).toBeNull();
+		expect(elite.cannotBind?.(key('NumLock'))).toMatch(/no name for that key/);
+		expect(elite.cannotBind?.({ kind: 'mouse', button: 7 })).toMatch(/five mouse buttons/);
+		expect(elite.newDeviceId?.('044f', 'b10a')).toBe('T16000M');
+		expect(elite.newDeviceId?.('231d', '0200')).toBe('231D0200');
 	});
 });

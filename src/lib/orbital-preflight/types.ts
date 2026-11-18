@@ -49,10 +49,13 @@ export type InputId =
 	| { kind: 'axis'; deviceId: string; axis: string; half?: 'pos' | 'neg' }
 	| { kind: 'raw'; device: string; key: string };
 
-/** One slot: an input, optionally held with a modifier. `null` is an empty slot. */
+/**
+ * One slot: an input, optionally held with modifiers (Shift, Ctrl, or a stick button).
+ * Most binds have none or one; a file can hold more. `null` is an empty slot.
+ */
 export interface Bind {
 	input: InputId;
-	modifier?: InputId;
+	modifiers?: InputId[];
 }
 
 export type Slot = Bind | null;

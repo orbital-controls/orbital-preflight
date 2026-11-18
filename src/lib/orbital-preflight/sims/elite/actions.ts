@@ -48,7 +48,7 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 			['GalaxyMapOpen', 'Galaxy map', 'panel'],
 			['TargetNextRouteSystem', 'Target next system in route', 'route'],
 			['OrbitLinesToggle', 'Orbit lines', 'orbit'],
-			['Hyperspace', 'Hyperspace jump', 'fsd'],
+			['Hyperspace', 'Hyperspace jump'],
 			['WingNavLock', 'Wing nav lock'],
 			['SystemMapOpen', 'System map', 'panel']
 		],

@@ -170,6 +170,28 @@ const KNOWN_DEVICES: Record<string, { name: string; vendor: string; product: str
 	SaitekX52Pro: { name: 'Saitek X52 Pro', vendor: '06a3', product: '0762' }
 };
 
+/** Why an Elite file can't hold `input`, or null when it can. */
+export function cannotBind(input: InputId): string | null {
+	if (input.kind === 'key' && !keyNameForCode(input.code)) {
+		return 'Elite Dangerous has no name for that key.';
+	}
+	if (input.kind === 'mouse' && !DI_TO_BROWSER.includes(input.button)) {
+		return 'Elite Dangerous reads five mouse buttons.';
+	}
+	return null;
+}
+
+/**
+ * The device name Elite writes for a controller: its model name where the game has one,
+ * otherwise vendor and product id in upper-case hex (`231D0200`). UNVERIFIED.
+ */
+export function newDeviceId(vendor: string, product: string): string {
+	const known = Object.entries(KNOWN_DEVICES).find(
+		([, d]) => d.vendor === vendor && d.product === product
+	);
+	return known ? known[0] : `${vendor}${product}`.toUpperCase();
+}
+
 /** Keyboard, mouse and gamepad aren't devices to pair. */
 export function isPairableDevice(id: string): boolean {
 	return !['Keyboard', 'Mouse', 'GamePad', NO_DEVICE, ''].includes(id);

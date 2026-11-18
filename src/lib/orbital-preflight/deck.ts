@@ -59,7 +59,7 @@ export function deviceDecks(roles: DeviceRole[], bindings: BindingMap): DeviceDe
 		const buttons = new Set<number>();
 		for (const binding of Object.values(bindings)) {
 			for (const slot of binding) {
-				for (const input of [slot?.input, slot?.modifier]) {
+				for (const input of [slot?.input, ...(slot?.modifiers ?? [])]) {
 					if (!input || !('deviceId' in input) || input.deviceId !== role.id) continue;
 					if (input.kind === 'hat') hats.add(input.hat);
 					if (input.kind === 'button') buttons.add(input.button);
