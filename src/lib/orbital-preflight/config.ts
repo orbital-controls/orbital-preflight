@@ -1,3 +1,4 @@
+import { MARK, MARK_SMALL } from './brand.ts';
 import type { SimId } from './types.ts';
 
 /**
@@ -35,12 +36,15 @@ export interface PresetConfig {
 }
 
 export interface BrandConfig {
-	/** The wordmark text. */
+	/** The wordmark text. Default "Preflight". */
 	wordmark?: string;
-	/** An inline SVG for the mark, drawn at 28px. Leave out for the wordmark alone. */
-	mark?: string;
+	/**
+	 * An inline SVG for the mark, drawn at 28px. Defaults to the Orbital Controls mark;
+	 * set `false` for the wordmark alone.
+	 */
+	mark?: string | false;
 	/** A heavier SVG for small sizes (the favicon). Falls back to `mark`. */
-	markSmall?: string;
+	markSmall?: string | false;
 	/** Accessible name for the mark and wordmark together. Defaults to `siteName`. */
 	label?: string;
 }
@@ -63,8 +67,7 @@ export interface ResolvedConfig {
 	homeUrl: string;
 	sim: SimId;
 	presets: ResolvedPreset[];
-	brand: Required<Pick<BrandConfig, 'wordmark' | 'label'>> &
-		Pick<BrandConfig, 'mark' | 'markSmall'>;
+	brand: { wordmark: string; label: string; mark?: string; markSmall?: string };
 	theme: [string, string][];
 	poweredBy: boolean;
 }
@@ -102,14 +105,25 @@ export function resolveConfig(config: OrbitalPreflightConfig): ResolvedConfig {
 		homeUrl: config.homeUrl,
 		sim: config.sim ?? 'elite-dangerous',
 		presets,
-		brand: {
-			wordmark: config.brand?.wordmark ?? 'Orbital Preflight',
-			label: config.brand?.label ?? config.siteName,
-			mark: config.brand?.mark,
-			markSmall: config.brand?.markSmall ?? config.brand?.mark
-		},
+		brand: resolveBrand(config),
 		theme,
 		poweredBy: config.poweredBy !== false
+	};
+}
+
+function resolveBrand(config: OrbitalPreflightConfig): ResolvedConfig['brand'] {
+	const brand = config.brand ?? {};
+	const mark = brand.mark === false ? undefined : (brand.mark ?? MARK);
+	// The small mark follows the main one: a fork's own mark, or none, never ours.
+	const small =
+		brand.markSmall === false
+			? undefined
+			: (brand.markSmall ?? (brand.mark === undefined ? MARK_SMALL : mark));
+	return {
+		wordmark: brand.wordmark ?? 'Preflight',
+		label: brand.label ?? `${config.siteName} Preflight`,
+		mark,
+		markSmall: small
 	};
 }
 

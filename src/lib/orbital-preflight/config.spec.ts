@@ -15,12 +15,15 @@ describe('config', () => {
 		expect(config.presets).toEqual([]);
 		expect(config.sim).toBe('elite-dangerous');
 		expect(config.poweredBy).toBe(true);
-		expect(config.brand).toEqual({
-			wordmark: 'Orbital Preflight',
-			label: 'CMDR Test',
-			mark: undefined,
-			markSmall: undefined
-		});
+		expect(config.brand).toMatchObject({ wordmark: 'Preflight', label: 'CMDR Test Preflight' });
+		expect(config.brand.mark).toContain('<svg');
+		expect(resolveConfig({ ...base, brand: { mark: false, wordmark: 'Vex' } }).brand).toMatchObject(
+			{
+				wordmark: 'Vex',
+				mark: undefined,
+				markSmall: undefined
+			}
+		);
 		expect(config.siteUrl).toBeNull();
 		expect(themeCss(config.theme)).toBe('');
 	});

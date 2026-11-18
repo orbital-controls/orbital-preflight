@@ -35,7 +35,7 @@ export default defineConfig({
 		{ file: 'hotas.binds', label: 'My HOTAS setup' },
 		{ file: 'keyboard.binds', label: 'Keyboard only' }
 	],
-	brand: { wordmark: 'Vex Preflight' },
+	brand: { wordmark: 'Vex Preflight', mark: false },
 	theme: { '--color-trail': '#ff6a00' },
 	poweredBy: true
 });
@@ -50,7 +50,7 @@ export default defineConfig({
 | `homeUrl`     | yes      | Where Leave goes: your page or your GitHub profile. Leave asks first if there are unsaved changes.                                                                                                                                                                                                                             |
 | `sim`         | no       | The sim your presets are for. Default `'elite-dangerous'`, the only one that loads today.                                                                                                                                                                                                                                      |
 | `presets`     | no       | Binds files in `static/binds/`, each with a `label`. With one or more, a first visit opens with the first one loaded and the top bar reads "Pilot's binds · ‹label›". Visitors can still load their own file, and download each preset as it is from the Game & binds drawer. With none, a first visit shows the upload state. |
-| `brand`       | no       | The top bar's `wordmark` (default "Orbital Preflight"), an optional `mark` (an inline SVG string, drawn at 28 px), an optional heavier `markSmall` for the favicon, and an accessible `label`.                                                                                                                                 |
+| `brand`       | no       | The top bar's `wordmark` (default "Preflight") and `mark`, an inline SVG string drawn at 28 px (default: the Orbital Controls mark; `false` for the wordmark alone). Also an optional heavier `markSmall` for the favicon, and an accessible `label`.                                                                          |
 | `theme`       | no       | CSS variable overrides, applied after the theme package. Use the package's own names (`--color-trail`, `--color-course`, `--font-display`…); its README lists them.                                                                                                                                                            |
 | `poweredBy`   | no       | A small "Powered by Orbital Preflight" link in the drawers and the desktop-only notice. On unless set to `false`.                                                                                                                                                                                                              |
 
@@ -58,7 +58,7 @@ The look comes from [`@orbital-controls/theme`](https://www.npmjs.com/package/@o
 
 ## Phil's instance: Preflight on orbitalcontrols.com
 
-Phil's instance lives in `instances/orbitalcontrols/`: its own config (title, `homeUrl: https://orbitalcontrols.com`, the Orbital Controls mark copied from the site's `Mark.svelte`). It builds with:
+Phil's instance lives in `instances/orbitalcontrols/`: its own config (title, `siteUrl`, `homeUrl: https://orbitalcontrols.com`; the brand is the default Orbital Controls mark and "Preflight", copied from the site's `Mark.svelte` into `src/lib/orbital-preflight/brand.ts`). It builds with:
 
 ```sh
 ORBITAL_PREFLIGHT_CONFIG=instances/orbitalcontrols/orbital-preflight.config.ts pnpm build

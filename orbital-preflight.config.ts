@@ -13,7 +13,7 @@ export default defineConfig({
 	homeUrl: 'https://github.com/orbital-controls/orbital-preflight',
 	sim: 'elite-dangerous',
 	presets: [{ file: 'demo.binds', label: 'Demo HOTAS setup' }]
-	// brand: { wordmark: 'CMDR Vex', mark: '<svg viewBox="0 0 100 100">…</svg>' },
+	// brand: { wordmark: 'CMDR Vex', mark: '<svg viewBox="0 0 100 100">…</svg>' }, // or mark: false
 	// theme: { '--color-trail': '#ff6a00' },
 	// poweredBy: true
 });

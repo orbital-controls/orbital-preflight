@@ -16,15 +16,13 @@
 
 	const sim = $derived(simById(app.sim));
 	const changes = $derived(app.store.changes);
-	const devices = $derived(app.store.file?.parsed.devices ?? []);
-	const paired = $derived(devices.filter((d) => app.hub.pads.some((p) => p.deviceId === d.id)));
-	const dots = $derived([true, ...devices.map((d) => paired.includes(d))]);
+	const connected = $derived(app.hub.pads.length);
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -- Leave goes to the external homeUrl -->
 <header class="border-b border-course/20 bg-abyss">
-	<div class="op-wrap flex h-16 items-center gap-3">
-		<span class="mr-[10px]"><Brand /></span>
+	<div class="op-wrap flex h-16 items-center gap-[10px] whitespace-nowrap">
+		<span class="mr-2 flex-none"><Brand /></span>
 
 		<button
 			type="button"
@@ -33,7 +31,7 @@
 			aria-label={app.loaded
 				? `Binding for ${sim.name}. Switch game or load another file.`
 				: 'No game chosen. Load binds.'}
-			class="flex h-[52px] cursor-pointer items-center gap-3 border py-0 pr-[14px] pl-[6px] text-left text-ink-200 notch op-notch-xs {app.loaded
+			class="flex h-[52px] min-w-0 flex-none cursor-pointer items-center gap-3 border py-0 pr-[14px] pl-[6px] text-left text-ink-200 notch op-notch-xs {app.loaded
 				? 'border-trail/45 bg-panel/85'
 				: 'border-ink-900/45 bg-transparent'}"
 		>
@@ -42,16 +40,19 @@
 					? 'bg-trail text-void'
 					: 'bg-transparent text-ink-900'}">{app.loaded ? sim.short : '?'}</span
 			>
-			<span class="flex flex-col leading-[1.05]">
-				<span class="font-mono text-[10px] font-semibold tracking-[.14em] text-course uppercase"
+			<span class="flex min-w-0 flex-col gap-[2px]">
+				<span
+					class="font-mono text-[10px] leading-none font-semibold tracking-[.14em] text-course uppercase"
 					>Binding for</span
 				>
 				<span
-					class="font-display text-[22px] font-black uppercase {app.loaded
+					class="font-display text-[22px] leading-[0.9] font-black uppercase {app.loaded
 						? 'text-ink-200'
 						: 'text-ink-900'}">{app.loaded ? sim.name : 'No game yet'}</span
 				>
-				<span class="max-w-[280px] truncate font-mono text-[11px] text-ink-900"
+				<span
+					class="max-w-[220px] truncate font-mono text-[11px] leading-tight text-ink-900"
+					title={app.loaded ? app.fileLine : undefined}
 					>{app.loaded ? app.fileLine : 'Pick one to start'}</span
 				>
 			</span>
@@ -64,19 +65,17 @@
 			type="button"
 			onclick={(e) => onopendevices(e.currentTarget)}
 			aria-expanded={app.drawer === 'devices'}
-			class="flex h-10 cursor-pointer items-center gap-[10px] border border-course/40 bg-transparent px-[14px] font-mono text-[13px] font-semibold text-ink-200 notch op-notch-xs"
+			class="flex h-10 flex-none cursor-pointer items-center gap-[10px] border border-course/40 bg-transparent px-[14px] font-mono text-[13px] font-semibold text-ink-200 notch op-notch-xs"
 		>
 			<span class="flex gap-1" aria-hidden="true">
-				{#each dots as ready, i (i)}
-					<span class="size-2 rounded-full {ready ? 'bg-trail' : 'bg-ink-950/50'}"></span>
+				{#each connected ? app.hub.pads : [null] as pad, i (i)}
+					<span class="size-2 rounded-full {pad ? 'bg-trail' : 'bg-ink-950/50'}"></span>
 				{/each}
 			</span>
-			<span>Controllers</span>
-			<span class="font-medium opacity-70">· {paired.length + 1} of {devices.length + 1} ready</span
-			>
+			<span>{connected ? connected : 'No'} controller{connected === 1 ? '' : 's'} connected</span>
 		</button>
 
-		<span class="ml-auto font-mono text-[13px] text-ink-500">
+		<span class="ml-auto flex-none font-mono text-[13px] text-ink-500">
 			<span class="font-bold text-trail">{changes}</span>
 			unsaved {changes === 1 ? 'change' : 'changes'}
 		</span>
@@ -84,7 +83,7 @@
 			type="button"
 			disabled={!app.loaded}
 			onclick={() => app.exportPreset()}
-			class="flex h-10 cursor-pointer items-center border px-[14px] font-mono text-[13px] font-semibold notch op-notch-xs disabled:cursor-not-allowed {changes
+			class="flex h-10 flex-none cursor-pointer items-center border px-[14px] font-mono text-[13px] font-semibold notch op-notch-xs disabled:cursor-not-allowed {changes
 				? 'border-trail text-trail'
 				: 'border-ink-900/35 text-ink-900'}">Export new preset</button
 		>
@@ -92,7 +91,7 @@
 			type="button"
 			disabled={!app.loaded}
 			onclick={onopeneditor}
-			class="flex h-10 cursor-pointer items-center gap-[10px] border border-course/40 px-[14px] font-mono text-[13px] font-semibold text-ink-200 notch op-notch-xs disabled:cursor-not-allowed disabled:opacity-60"
+			class="flex h-10 flex-none cursor-pointer items-center gap-[10px] border border-course/40 px-[14px] font-mono text-[13px] font-semibold text-ink-200 notch op-notch-xs disabled:cursor-not-allowed disabled:opacity-60"
 		>
 			<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"
 				><path
@@ -110,7 +109,7 @@
 				e.preventDefault();
 				onleave(e.currentTarget);
 			}}
-			class="flex h-10 items-center gap-[10px] px-[14px] font-mono text-[13px] font-semibold text-ink-900 no-underline notch op-notch-xs hover:text-course"
+			class="flex h-10 flex-none items-center gap-[10px] px-[10px] font-mono text-[13px] font-semibold text-ink-900 no-underline notch op-notch-xs hover:text-course"
 		>
 			<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"
 				><path d="M2 2 L10 10 M10 2 L2 10" stroke="currentColor" stroke-width="1.6" /></svg

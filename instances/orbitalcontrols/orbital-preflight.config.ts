@@ -1,8 +1,4 @@
 import { defineConfig } from '../../src/lib/orbital-preflight/config.ts';
-// The Orbital Controls mark, copied from the site's Mark.svelte (full and small). The
-// framework's own default is the plain wordmark; only this instance carries the logo.
-import mark from './mark.svg?raw';
-import markSmall from './mark-small.svg?raw';
 
 /**
  * Phil's instance: "Preflight" on orbitalcontrols.com. Built with
@@ -20,5 +16,6 @@ export default defineConfig({
 	sim: 'elite-dangerous',
 	// Phil's own presets go in static/binds/ and here once there are real files.
 	presets: [],
-	brand: { wordmark: 'Preflight', mark, markSmall, label: 'Orbital Controls Preflight' }
+	// The default brand: the Orbital Controls mark and "Preflight".
+	brand: { label: 'Orbital Controls Preflight' }
 });

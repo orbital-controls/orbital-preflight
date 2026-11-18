@@ -1,0 +1,9 @@
+/**
+ * The default brand: the Orbital Controls mark ("flight plan") and the word Preflight,
+ * as on the StandFly board. The mark is copied from the site's Mark.svelte: `MARK` is
+ * the header cut from the board (heavier course and trail strokes), `MARK_SMALL` the
+ * site's small variant, for the favicon. Colours are the theme package's variables.
+ */
+export const MARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true"><ellipse cx="50" cy="50" rx="45" ry="15" transform="rotate(-22 50 50)" fill="none" stroke="var(--color-course)" stroke-width="5" stroke-dasharray="7 6"/><circle cx="50" cy="50" r="24" fill="var(--color-ink-200)"/><g transform="rotate(-22 50 50)"><path d="M5 50 A45 15 0 0 0 88.97 57.5" fill="none" stroke="var(--color-abyss)" stroke-width="15"/><path d="M5 50 A45 15 0 0 0 88.97 57.5" fill="none" stroke="var(--color-trail)" stroke-width="9" stroke-linecap="round"/><g transform="translate(88.97 57.5) rotate(-30)"><path d="M16 0 L-10 -11 L-5 0 L-10 11 Z" fill="var(--color-ink-200)" stroke="var(--color-abyss)" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/></g></g></svg>`;
+
+export const MARK_SMALL = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true"><ellipse cx="50" cy="50" rx="46" ry="17" transform="rotate(-22 50 50)" fill="none" stroke="var(--color-course)" stroke-width="7" stroke-dasharray="12 9"/><circle cx="50" cy="50" r="26" fill="var(--color-ink-200)"/><g transform="rotate(-22 50 50)"><path d="M4 50 A46 17 0 0 0 79.57 63.02" fill="none" stroke="var(--color-void)" stroke-width="17"/><path d="M4 50 A46 17 0 0 0 79.57 63.02" fill="none" stroke="var(--color-trail)" stroke-width="10" stroke-linecap="round"/><path d="M19 0 L-12 -14 L-6 0 L-12 14 Z" transform="translate(79.57 63.02) rotate(-17.2)" fill="var(--color-ink-200)" stroke="var(--color-void)" stroke-width="5" stroke-linejoin="round" paint-order="stroke"/></g></svg>`;

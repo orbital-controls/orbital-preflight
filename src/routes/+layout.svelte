@@ -16,7 +16,8 @@
 		course: '#8b88ff',
 		trail: '#ffc21a',
 		'ink-200': '#e6e8f6',
-		void: '#090b1c'
+		void: '#090b1c',
+		abyss: '#06071a'
 	};
 	const icon = site.brand.markSmall
 		? `data:image/svg+xml,${encodeURIComponent(
