@@ -63,7 +63,8 @@ export interface ResolvedConfig {
 	homeUrl: string;
 	sim: SimId;
 	presets: ResolvedPreset[];
-	brand: Required<Pick<BrandConfig, 'wordmark' | 'label'>> & Pick<BrandConfig, 'mark' | 'markSmall'>;
+	brand: Required<Pick<BrandConfig, 'wordmark' | 'label'>> &
+		Pick<BrandConfig, 'mark' | 'markSmall'>;
 	theme: [string, string][];
 	poweredBy: boolean;
 }
@@ -86,7 +87,9 @@ export function resolveConfig(config: PreflightConfig): ResolvedConfig {
 
 	const theme = Object.entries(config.theme ?? {}).map(([name, value]): [string, string] => {
 		if (!VARIABLE.test(name) || UNSAFE_VALUE.test(value)) {
-			throw new Error(`orbital-preflight.config.ts: theme override "${name}: ${value}" is not valid`);
+			throw new Error(
+				`orbital-preflight.config.ts: theme override "${name}: ${value}" is not valid`
+			);
 		}
 		return [name, value];
 	});

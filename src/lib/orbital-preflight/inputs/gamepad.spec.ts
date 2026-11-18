@@ -8,11 +8,17 @@ describe('Gamepad.id', () => {
 			vendor: '044f',
 			product: 'b10a'
 		});
-		expect(parseGamepadId('Xbox 360 Controller (XInput STANDARD GAMEPAD Vendor: 045e Product: 028e)')).toMatchObject({
+		expect(
+			parseGamepadId('Xbox 360 Controller (XInput STANDARD GAMEPAD Vendor: 045e Product: 028e)')
+		).toMatchObject({
 			vendor: '045e',
 			product: '028e'
 		});
-		expect(parseGamepadId('44f-b10a-T.16000M')).toEqual({ name: 'T.16000M', vendor: '044f', product: 'b10a' });
+		expect(parseGamepadId('44f-b10a-T.16000M')).toEqual({
+			name: 'T.16000M',
+			vendor: '044f',
+			product: 'b10a'
+		});
 		expect(parseGamepadId('Some Stick')).toEqual({ name: 'Some Stick' });
 	});
 
@@ -21,7 +27,9 @@ describe('Gamepad.id', () => {
 			{ id: 'T16000M', name: 'T.16000M', vendor: '044f', product: 'b10a' },
 			{ id: '231D0200', name: 'VKB', vendor: '231d', product: '0200' }
 		];
-		expect(matchDevice('VKBsim Gladiator (Vendor: 231d Product: 0200)', devices, new Set())?.id).toBe('231D0200');
+		expect(
+			matchDevice('VKBsim Gladiator (Vendor: 231d Product: 0200)', devices, new Set())?.id
+		).toBe('231D0200');
 		expect(matchDevice('44f-b10a-T.16000M', devices, new Set(['T16000M']))).toBeNull();
 	});
 

@@ -41,7 +41,10 @@ const SLOT_TAGS = ['Primary', 'Secondary'] as const;
 
 function slotFromElement(element: XmlElement | undefined): Slot {
 	if (!element) return null;
-	const input = decodeInput(attribute(element, 'Device')?.value ?? '', attribute(element, 'Key')?.value ?? '');
+	const input = decodeInput(
+		attribute(element, 'Device')?.value ?? '',
+		attribute(element, 'Key')?.value ?? ''
+	);
 	if (!input) return null;
 	const modifierElement = child(element, 'Modifier');
 	const modifier = modifierElement
@@ -70,7 +73,9 @@ function readRoot(source: string): XmlElement {
 }
 
 function isAction(element: XmlElement): boolean {
-	return element.children.some((c) => c.name === 'Primary' || c.name === 'Secondary' || c.name === 'Binding');
+	return element.children.some(
+		(c) => c.name === 'Primary' || c.name === 'Secondary' || c.name === 'Binding'
+	);
 }
 
 export function parseEliteBinds(source: string): ParsedBinds {
@@ -145,20 +150,38 @@ function slotEdits(source: string, element: XmlElement, before: Slot, after: Slo
 	const hasModifier = Boolean(after?.modifier);
 	const attrsPresent = attribute(element, 'Device') && attribute(element, 'Key');
 
-	if (attrsPresent && !hadModifier && !hasModifier) return valueEdits(element, after?.input ?? null);
-	if (attrsPresent && hadModifier && hasModifier && modifierElement && element.children.length === 1) {
+	if (attrsPresent && !hadModifier && !hasModifier)
+		return valueEdits(element, after?.input ?? null);
+	if (
+		attrsPresent &&
+		hadModifier &&
+		hasModifier &&
+		modifierElement &&
+		element.children.length === 1
+	) {
 		return [...valueEdits(element, after!.input), ...valueEdits(modifierElement, after!.modifier!)];
 	}
-	const text = after ? slotMarkup(source, element, after) : `<${element.name} Device="{NoDevice}" Key="" />`;
+	const text = after
+		? slotMarkup(source, element, after)
+		: `<${element.name} Device="{NoDevice}" Key="" />`;
 	return [{ start: element.start, end: element.end, text }];
 }
 
 /** A preset name the game will accept as a file name. */
 export function cleanPresetName(name: string): string {
-	return name.replace(/[^\w .-]/g, '').trim().slice(0, 60) || 'Custom';
+	return (
+		name
+			.replace(/[^\w .-]/g, '')
+			.trim()
+			.slice(0, 60) || 'Custom'
+	);
 }
 
-export function writeEliteBinds(parsed: ParsedBinds, bindings: BindingMap, presetName: string): string {
+export function writeEliteBinds(
+	parsed: ParsedBinds,
+	bindings: BindingMap,
+	presetName: string
+): string {
 	const { source } = parsed;
 	const root = readRoot(source);
 	const edits: Splice[] = [];
@@ -166,7 +189,12 @@ export function writeEliteBinds(parsed: ParsedBinds, bindings: BindingMap, prese
 	const name = attribute(root, 'PresetName');
 	const cleaned = encodeAttribute(cleanPresetName(presetName));
 	if (name) edits.push({ start: name.valueStart, end: name.valueEnd, text: cleaned });
-	else edits.push({ start: root.start + '<Root'.length, end: root.start + '<Root'.length, text: ` PresetName="${cleaned}"` });
+	else
+		edits.push({
+			start: root.start + '<Root'.length,
+			end: root.start + '<Root'.length,
+			text: ` PresetName="${cleaned}"`
+		});
 
 	const seen = new Set<string>();
 	for (const element of root.children) {

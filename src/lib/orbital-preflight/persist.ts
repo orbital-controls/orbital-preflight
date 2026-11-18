@@ -31,7 +31,10 @@ function storage(): Storage | null {
 	}
 }
 
-export function saveLayout(base: string, layout: Omit<RememberedLayout, 'version' | 'savedAt'>): boolean {
+export function saveLayout(
+	base: string,
+	layout: Omit<RememberedLayout, 'version' | 'savedAt'>
+): boolean {
 	try {
 		const value: RememberedLayout = { version: 1, savedAt: new Date().toISOString(), ...layout };
 		storage()?.setItem(storageKey(base), JSON.stringify(value));

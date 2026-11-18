@@ -145,8 +145,16 @@ const KNOWN_DEVICES: Record<string, { name: string; vendor: string; product: str
 	T16000M: { name: 'Thrustmaster T.16000M', vendor: '044f', product: 'b10a' },
 	T16000MFCS: { name: 'Thrustmaster T.16000M FCS', vendor: '044f', product: 'b10a' },
 	T16000MTHROTTLE: { name: 'Thrustmaster TWCS Throttle', vendor: '044f', product: 'b687' },
-	ThrustMasterWarthogJoystick: { name: 'Thrustmaster Warthog stick', vendor: '044f', product: '0402' },
-	ThrustMasterWarthogThrottle: { name: 'Thrustmaster Warthog throttle', vendor: '044f', product: '0404' },
+	ThrustMasterWarthogJoystick: {
+		name: 'Thrustmaster Warthog stick',
+		vendor: '044f',
+		product: '0402'
+	},
+	ThrustMasterWarthogThrottle: {
+		name: 'Thrustmaster Warthog throttle',
+		vendor: '044f',
+		product: '0404'
+	},
 	ThrustMasterHOTAS4: { name: 'Thrustmaster T.Flight HOTAS 4', vendor: '044f', product: 'b67c' },
 	SaitekX56Joystick: { name: 'Logitech X56 stick', vendor: '0738', product: '2221' },
 	SaitekX56Throttle: { name: 'Logitech X56 throttle', vendor: '0738', product: 'a221' },
@@ -167,7 +175,12 @@ export function describeDevice(id: string): FileDevice {
 	if (hex) {
 		const vendor = hex[1].toLowerCase();
 		const product = hex[2].toLowerCase();
-		return { id, name: VENDORS[vendor] ? `${VENDORS[vendor]} ${product}` : `Device ${id}`, vendor, product };
+		return {
+			id,
+			name: VENDORS[vendor] ? `${VENDORS[vendor]} ${product}` : `Device ${id}`,
+			vendor,
+			product
+		};
 	}
 	return { id, name: id };
 }

@@ -15,7 +15,12 @@ describe('config', () => {
 		expect(config.presets).toEqual([]);
 		expect(config.sim).toBe('elite-dangerous');
 		expect(config.poweredBy).toBe(true);
-		expect(config.brand).toEqual({ wordmark: 'Orbital Preflight', label: 'CMDR Test', mark: undefined, markSmall: undefined });
+		expect(config.brand).toEqual({
+			wordmark: 'Orbital Preflight',
+			label: 'CMDR Test',
+			mark: undefined,
+			markSmall: undefined
+		});
 		expect(config.siteUrl).toBeNull();
 		expect(themeCss(config.theme)).toBe('');
 	});
@@ -34,7 +39,9 @@ describe('config', () => {
 	});
 
 	it('rejects preset paths outside static/binds', () => {
-		expect(() => resolveConfig({ ...base, presets: [{ file: '../x.binds', label: 'x' }] })).toThrow();
+		expect(() =>
+			resolveConfig({ ...base, presets: [{ file: '../x.binds', label: 'x' }] })
+		).toThrow();
 	});
 
 	it('writes theme overrides as one :root rule and refuses unsafe values', () => {

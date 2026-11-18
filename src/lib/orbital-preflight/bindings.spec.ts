@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { clashingActions, filterCounts, findHolders, resolve } from './bindings.ts';
 import type { Action, Bind, BindingMap } from './types.ts';
 
-const action = (id: string, mode: Action['mode'] = 'ship'): Action => ({ id, name: id, category: 'Test', mode });
+const action = (id: string, mode: Action['mode'] = 'ship'): Action => ({
+	id,
+	name: id,
+	category: 'Test',
+	mode
+});
 const key = (code: string): Bind => ({ input: { kind: 'key', code } });
 
 const actions = [action('Gear'), action('Lights'), action('Scoop'), action('Jump', 'foot')];
@@ -23,14 +28,21 @@ describe('clashes', () => {
 	it('treats a modifier as part of the bind', () => {
 		const bindings: BindingMap = {
 			...original,
-			Lights: [{ input: { kind: 'key', code: 'KeyL' }, modifier: { kind: 'key', code: 'ShiftLeft' } }, null]
+			Lights: [
+				{ input: { kind: 'key', code: 'KeyL' }, modifier: { kind: 'key', code: 'ShiftLeft' } },
+				null
+			]
 		};
 		expect(clashingActions(actions, bindings, 'ship').size).toBe(0);
 	});
 
 	it('lists holders, skipping the slot being rebound', () => {
-		expect(findHolders(actions, original, 'ship', key('KeyL'))).toEqual([{ actionId: 'Gear', slot: 0 }]);
-		expect(findHolders(actions, original, 'ship', key('KeyL'), { actionId: 'Gear', slot: 0 })).toEqual([]);
+		expect(findHolders(actions, original, 'ship', key('KeyL'))).toEqual([
+			{ actionId: 'Gear', slot: 0 }
+		]);
+		expect(
+			findHolders(actions, original, 'ship', key('KeyL'), { actionId: 'Gear', slot: 0 })
+		).toEqual([]);
 	});
 });
 

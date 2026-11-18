@@ -203,7 +203,13 @@ export function prettify(id: string): string {
 export function describeAction(id: string, axisInFile: boolean): Action {
 	const known = KNOWN.get(id);
 	if (known) {
-		return { id, name: known.name, category: known.category, mode: known.mode, ...(known.axis && { axis: true }) };
+		return {
+			id,
+			name: known.name,
+			category: known.category,
+			mode: known.mode,
+			...(known.axis && { axis: true })
+		};
 	}
 	return {
 		id,

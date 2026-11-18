@@ -21,7 +21,9 @@ export function inputKey(input: InputId): string {
 }
 
 export function bindKey(bind: Bind): string {
-	return bind.modifier ? `${inputKey(bind.modifier)}+${inputKey(bind.input)}` : inputKey(bind.input);
+	return bind.modifier
+		? `${inputKey(bind.modifier)}+${inputKey(bind.input)}`
+		: inputKey(bind.input);
 }
 
 export function sameInput(a: InputId | null | undefined, b: InputId | null | undefined): boolean {

@@ -21,11 +21,14 @@ function changedLines(a: string, b: string): [string, string][] {
 }
 
 describe('Elite Dangerous .binds', () => {
-	it.each(FIXTURES)('%s: writing unchanged binds under the same name gives the same bytes', (name) => {
-		const source = fixture(name);
-		const parsed = parseEliteBinds(source);
-		expect(writeEliteBinds(parsed, parsed.bindings, parsed.presetName)).toBe(source);
-	});
+	it.each(FIXTURES)(
+		'%s: writing unchanged binds under the same name gives the same bytes',
+		(name) => {
+			const source = fixture(name);
+			const parsed = parseEliteBinds(source);
+			expect(writeEliteBinds(parsed, parsed.bindings, parsed.presetName)).toBe(source);
+		}
+	);
 
 	it.each(FIXTURES)('%s: a new name changes only PresetName', (name) => {
 		const source = fixture(name);
@@ -46,11 +49,14 @@ describe('Elite Dangerous .binds', () => {
 		const out = writeEliteBinds(parsed, bindings, parsed.presetName);
 		const diff = changedLines(source, out);
 		expect(diff).toEqual([
-			['\t\t<Primary Device="Keyboard" Key="Key_X" />', '\t\t<Primary Device="Keyboard" Key="Key_P" />'].map(
-				(line) => (source.includes('\r\n') ? `${line}\r` : line)
-			)
+			[
+				'\t\t<Primary Device="Keyboard" Key="Key_X" />',
+				'\t\t<Primary Device="Keyboard" Key="Key_P" />'
+			].map((line) => (source.includes('\r\n') ? `${line}\r` : line))
 		]);
-		expect(parseEliteBinds(out).bindings.SetSpeedZero[0]).toEqual({ input: { kind: 'key', code: 'KeyP' } });
+		expect(parseEliteBinds(out).bindings.SetSpeedZero[0]).toEqual({
+			input: { kind: 'key', code: 'KeyP' }
+		});
 	});
 
 	it('adds and removes modifiers, keeping indentation and line endings', () => {
@@ -81,7 +87,11 @@ describe('Elite Dangerous .binds', () => {
 
 	it('clears a slot to {NoDevice}', () => {
 		const parsed = parseEliteBinds(fixture('hotas.binds'));
-		const out = writeEliteBinds(parsed, { ...parsed.bindings, ToggleFlightAssist: [null, null] }, 'x');
+		const out = writeEliteBinds(
+			parsed,
+			{ ...parsed.bindings, ToggleFlightAssist: [null, null] },
+			'x'
+		);
 		expect(parseEliteBinds(out).bindings.ToggleFlightAssist).toEqual([null, null]);
 		expect(out).toContain('<ToggleFlightAssist>\n\t\t<Primary Device="{NoDevice}" Key="" />');
 		parseXml(out);
@@ -114,7 +124,9 @@ describe('Elite Dangerous .binds', () => {
 	it('rejects files that are not binds', () => {
 		expect(() => parseEliteBinds('<Other />')).toThrow(/Expected an Elite Dangerous binds file/);
 		expect(() => parseEliteBinds('not xml <')).toThrow(/doesn't read as a binds file/);
-		expect(() => parseEliteBinds('<Root PresetName="x"><A Value="1" /></Root>')).toThrow(/No binds/);
+		expect(() => parseEliteBinds('<Root PresetName="x"><A Value="1" /></Root>')).toThrow(
+			/No binds/
+		);
 	});
 
 	it('names the export after the preset and the file version', () => {

@@ -35,10 +35,9 @@ export class BindStore {
 	actions = $derived<Action[]>(this.file?.parsed.actions ?? []);
 
 	clashes = $derived(
-		Object.fromEntries(MODES.map((m) => [m, clashingActions(this.actions, this.bindings, m)])) as Record<
-			Mode,
-			Set<string>
-		>
+		Object.fromEntries(
+			MODES.map((m) => [m, clashingActions(this.actions, this.bindings, m)])
+		) as Record<Mode, Set<string>>
 	);
 
 	counts = $derived(
@@ -52,7 +51,9 @@ export class BindStore {
 
 	load(parsed: ParsedBinds, origin: FileOrigin, edited?: BindingMap) {
 		this.file = { parsed, origin };
-		this.bindings = edited ? { ...parsed.bindings, ...pick(edited, parsed.bindings) } : parsed.bindings;
+		this.bindings = edited
+			? { ...parsed.bindings, ...pick(edited, parsed.bindings) }
+			: parsed.bindings;
 		this.#history = {};
 	}
 
@@ -127,7 +128,8 @@ export class BindStore {
 	/** Only the edited actions, for "Remember this layout". */
 	edits(): BindingMap {
 		const out: BindingMap = {};
-		for (const id of Object.keys(this.bindings)) if (this.isChanged(id)) out[id] = this.bindings[id];
+		for (const id of Object.keys(this.bindings))
+			if (this.isChanged(id)) out[id] = this.bindings[id];
 		return out;
 	}
 }

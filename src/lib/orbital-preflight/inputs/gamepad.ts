@@ -25,13 +25,15 @@ export const AXIS_NAMES = ['X', 'Y', 'Z', 'RX', 'RY', 'RZ', 'U', 'V'] as const;
 /** Vendor and product id from `Gamepad.id`, as lowercase 4-digit hex. */
 export function parseGamepadId(id: string): { vendor?: string; product?: string; name: string } {
 	// Chrome: "T.16000M (Vendor: 044f Product: b10a)" or "... (STANDARD GAMEPAD Vendor: 045e Product: 028e)"
-	const chrome = /^(.*?)\s*\((?:.*?)Vendor:\s*([0-9a-f]{1,4})\s+Product:\s*([0-9a-f]{1,4})\)\s*$/i.exec(id);
+	const chrome =
+		/^(.*?)\s*\((?:.*?)Vendor:\s*([0-9a-f]{1,4})\s+Product:\s*([0-9a-f]{1,4})\)\s*$/i.exec(id);
 	if (chrome) {
 		return { name: chrome[1].trim() || id, vendor: pad(chrome[2]), product: pad(chrome[3]) };
 	}
 	// Firefox: "44f-b10a-T.16000M"
 	const firefox = /^([0-9a-f]{1,4})-([0-9a-f]{1,4})-(.*)$/i.exec(id);
-	if (firefox) return { name: firefox[3].trim() || id, vendor: pad(firefox[1]), product: pad(firefox[2]) };
+	if (firefox)
+		return { name: firefox[3].trim() || id, vendor: pad(firefox[1]), product: pad(firefox[2]) };
 	return { name: id };
 }
 
@@ -40,10 +42,16 @@ function pad(hex: string): string {
 }
 
 /** The file device a browser controller is, by USB id, if exactly one matches. */
-export function matchDevice(gamepadId: string, devices: FileDevice[], taken: Set<string>): FileDevice | null {
+export function matchDevice(
+	gamepadId: string,
+	devices: FileDevice[],
+	taken: Set<string>
+): FileDevice | null {
 	const { vendor, product } = parseGamepadId(gamepadId);
 	if (!vendor || !product) return null;
-	const matches = devices.filter((d) => d.vendor === vendor && d.product === product && !taken.has(d.id));
+	const matches = devices.filter(
+		(d) => d.vendor === vendor && d.product === product && !taken.has(d.id)
+	);
 	return matches.length >= 1 ? matches[0] : null;
 }
 

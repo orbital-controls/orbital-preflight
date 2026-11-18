@@ -1,3 +1,6 @@
+/* eslint-disable svelte/prefer-svelte-reactivity -- the private Maps and Sets here are
+   polling bookkeeping, never read by a template; what the UI reads (held, axes, pads)
+   is reactive. */
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { inputKey } from '../bindings.ts';
 import type { Bind, FileDevice, InputId } from '../types.ts';
@@ -22,7 +25,14 @@ export interface InputEvent {
 	pressed: boolean;
 }
 
-const MODIFIER_CODES = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight']);
+const MODIFIER_CODES = new Set([
+	'ShiftLeft',
+	'ShiftRight',
+	'ControlLeft',
+	'ControlRight',
+	'AltLeft',
+	'AltRight'
+]);
 /** Keys the browser keeps: focus moves, reloads, devtools, fullscreen. */
 const BROWSER_KEYS = new Set(['Tab', 'F5', 'F11', 'F12']);
 const AXIS_PRESS = 0.5;
@@ -231,7 +241,11 @@ export class InputHub {
 		for (const pad of seen) {
 			const info = this.pads.find((p) => p.index === pad.index);
 			const deviceId = info?.deviceId ?? `browser-${pad.index}`;
-			const state = this.#padState.get(pad.index) ?? { buttons: [], axes: [], hats: new Set<number>() };
+			const state = this.#padState.get(pad.index) ?? {
+				buttons: [],
+				axes: [],
+				hats: new Set<number>()
+			};
 			this.#padState.set(pad.index, state);
 
 			pad.buttons.forEach((button, i) => {
@@ -291,9 +305,12 @@ export class InputHub {
 
 	#syncPads(seen: Gamepad[]) {
 		const same =
-			seen.length === this.pads.length && seen.every((g) => this.pads.some((p) => p.index === g.index && p.id === g.id));
+			seen.length === this.pads.length &&
+			seen.every((g) => this.pads.some((p) => p.index === g.index && p.id === g.id));
 		if (same) return;
-		const taken = new Set(this.pads.map((p) => p.deviceId).filter((id): id is string => Boolean(id)));
+		const taken = new Set(
+			this.pads.map((p) => p.deviceId).filter((id): id is string => Boolean(id))
+		);
 		this.pads = seen.map((g) => {
 			const existing = this.pads.find((p) => p.index === g.index && p.id === g.id);
 			if (existing) return existing;
