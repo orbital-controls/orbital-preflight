@@ -61,7 +61,21 @@ export class OrbitalPreflight {
 	sim = $state<SimId>('elite-dangerous');
 	loadError = $state<string | null>(null);
 
-	roles = $derived(deviceRoles(this.store.file?.parsed.devices ?? []));
+	/**
+	 * Every device binds can name: the file's, then controllers plugged in that the file
+	 * doesn't have yet (they join the export once something is bound to them).
+	 */
+	roles = $derived(
+		deviceRoles([
+			...(this.store.file?.parsed.devices ?? []),
+			...this.hub.pads
+				.filter((p) => p.pairedBy === 'new' && p.deviceId)
+				.filter((p) => !this.store.file?.parsed.devices.some((d) => d.id === p.deviceId))
+				.map((p) => ({ id: p.deviceId!, name: p.name }))
+		])
+	);
+	/** Why the last input pressed while listening can't be used, if it can't. */
+	capNotice = $state<string | null>(null);
 	loaded = $derived(this.store.file !== null);
 
 	constructor(
@@ -71,6 +85,7 @@ export class OrbitalPreflight {
 		readonly presetSources: Record<string, string>
 	) {
 		this.sim = config.sim;
+		this.hub.newDeviceId = simById(config.sim).newDeviceId ?? null;
 	}
 
 	/** Restores a remembered layout, or opens the pilot's default preset. */
@@ -146,6 +161,7 @@ export class OrbitalPreflight {
 		this.store.load(parsed, origin, edits);
 		this.sim = parsed.sim;
 		this.hub.devices = parsed.devices;
+		this.hub.newDeviceId = simById(parsed.sim).newDeviceId ?? null;
 		this.hub.repair();
 		this.loadError = null;
 		this.drawer = null;
@@ -197,13 +213,36 @@ export class OrbitalPreflight {
 
 	startCapture(target: SlotRef) {
 		this.cap = { target, cand: null };
+		this.capNotice = null;
 		this.ed = { ...this.ed, pend: null };
-		this.hub.capture((bind) => this.#onCandidate(bind));
+		this.hub.capture(
+			(bind) => this.#onCandidate(bind),
+			() => this.cancelCapture()
+		);
+	}
+
+	/** Why a pressed input can't be bound, or null. */
+	#cannotBind(bind: Bind): string | null {
+		const sim = simById(this.sim);
+		for (const input of [bind.input, ...(bind.modifiers ?? [])]) {
+			if ('deviceId' in input && input.deviceId.startsWith('browser-')) {
+				return "Your browser doesn't report this controller's USB id, so a bind on it couldn't be saved.";
+			}
+			const reason = sim.cannotBind?.(input);
+			if (reason) return reason;
+		}
+		return null;
 	}
 
 	#onCandidate(bind: Bind) {
 		const cap = this.cap;
 		if (!cap) return;
+		const reason = this.#cannotBind(bind);
+		if (reason) {
+			this.capNotice = `${reason} Try another.`;
+			return;
+		}
+		this.capNotice = null;
 		const action = this.actionById(cap.target.actionId);
 		// An axis action takes the whole axis; a button action keeps the half it was pushed to.
 		const cand =
@@ -223,10 +262,12 @@ export class OrbitalPreflight {
 
 	retryCapture() {
 		if (this.cap) this.cap = { ...this.cap, cand: null };
+		this.capNotice = null;
 	}
 
 	cancelCapture() {
 		this.cap = null;
+		this.capNotice = null;
 		this.hub.stopCapture();
 	}
 
@@ -284,8 +325,12 @@ export class OrbitalPreflight {
 					const [neg, pos] = (action.effect ?? '').split('|');
 					effect = input.half === 'neg' ? neg : pos;
 				} else continue;
-				if (!this.hub.modifierHeld(slot.modifier)) continue;
-				held.push({ action, effect: effect || undefined, modifier: Boolean(slot.modifier) });
+				if (!this.hub.modifiersHeld(slot.modifiers)) continue;
+				held.push({
+					action,
+					effect: effect || undefined,
+					modifier: Boolean(slot.modifiers?.length)
+				});
 				break;
 			}
 		}
@@ -304,7 +349,11 @@ export class OrbitalPreflight {
 		}
 		const hits = this.matching(input);
 		let flight = this.flight;
-		for (const { action, effect } of hits) if (effect) flight = act(flight, effect, action.name);
+		// As on the board, an action with no effect of its own says it "would open".
+		for (const { action, effect } of hits) {
+			if (effect) flight = act(flight, effect, action.name);
+			else if (!action.axis) flight = act(flight, 'panel', action.name);
+		}
 		this.flight = flight;
 		this.last = input;
 		this.lastActs = hits.map((h) => h.action.id);

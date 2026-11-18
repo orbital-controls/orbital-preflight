@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { fakeGamepads, press } from './controllers.ts';
+import { fakeGamepads, hold, press, unplug } from './controllers.ts';
 import { exportAndParse, ready, rebind } from './helpers.ts';
 
 test('the pilot’s default preset loads on first visit', async ({ page }) => {
 	await page.goto('./');
 	await expect(page).toHaveTitle('Orbital Preflight: test my space sim binds');
-	await expect(page.locator('h1')).toHaveText('Orbital Preflight Preflight');
+	await expect(page.locator('h1')).toHaveText('Orbital Preflight');
 	await expect(page.getByText("Pilot's binds · Demo HOTAS setup")).toBeVisible();
 	await expect(page.getByRole('tab', { name: /Ship/ })).toHaveAttribute('aria-selected', 'true');
 });
@@ -111,4 +111,75 @@ test('with no controllers detected, the deck asks for a button press', async ({ 
 		page.getByText('Press a button on your stick or throttle and it shows up here.')
 	).toBeVisible();
 	await expect(page.getByRole('button', { name: 'No controllers connected' })).toBeVisible();
+});
+
+test('a rebind can be finished from the keyboard alone', async ({ page }) => {
+	await page.goto('./');
+	await ready(page);
+	await page
+		.getByRole('group', { name: 'Category' })
+		.getByRole('button', { name: 'Flight', exact: true })
+		.click();
+	const slot = page.getByRole('button', { name: /^Change primary bind for Throttle to 50%,/ });
+	await slot.focus();
+	await page.keyboard.press('Enter');
+	await page.keyboard.press('KeyP');
+	const card = page.getByRole('group', { name: 'Rebinding Throttle to 50%' });
+	await expect(card).toContainText('is free');
+	// Tab to Apply and press Enter: it applies, rather than becoming the new bind.
+	await card.getByRole('button', { name: 'Apply' }).focus();
+	await page.keyboard.press('Enter');
+	await expect(card).toBeHidden();
+	await expect(page.getByText('1 unsaved change')).toBeVisible();
+});
+
+test('Esc leaves a rebind without binding Esc', async ({ page }) => {
+	await page.goto('./');
+	await ready(page);
+	await page
+		.getByRole('group', { name: 'Category' })
+		.getByRole('button', { name: 'Flight', exact: true })
+		.click();
+	await page.getByRole('button', { name: /^Change primary bind for Throttle to 50%,/ }).click();
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('group', { name: 'Rebinding Throttle to 50%' })).toBeHidden();
+	await expect(page.getByText('0 unsaved changes')).toBeVisible();
+});
+
+test('holding Shift with a key captures Shift+key', async ({ page }) => {
+	await page.goto('./');
+	await ready(page);
+	await page
+		.getByRole('group', { name: 'Category' })
+		.getByRole('button', { name: 'Flight', exact: true })
+		.click();
+	await page.getByRole('button', { name: /^Change primary bind for Throttle to 50%,/ }).click();
+	await page.keyboard.down('ShiftLeft');
+	await page.keyboard.down('KeyK');
+	await page.keyboard.up('KeyK');
+	await page.keyboard.up('ShiftLeft');
+	const card = page.getByRole('group', { name: 'Rebinding Throttle to 50%' });
+	await expect(card).toContainText('Shift+K is free');
+});
+
+test('a controller pulled out mid-press lets go of its button', async ({ page }) => {
+	await fakeGamepads(page, [{ id: 'T.16000M (Vendor: 044f Product: b10a)', buttons: 16 }]);
+	await page.goto('./');
+	await ready(page);
+	const deck = page.getByRole('region', { name: 'Input deck' });
+	const toast = page.locator('[aria-live="polite"]');
+	await expect(deck.getByRole('heading', { name: 'T.16000M' })).toBeVisible();
+
+	// B2 is Secondary fire in the demo file. Hold it, then press something else.
+	await hold(page, 0, 1);
+	await expect(toast).toContainText('Secondary fire');
+	await page.keyboard.press('KeyU');
+	await expect(toast).toContainText('Deploy hardpoints');
+
+	// Pull the cable with B2 still down, then plug it back in, still held.
+	const replug = await unplug(page, 0);
+	await expect(page.getByRole('button', { name: 'No controllers connected' })).toBeVisible();
+	await replug();
+	// Had B2 stayed held from before, this press would be ignored.
+	await expect(toast).toContainText('Secondary fire');
 });

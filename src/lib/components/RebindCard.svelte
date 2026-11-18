@@ -28,6 +28,7 @@
 
 <div
 	role="group"
+	data-op-capture-controls
 	aria-label="Rebinding {action.name}"
 	class="flex flex-col gap-[10px] border border-trail bg-trail/6 p-3 notch"
 >
@@ -74,6 +75,9 @@
 		</span>
 	</div>
 
+	{#if app.capNotice}
+		<p role="status" class="font-mono text-[12px] text-alert">{app.capNotice}</p>
+	{/if}
 	{#if !cap.cand}
 		<div class="flex flex-col gap-[6px]">
 			<span class="text-[14px] text-ink-500"

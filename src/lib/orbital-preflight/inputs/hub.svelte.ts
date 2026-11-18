@@ -14,10 +14,14 @@ export interface BrowserPad {
 	name: string;
 	buttons: number;
 	axes: number;
-	/** The file device it stands for, once paired. */
+	/**
+	 * The device id binds made on it carry: a device from the file once paired, or a new
+	 * one built from its USB id (`new`) when the file has no match. `null` when the
+	 * browser doesn't report a USB id, so nothing bound on it could be saved.
+	 */
 	deviceId: string | null;
-	/** Paired by USB id, or by the pilot pressing a button. */
-	pairedBy: 'usb' | 'press' | null;
+	/** Matched to the file by USB id, paired by the pilot pressing a button, or not in the file. */
+	pairedBy: 'usb' | 'press' | 'new' | null;
 }
 
 export interface InputEvent {
@@ -36,6 +40,17 @@ const MODIFIER_CODES = new Set([
 /** Keys the browser keeps: focus moves, reloads, devtools, fullscreen. */
 const BROWSER_KEYS = new Set(['Tab', 'F5', 'F11', 'F12']);
 const AXIS_PRESS = 0.5;
+const ACTIVATE_KEYS = new Set(['Enter', 'NumpadEnter', 'Space']);
+
+function isModifier(input: InputId): boolean {
+	return input.kind === 'key' && MODIFIER_CODES.has(input.code);
+}
+
+/** The rebind card's and the editor's buttons mark themselves with this attribute. */
+function onCaptureControls(event: Event): boolean {
+	const el = event.target as HTMLElement | null;
+	return Boolean(el?.closest?.('[data-op-capture-controls]'));
+}
 
 /**
  * Every physical input, in one place. Keyboard, mouse and controllers all arrive as
@@ -53,10 +68,18 @@ export class InputHub {
 	last = $state.raw<InputId | null>(null);
 	/** The file's devices, for pairing. */
 	devices = $state.raw<FileDevice[]>([]);
+	/**
+	 * The sim's id for a controller the file doesn't name, from its USB ids (Elite writes
+	 * unknown devices as vendor + product, e.g. `231D0200`). Set from the sim adapter.
+	 */
+	newDeviceId: ((vendor: string, product: string) => string | null) | null = null;
 
 	#heldInputs = new Map<string, InputId>();
 	#listeners = new Set<(event: InputEvent) => void>();
 	#capture: ((bind: Bind) => void) | null = null;
+	#cancel: (() => void) | null = null;
+	/** A modifier pressed alone while listening; it becomes the bind if nothing joins it. */
+	#loneModifier: InputId | null = null;
 	#pairNext: ((pad: BrowserPad) => void) | null = null;
 	#padState = new Map<number, { buttons: boolean[]; axes: number[]; hats: Set<number> }>();
 	#frame = 0;
@@ -71,13 +94,20 @@ export class InputHub {
 		return () => this.#listeners.delete(listener);
 	}
 
-	/** The next press becomes the candidate. Call again to pick another. */
-	capture(callback: (bind: Bind) => void) {
+	/**
+	 * While listening, every press becomes the candidate (pressing again picks another).
+	 * Esc calls `oncancel`; Enter and Space still work the card's own buttons.
+	 */
+	capture(callback: (bind: Bind) => void, oncancel?: () => void) {
 		this.#capture = callback;
+		this.#cancel = oncancel ?? null;
+		this.#loneModifier = null;
 	}
 
 	stopCapture() {
 		this.#capture = null;
+		this.#cancel = null;
+		this.#loneModifier = null;
 	}
 
 	/** "Press a button on your stick": the next controller button pairs that controller. */
@@ -89,13 +119,13 @@ export class InputHub {
 		return this.held.has(inputKey(input));
 	}
 
-	/** A held modifier, other than `input` itself. */
-	#heldModifier(input: InputId): InputId | undefined {
+	/** Modifier keys held now, other than `input` itself. */
+	#heldModifiers(input: InputId): InputId[] {
+		const mods: InputId[] = [];
 		for (const [key, held] of this.#heldInputs) {
-			if (key === inputKey(input)) continue;
-			if (held.kind === 'key' && MODIFIER_CODES.has(held.code)) return held;
+			if (key !== inputKey(input) && isModifier(held)) mods.push(held);
 		}
-		return undefined;
+		return mods;
 	}
 
 	press(input: InputId) {
@@ -106,10 +136,15 @@ export class InputHub {
 		this.last = input;
 
 		if (this.#capture) {
-			// A modifier on its own waits for the key it modifies.
-			if (input.kind === 'key' && MODIFIER_CODES.has(input.code)) return;
-			const modifier = this.#heldModifier(input);
-			this.#capture(modifier ? { input, modifier } : { input });
+			// A modifier on its own waits for the key it modifies; if none comes before it's
+			// let go, the modifier itself is the bind.
+			if (isModifier(input)) {
+				this.#loneModifier = input;
+				return;
+			}
+			this.#loneModifier = null;
+			const modifiers = this.#heldModifiers(input);
+			this.#capture(modifiers.length ? { input, modifiers } : { input });
 			return;
 		}
 		for (const listener of this.#listeners) listener({ input, pressed: true });
@@ -118,20 +153,20 @@ export class InputHub {
 	release(input: InputId) {
 		const key = inputKey(input);
 		if (!this.held.delete(key)) return;
-		const wasModifierOnly = this.#capture && input.kind === 'key' && MODIFIER_CODES.has(input.code);
 		this.#heldInputs.delete(key);
-		// Releasing a lone modifier while listening binds the modifier itself.
-		if (wasModifierOnly && this.#capture && ![...this.#heldInputs.values()].length) {
-			this.#capture({ input });
+		if (this.#capture) {
+			if (this.#loneModifier && inputKey(this.#loneModifier) === key) {
+				this.#loneModifier = null;
+				this.#capture({ input });
+			}
 			return;
 		}
-		if (this.#capture) return;
 		for (const listener of this.#listeners) listener({ input, pressed: false });
 	}
 
-	/** Which modifier keys are held now, for matching binds that need one. */
-	modifierHeld(modifier: InputId | undefined): boolean {
-		return !modifier || this.held.has(inputKey(modifier));
+	/** Whether every modifier a bind needs is held now. */
+	modifiersHeld(modifiers: InputId[] | undefined): boolean {
+		return (modifiers ?? []).every((m) => this.held.has(inputKey(m)));
 	}
 
 	releaseAll() {
@@ -150,9 +185,19 @@ export class InputHub {
 			// Ctrl and Cmd combinations stay the browser's. The key still lights up, but
 			// the default isn't prevented.
 			const shortcut = (event.ctrlKey || event.metaKey) && !MODIFIER_CODES.has(event.code);
-			// While listening, Space and arrows would scroll the page and Enter would click
-			// the focused button. Only then, so keyboard users can still drive the UI.
-			if (this.capturing && !shortcut) event.preventDefault();
+			if (this.capturing) {
+				// Esc leaves the rebind card, as it closes any dialog.
+				if (event.code === 'Escape') {
+					event.preventDefault();
+					this.#cancel?.();
+					return;
+				}
+				// Enter and Space on the card's own buttons (Apply, Swap…) press them.
+				if (ACTIVATE_KEYS.has(event.code) && onCaptureControls(event)) return;
+				// Otherwise Space and arrows would scroll the page and Enter would click the
+				// focused slot. Only while listening, so the UI stays usable from the keyboard.
+				if (!shortcut) event.preventDefault();
+			}
 			if (event.repeat) return;
 			this.press({ kind: 'key', code: event.code });
 		};
@@ -252,7 +297,7 @@ export class InputHub {
 				const down = button.pressed || button.value > AXIS_PRESS;
 				if (down === Boolean(state.buttons[i])) return;
 				state.buttons[i] = down;
-				if (down && this.#pairNext && info && !info.deviceId) {
+				if (down && this.#pairNext && info && InputHub.unpaired(info)) {
 					const callback = this.#pairNext;
 					this.#pairNext = null;
 					callback(info);
@@ -305,36 +350,66 @@ export class InputHub {
 			seen.length === this.pads.length &&
 			seen.every((g) => this.pads.some((p) => p.index === g.index && p.id === g.id));
 		if (same) return;
+		// A controller that went away lets go of everything it was holding.
+		for (const gone of this.pads.filter(
+			(p) => !seen.some((g) => g.index === p.index && g.id === p.id)
+		)) {
+			this.#releaseDevice(gone.deviceId ?? `browser-${gone.index}`);
+		}
 		const taken = new Set(
-			this.pads.map((p) => p.deviceId).filter((id): id is string => Boolean(id))
+			this.pads
+				.filter((p) => p.pairedBy && p.pairedBy !== 'new')
+				.map((p) => p.deviceId)
+				.filter((id): id is string => Boolean(id))
 		);
 		this.pads = seen.map((g) => {
 			const existing = this.pads.find((p) => p.index === g.index && p.id === g.id);
 			if (existing) return existing;
-			const match = matchDevice(g.id, this.devices, taken);
-			if (match) taken.add(match.id);
-			return {
+			const pad: BrowserPad = {
 				index: g.index,
 				id: g.id,
 				name: parseGamepadId(g.id).name,
 				buttons: g.buttons.length,
 				axes: g.axes.length,
-				deviceId: match?.id ?? null,
-				pairedBy: match ? 'usb' : null
+				deviceId: null,
+				pairedBy: null
 			};
+			return this.#assign(pad, taken);
 		});
 		for (const index of this.#padState.keys()) {
 			if (!seen.some((g) => g.index === index)) this.#padState.delete(index);
 		}
 	}
 
-	/** Pairs a browser controller with a device from the file, or unpairs it. */
+	/** USB-match a controller to the file, or give it a new device id the file can hold. */
+	#assign(pad: BrowserPad, taken: Set<string>): BrowserPad {
+		const match = matchDevice(pad.id, this.devices, taken);
+		if (match) {
+			taken.add(match.id);
+			return { ...pad, deviceId: match.id, pairedBy: 'usb' };
+		}
+		return this.#unpaired(pad);
+	}
+
+	#unpaired(pad: BrowserPad): BrowserPad {
+		const { vendor, product } = parseGamepadId(pad.id);
+		const id = vendor && product ? (this.newDeviceId?.(vendor, product) ?? null) : null;
+		return { ...pad, deviceId: id, pairedBy: id ? 'new' : null };
+	}
+
+	#releaseDevice(deviceId: string) {
+		for (const input of [...this.#heldInputs.values()]) {
+			if ('deviceId' in input && input.deviceId === deviceId) this.release(input);
+		}
+	}
+
+	/** Pairs a browser controller with a device from the file, or unpairs it (`null`). */
 	pair(index: number, deviceId: string | null, by: BrowserPad['pairedBy'] = 'press') {
 		this.releaseAll();
 		this.pads = this.pads.map((p) => {
-			if (p.index === index) return { ...p, deviceId, pairedBy: deviceId ? by : null };
+			if (p.index === index) return deviceId ? { ...p, deviceId, pairedBy: by } : this.#unpaired(p);
 			// One controller per file device.
-			if (deviceId && p.deviceId === deviceId) return { ...p, deviceId: null, pairedBy: null };
+			if (deviceId && p.deviceId === deviceId) return this.#unpaired(p);
 			return p;
 		});
 	}
@@ -342,10 +417,11 @@ export class InputHub {
 	/** Re-runs USB pairing when a new file brings different devices. */
 	repair() {
 		const taken = new Set<string>();
-		this.pads = this.pads.map((p) => {
-			const match = matchDevice(p.id, this.devices, taken);
-			if (match) taken.add(match.id);
-			return { ...p, deviceId: match?.id ?? null, pairedBy: match ? 'usb' : null };
-		});
+		this.pads = this.pads.map((p) => this.#assign(p, taken));
+	}
+
+	/** Not paired with a device in the file (yet): the Controllers drawer can pair it. */
+	static unpaired(pad: BrowserPad): boolean {
+		return !pad.pairedBy || pad.pairedBy === 'new';
 	}
 }

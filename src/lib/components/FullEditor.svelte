@@ -334,6 +334,7 @@
 
 					{#if app.cap}
 						<div
+							data-op-capture-controls
 							class="flex items-center justify-between gap-3 border border-trail bg-trail/8 px-[14px] py-3 notch"
 						>
 							<span class="flex flex-col"
@@ -341,8 +342,12 @@
 									>● LISTENING · {app.cap.target.slot ? 'SECONDARY' : 'PRIMARY'}</span
 								><span class="text-[14px] text-ink-500"
 									>Press it on your gear, or click it below.</span
-								></span
-							>
+								>
+								{#if app.capNotice}
+									<span role="status" class="font-mono text-[12px] text-alert">{app.capNotice}</span
+									>
+								{/if}
+							</span>
 							<button
 								type="button"
 								onclick={() => app.cancelCapture()}
