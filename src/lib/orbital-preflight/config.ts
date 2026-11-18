@@ -4,7 +4,7 @@ import type { SimId } from './types.ts';
  * The one file a fork edits: `orbital-preflight.config.ts` at the repo root. Every field
  * is documented in the README.
  */
-export interface PreflightConfig {
+export interface OrbitalPreflightConfig {
 	/** The page title, in the head and on the share card. */
 	title: string;
 	/** One plain sentence for the meta description and the share card. */
@@ -46,7 +46,7 @@ export interface BrandConfig {
 }
 
 /** Typed helper for the config file. */
-export function defineConfig(config: PreflightConfig): PreflightConfig {
+export function defineConfig(config: OrbitalPreflightConfig): OrbitalPreflightConfig {
 	return config;
 }
 
@@ -75,7 +75,7 @@ const VARIABLE = /^--[a-z0-9-]+$/i;
 const UNSAFE_VALUE = /[<>{};]/;
 
 /** Fills in defaults and checks the fields a typo would quietly break. */
-export function resolveConfig(config: PreflightConfig): ResolvedConfig {
+export function resolveConfig(config: OrbitalPreflightConfig): ResolvedConfig {
 	const presets = (config.presets ?? []).map((preset) => {
 		if (!preset.file || preset.file.includes('/') || preset.file.includes('..')) {
 			throw new Error(

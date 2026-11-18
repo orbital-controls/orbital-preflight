@@ -1,4 +1,4 @@
-import type { Preflight } from '#lib/orbital-preflight/app.svelte.ts';
+import type { OrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 import { bindKey, inputKey } from '#lib/orbital-preflight/bindings.ts';
 import type { InputId } from '#lib/orbital-preflight/types.ts';
 
@@ -9,7 +9,7 @@ export interface KeyOwners {
 }
 
 /** What each input does in the current mode, for lighting and labelling deck keys. */
-export function ownersByInput(app: Preflight): Map<string, KeyOwners> {
+export function ownersByInput(app: OrbitalPreflight): Map<string, KeyOwners> {
 	const map = new Map<string, KeyOwners>();
 	const seen = new Map<string, number>();
 	for (const action of app.store.actionsIn(app.mode)) {
@@ -28,7 +28,7 @@ export function ownersByInput(app: Preflight): Map<string, KeyOwners> {
 }
 
 /** A tap on the deck: the same path as a real key, so listening and the flight both see it. */
-export function tap(app: Preflight, input: InputId) {
+export function tap(app: OrbitalPreflight, input: InputId) {
 	app.hub.press(input);
 	setTimeout(() => app.hub.release(input), 140);
 }

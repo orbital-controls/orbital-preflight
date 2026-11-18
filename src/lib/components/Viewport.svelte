@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { footHud, shipHud, srvHud, type SceneProps } from '#lib/orbital-preflight/flight.ts';
 	import FirstVisit from './FirstVisit.svelte';
 	import Hud from './Hud.svelte';
@@ -17,7 +17,7 @@
 	}
 
 	let { scene, onwhere }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 
 	const SCENE_COPY = {
 		ship: {

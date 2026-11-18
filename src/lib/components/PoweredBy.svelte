@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 
 	/** The framework credit. Off when the config sets `poweredBy: false`. */
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 </script>
 
 {#if app.config.poweredBy}

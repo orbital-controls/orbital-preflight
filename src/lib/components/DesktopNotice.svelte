@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { asset } from '$app/paths';
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { presetHref } from '#lib/orbital-preflight/presets.ts';
 	import Brand from './Brand.svelte';
 	import PoweredBy from './PoweredBy.svelte';
 
 	/** Below 1280 px: what the tool needs, and the pilot's presets to take away. */
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -- preset downloads are resolved by asset(); homeUrl is external -->

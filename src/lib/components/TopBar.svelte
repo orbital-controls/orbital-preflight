@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import Brand from './Brand.svelte';
 
@@ -12,7 +12,7 @@
 	}
 
 	let { onopenload, onopendevices, onopeneditor, onleave }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 
 	const sim = $derived(simById(app.sim));
 	const changes = $derived(app.store.changes);

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { MODES, type Mode } from '#lib/orbital-preflight/types.ts';
 
 	/** Ship / SRV / On foot, with per-mode change badges. Shared by the fly page and the editor. */
@@ -9,7 +9,7 @@
 	}
 
 	let { compact = false }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 
 	const DEFS: Record<Mode, { name: string; sub: string; icon: string }> = {
 		ship: {
@@ -70,7 +70,7 @@
 				<span class="font-display text-[20px] font-black uppercase">{def.name}</span>
 				{#if !compact}
 					<span class="font-mono text-[11px] opacity-75"
-						>{def.sub} · {app.store.actionsIn(mode).length} binds</span
+						>{def.sub}{app.loaded ? ` · ${app.store.actionsIn(mode).length} binds` : ''}</span
 					>
 				{/if}
 			</span>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { inputKey, sameInput } from '#lib/orbital-preflight/bindings.ts';
 	import { deviceDecks, keyboardRows, MOUSE_DECK } from '#lib/orbital-preflight/deck.ts';
 	import { inputLabel } from '#lib/orbital-preflight/labels.ts';
@@ -12,7 +12,7 @@
 	 * The input deck under the viewport. It mirrors real input (a key lights gold while
 	 * you press it) and is clickable for testing without the hardware.
 	 */
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const owners = $derived(ownersByInput(app));
 	const rows = keyboardRows();
 	const decks = $derived(deviceDecks(app.roles, app.store.bindings));

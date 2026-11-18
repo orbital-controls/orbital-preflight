@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { findHolders } from '#lib/orbital-preflight/bindings.ts';
 	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
 	import type { Action, SlotIndex } from '#lib/orbital-preflight/types.ts';
@@ -15,7 +15,7 @@
 	}
 
 	let { action, slot, size = 'row', onpick }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 
 	const bind = $derived(app.store.bindings[action.id]?.[slot] ?? null);
 	const listening = $derived(

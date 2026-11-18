@@ -41,7 +41,7 @@ export interface EditorView {
  * card, drawers, the full editor, the mock flight and the last input. One instance per
  * page, shared through context.
  */
-export class Preflight {
+export class OrbitalPreflight {
 	readonly store = new BindStore();
 	readonly hub = new InputHub();
 
@@ -353,10 +353,10 @@ export class Preflight {
 
 const KEY = Symbol('orbital-preflight');
 
-export function setPreflight(app: Preflight) {
+export function setOrbitalPreflight(app: OrbitalPreflight) {
 	setContext(KEY, app);
 }
 
-export function usePreflight(): Preflight {
-	return getContext<Preflight>(KEY);
+export function useOrbitalPreflight(): OrbitalPreflight {
+	return getContext<OrbitalPreflight>(KEY);
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 
 	/** Leave preflight? (StandFly · Leave). Only opens when there are unsaved changes. */
 	interface Props {
@@ -7,7 +7,7 @@
 	}
 
 	let { onstay }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const changes = $derived(app.store.changes);
 	const btn = 'h-[52px] cursor-pointer font-mono text-[16px] font-bold notch';
 </script>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { footHud, pips, shipHud, srvHud, statusChips } from '#lib/orbital-preflight/flight.ts';
 	import { bindLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
 
@@ -7,7 +7,7 @@
 	 * The HUD, as DOM over the scene. It reads the mock flight and the binds, never the
 	 * scene, so swapping in the 3D view leaves it as it is.
 	 */
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const s = $derived(app.flight);
 	const mode = $derived(app.mode);
 	const ship = $derived(shipHud(s));

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import PoweredBy from './PoweredBy.svelte';
 
 	/** Controllers (StandFly · Controllers drawer): paired, listening and not-in-file states. */
@@ -8,7 +8,7 @@
 	}
 
 	let { onclose }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 
 	const devices = $derived(app.store.file?.parsed.devices ?? []);
 	const rows = $derived(

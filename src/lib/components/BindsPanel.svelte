@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { isUnbound, matchesFilter, type ShowFilter } from '#lib/orbital-preflight/bindings.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import RebindCard from './RebindCard.svelte';
@@ -7,7 +7,7 @@
 	import { chipClass } from './styles.ts';
 
 	/** The binds panel beside the viewport (StandFly). */
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const sim = $derived(simById(app.sim));
 	const actions = $derived(app.store.actionsIn(app.mode));
 	const clashing = $derived(app.store.clashes[app.mode]);

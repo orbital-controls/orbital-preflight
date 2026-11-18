@@ -9,18 +9,23 @@
 
 	// The config's theme overrides, after the theme package's own variables.
 	const theme = themeCss(site.theme);
-	const icon = site.brand.markSmall
-		? `data:image/svg+xml,${encodeURIComponent(site.brand.markSmall.replace(/var\(--color-([a-z0-9-]+)\)/g, (_, name) => FALLBACK[name] ?? '#8b88ff'))}`
-		: favicon;
 
 	// A favicon can't read CSS variables, so the mark's colours are filled in from the
-	// theme package's defaults for it.
+	// theme package's defaults.
 	const FALLBACK: Record<string, string> = {
 		course: '#8b88ff',
 		trail: '#ffc21a',
 		'ink-200': '#e6e8f6',
 		void: '#090b1c'
 	};
+	const icon = site.brand.markSmall
+		? `data:image/svg+xml,${encodeURIComponent(
+				site.brand.markSmall.replace(
+					/var\(--color-([a-z0-9-]+)\)/g,
+					(_, name: string) => FALLBACK[name] ?? FALLBACK.course
+				)
+			)}`
+		: favicon;
 </script>
 
 <svelte:head>

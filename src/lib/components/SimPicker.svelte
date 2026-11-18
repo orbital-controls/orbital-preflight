@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { SIMS } from '#lib/orbital-preflight/sims/index.ts';
 	import { chipClass } from './styles.ts';
 
@@ -10,7 +10,7 @@
 	}
 
 	let { name, layout = 'row' }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 </script>
 
 <fieldset class={layout === 'grid' ? 'grid grid-cols-2 gap-[6px]' : 'flex gap-[6px]'}>

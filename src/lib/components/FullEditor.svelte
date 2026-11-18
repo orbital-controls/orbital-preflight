@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import {
 		bindKey,
 		inputKey,
@@ -27,7 +27,7 @@
 	}
 
 	let { onexit }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const sim = $derived(simById(app.sim));
 	const actions = $derived(app.store.actionsIn(app.mode));
 	const clashing = $derived(app.store.clashes[app.mode]);

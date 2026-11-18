@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import Brand from './Brand.svelte';
 
@@ -9,7 +9,7 @@
 	}
 
 	let { onexit }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const devices = $derived([
 		{ name: 'Keyboard', ready: true },
 		...app.roles.map((r) => ({

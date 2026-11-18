@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { Preflight, setPreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { OrbitalPreflight, setOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { TICK_MS } from '#lib/orbital-preflight/flight.ts';
 	import { presetSources } from '#lib/orbital-preflight/presets.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
@@ -18,8 +18,8 @@
 	import Viewport from './Viewport.svelte';
 
 	/** The one page: fly view, binds, deck, drawers and the full editor, sharing one store. */
-	const app = new Preflight(site, base, presetSources);
-	setPreflight(app);
+	const app = new OrbitalPreflight(site, base, presetSources);
+	setOrbitalPreflight(app);
 
 	let opener: HTMLElement | null = $state(null);
 	let editorButton: HTMLElement | null = null;

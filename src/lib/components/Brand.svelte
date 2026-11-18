@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 
 	/**
 	 * The mark and wordmark from the config. The framework default is the wordmark alone;
@@ -10,7 +10,7 @@
 	}
 
 	let { size = 28 }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const brand = $derived(app.config.brand);
 </script>
 

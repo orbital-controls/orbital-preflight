@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { asset } from '$app/paths';
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { presetHref } from '#lib/orbital-preflight/presets.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import FilePicker from './FilePicker.svelte';
@@ -13,7 +13,7 @@
 	}
 
 	let { onclose }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const sim = $derived(simById(app.sim));
 	const changes = $derived(app.store.changes);
 	const current = $derived(app.store.file?.origin);

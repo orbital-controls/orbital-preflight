@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
 	import type { Action } from '#lib/orbital-preflight/types.ts';
 
@@ -9,7 +9,7 @@
 	}
 
 	let { action }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 
 	const cap = $derived(app.cap!);
 	const slot = $derived(cap.target.slot);

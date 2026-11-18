@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { usePreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 
 	/** "Choose a file": a real file input under a styled label. Read with FileReader, never uploaded. */
@@ -8,7 +8,7 @@
 	}
 
 	let { id }: Props = $props();
-	const app = usePreflight();
+	const app = useOrbitalPreflight();
 	const sim = $derived(simById(app.sim));
 
 	async function change(event: Event & { currentTarget: HTMLInputElement }) {
