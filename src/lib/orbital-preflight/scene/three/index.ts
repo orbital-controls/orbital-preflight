@@ -13,6 +13,7 @@ import type { PartTargets } from '../targets.ts';
 import { readPalette } from './palette.ts';
 import { ShipScene, type FrameInput, type ModeScene } from './ship-scene.ts';
 import { glowTexture, reflectionScene } from './space.ts';
+import { SrvScene } from './srv-scene.ts';
 
 /**
  * The 3D viewport's engine, loaded with a dynamic import so three.js stays out of the
@@ -33,6 +34,10 @@ export interface EngineOptions {
 	/** Cap on the device pixel ratio. */
 	maxPixelRatio?: number;
 	reducedMotion: boolean;
+	/** The mode whose scene to build first. */
+	mode: Mode;
+	/** A mode's scene was built (or `null`: none is up). */
+	onscene?: (mode: Mode | null) => void;
 }
 
 export interface Engine {
@@ -43,13 +48,18 @@ export interface Engine {
 	ready: Promise<void>;
 	/** Modes with a 3D scene. The others keep their 2D placeholder. */
 	supports(mode: Mode): boolean;
+	/**
+	 * Shows `mode`: builds its scene and disposes the last one, at once (no transition).
+	 * A mode with no 3D scene just disposes the last one.
+	 */
+	select(mode: Mode): void;
 	setRunning(running: boolean): void;
 	resize(width: number, height: number): void;
 	/** Rolling average CPU time per frame (update + render), and the frame interval, in ms. */
 	stats(): { frameMs: number; intervalMs: number };
 	targets(): PartTargets | null;
-	/** The ship model, for the part-contract check. */
-	model(): Object3D;
+	/** The model on show, for the part-contract check. */
+	model(): Object3D | null;
 	dispose(): void;
 }
 
@@ -64,26 +74,66 @@ export function createEngine(options: EngineOptions): Engine {
 	renderer.toneMapping = ACESFilmicToneMapping;
 	renderer.toneMappingExposure = 1.05;
 
-	const scene = new Scene();
 	const glow = glowTexture();
 	let env: Texture | null = null;
-	let scenes: Partial<Record<Mode, ModeScene>>;
+	let palette: ReturnType<typeof readPalette>;
 	try {
-		const palette = readPalette(options.themeRoot);
-		scene.background = palette.ground.clone();
+		palette = readPalette(options.themeRoot);
 		const pmrem = new PMREMGenerator(renderer);
 		const room = new Scene();
 		room.add(reflectionScene(palette));
 		env = pmrem.fromScene(room, 0.04).texture;
-		scene.environment = env;
 		pmrem.dispose();
 		disposeTree(room);
-		scenes = {
-			ship: new ShipScene(scene, palette, glow, { dust: options.reducedMotion ? 420 : 900 })
-		};
+	} catch (error) {
+		env?.dispose();
+		glow.dispose();
+		renderer.dispose();
+		renderer.forceContextLoss();
+		throw error;
+	}
+	// Shared across scenes, so a scene's disposal leaves them alone.
+	const shared = new Set<Texture>(env ? [glow, env] : [glow]);
+
+	const stage = () => {
+		const scene = new Scene();
+		scene.background = palette.ground.clone();
+		scene.environment = env;
+		return scene;
+	};
+	const factories: Partial<Record<Mode, () => ModeScene>> = {
+		ship: () => new ShipScene(stage(), palette, glow, { dust: options.reducedMotion ? 420 : 900 }),
+		srv: () => new SrvScene(stage(), palette, glow, { reducedMotion: options.reducedMotion })
+	};
+	let active: { mode: Mode; scene: ModeScene } | null = null;
+	let size = { width: 900, height: 560 };
+
+	const drop = () => {
+		if (!active) return;
+		active.scene.dispose();
+		disposeTree(active.scene.scene, shared);
+		active = null;
+	};
+	const select = (mode: Mode) => {
+		if (active?.mode === mode) return;
+		drop();
+		const make = factories[mode];
+		if (!make) {
+			options.onscene?.(null);
+			return;
+		}
+		const scene = make();
+		scene.camera.aspect = size.width / size.height;
+		scene.camera.updateProjectionMatrix();
+		active = { mode, scene };
+		options.onscene?.(mode);
+	};
+
+	try {
+		select(options.mode);
 	} catch (error) {
 		// Half-built: release the context before the page falls back.
-		disposeTree(scene);
+		drop();
 		env?.dispose();
 		glow.dispose();
 		renderer.dispose();
@@ -93,13 +143,14 @@ export function createEngine(options: EngineOptions): Engine {
 
 	// Compile in the background where the driver can (KHR_parallel_shader_compile). Where
 	// it can't, the first frame compiles, as it would anyway.
-	const ship = scenes.ship!;
-	const ready = renderer.extensions.has('KHR_parallel_shader_compile')
-		? renderer.compileAsync(ship.scene, ship.camera).then(
-				() => undefined,
-				() => undefined
-			)
-		: Promise.resolve();
+	const first = active as { scene: ModeScene } | null;
+	const ready =
+		first && renderer.extensions.has('KHR_parallel_shader_compile')
+			? renderer.compileAsync(first.scene.scene, first.scene.camera).then(
+					() => undefined,
+					() => undefined
+				)
+			: Promise.resolve();
 
 	let frame = 0;
 	let running = false;
@@ -112,20 +163,21 @@ export function createEngine(options: EngineOptions): Engine {
 		if (last) intervalMs += (now - last - intervalMs) * 0.05;
 		last = now;
 		const input = options.read();
-		const active = scenes[input.mode];
-		if (active) {
-			const t0 = performance.now();
-			try {
-				active.update(input, dt);
-				renderer.render(active.scene, active.camera);
-			} catch (error) {
-				// One bad frame would throw on every frame after it: stop and fall back.
-				running = false;
-				console.error(error);
-				options.onfail();
-				return;
+		const t0 = performance.now();
+		try {
+			select(input.mode);
+			const shown = active as { scene: ModeScene } | null;
+			if (shown) {
+				shown.scene.update(input, dt);
+				renderer.render(shown.scene.scene, shown.scene.camera);
+				frameMs += (performance.now() - t0 - frameMs) * 0.05;
 			}
-			frameMs += (performance.now() - t0 - frameMs) * 0.05;
+		} catch (error) {
+			// One bad frame would throw on every frame after it: stop and fall back.
+			running = false;
+			console.error(error);
+			options.onfail();
+			return;
 		}
 		if (running) frame = requestAnimationFrame(loop);
 	};
@@ -140,7 +192,17 @@ export function createEngine(options: EngineOptions): Engine {
 
 	return {
 		ready,
-		supports: (mode) => Boolean(scenes[mode]),
+		supports: (mode) => Boolean(factories[mode]),
+		select(mode) {
+			try {
+				select(mode);
+			} catch (error) {
+				running = false;
+				cancelAnimationFrame(frame);
+				console.error(error);
+				options.onfail();
+			}
+		},
 		setRunning(on) {
 			if (on === running) return;
 			running = on;
@@ -150,21 +212,21 @@ export function createEngine(options: EngineOptions): Engine {
 			} else cancelAnimationFrame(frame);
 		},
 		resize(width, height) {
+			size = { width, height };
 			renderer.setSize(width, height, false);
-			for (const s of Object.values(scenes)) {
-				s.camera.aspect = width / height;
-				s.camera.updateProjectionMatrix();
+			if (active) {
+				active.scene.camera.aspect = width / height;
+				active.scene.camera.updateProjectionMatrix();
 			}
 		},
 		stats: () => ({ frameMs, intervalMs }),
-		targets: () => scenes.ship?.targets() ?? null,
-		model: () => (scenes.ship as ShipScene).root,
+		targets: () => active?.scene.targets() ?? null,
+		model: () => active?.scene.root ?? null,
 		dispose() {
 			cancelAnimationFrame(frame);
 			running = false;
 			options.canvas.removeEventListener('webglcontextlost', onLost);
-			for (const s of Object.values(scenes)) s.dispose();
-			disposeTree(scene);
+			drop();
 			env?.dispose();
 			glow.dispose();
 			renderer.dispose();
@@ -173,15 +235,16 @@ export function createEngine(options: EngineOptions): Engine {
 	};
 }
 
-/** Frees every geometry, material and texture under `root`. */
-function disposeTree(root: Object3D) {
+/** Frees every geometry, material and texture under `root`, except the `keep` textures. */
+function disposeTree(root: Object3D, keep: ReadonlySet<Texture> = new Set()) {
 	root.traverse((o) => {
 		const mesh = o as Mesh;
 		mesh.geometry?.dispose();
 		const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
 		for (const material of materials) {
 			if (!(material instanceof Material)) continue;
-			for (const value of Object.values(material)) if (value instanceof Texture) value.dispose();
+			for (const value of Object.values(material))
+				if (value instanceof Texture && !keep.has(value)) value.dispose();
 			material.dispose();
 		}
 	});

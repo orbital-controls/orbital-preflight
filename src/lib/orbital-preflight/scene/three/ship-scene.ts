@@ -39,11 +39,14 @@ export interface FrameInput {
 	reducedMotion: boolean;
 	/** Dev only: swing the chase camera around the ship by this many degrees. */
 	orbit?: number;
+	/** Listening for a rebind: the SRV holds still (the ship keeps the mock flight's pace). */
+	frozen?: boolean;
 }
 
 /**
  * One mode's 3D world. The engine owns the renderer and the loop; a mode scene owns its
- * objects and camera. SRV and on-foot scenes plug in the same way.
+ * objects and camera. The engine builds one when its mode comes up and disposes it when
+ * the mode changes. An on-foot scene plugs in the same way.
  */
 export interface ModeScene {
 	readonly scene: Scene;
@@ -51,6 +54,8 @@ export interface ModeScene {
 	update(input: FrameInput, dt: number): void;
 	/** The HUD hook for the e2e tests and the PR's numbers: current part targets. */
 	targets(): PartTargets | null;
+	/** The model the part contract covers. */
+	readonly root: Object3D;
 	dispose(): void;
 }
 

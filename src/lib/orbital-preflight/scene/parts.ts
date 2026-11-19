@@ -1,9 +1,11 @@
 /**
- * The Lantern II part contract. The animation code finds every moving part by name, so
- * a glTF exported from Blender can replace the procedural mesh as long as it keeps these
- * names and pivots. See README.md in this folder.
+ * The part contracts for the 3D models: Lantern II (ship) and Wick LR (SRV). The
+ * animation finds every moving part by name, so a glTF exported from Blender can replace
+ * a procedural model as long as it keeps these names, parents and pivots. See README.md
+ * in this folder.
  *
- * Frame: +Y up, -Z forward (the nose), +X to starboard. 1 unit = 10 px of the 2D sheet.
+ * Both are in three.js space: +Y up, -Z forward (the nose), +X to starboard. Lantern II
+ * is 1 unit = 10 px of its 2D sheet; Wick LR is in metres.
  */
 
 export interface PartSpec {
@@ -97,11 +99,128 @@ export interface NamedNode {
 	getObjectByName(name: string): NamedNode | undefined;
 }
 
-/** Contract breaches in a ship model: missing parts, wrong parents, missing userData. */
-export function checkParts(root: NamedNode): string[] {
+/** The Wick LR (SRV) part contract. See README.md. */
+export const WICK_ROOT = 'wick';
+
+const WHEEL_IDS = ['FL', 'FR', 'RL', 'RR'] as const;
+
+export const WICK_PARTS: readonly PartSpec[] = [
+	{ name: 'body', parent: WICK_ROOT, pivot: 'Static. Flat-shaded; the facets are the look.' },
+	{ name: 'stripe', parent: WICK_ROOT, pivot: 'Static. The violet waist stripe.' },
+	{
+		name: 'cabinGlass',
+		parent: WICK_ROOT,
+		pivot: "Static. Dark tinted. Hidden from the driver's seat."
+	},
+	{
+		name: 'lightStrip',
+		parent: WICK_ROOT,
+		pivot: 'Static. Gold emissive, brighter with headlights.'
+	},
+	{ name: 'seatL', parent: WICK_ROOT, pivot: 'Static. The driver seat.' },
+	{ name: 'seatR', parent: WICK_ROOT, pivot: 'Static.' },
+	{ name: 'jumpSeat', parent: WICK_ROOT, pivot: 'Static.' },
+	{ name: 'dash', parent: WICK_ROOT, pivot: 'Static.' },
+	{
+		name: 'screenDrive',
+		parent: 'dash',
+		pivot: 'Static. Canvas texture: speed, gear, drive assist.'
+	},
+	{ name: 'screenRecall', parent: 'dash', pivot: 'Static. Canvas texture: the ship.' },
+	{ name: 'screenRange', parent: 'dash', pivot: 'Static. Canvas texture: fuel and spare cell.' },
+	{ name: 'rack', parent: WICK_ROOT, pivot: 'Static.' },
+	{ name: 'spareCell', parent: WICK_ROOT, pivot: 'Static.' },
+	{ name: 'cellSeam', parent: 'spareCell', pivot: 'Static. Gold; pulses on low fuel.' },
+	...WHEEL_IDS.flatMap((w) => [
+		{
+			name: `wheel${w}`,
+			parent: WICK_ROOT,
+			needs: ['restY', 'side'],
+			pivot:
+				'Wheel centre, axle along X. position.y = restY + travel; rotation (order YXZ): y steers (front only), x rolls.'
+		},
+		{ name: `wheelGlow${w}`, parent: `wheel${w}`, pivot: 'Static in the wheel. Gold glow ring.' },
+		{
+			name: `armUpper${w}`,
+			parent: WICK_ROOT,
+			needs: ['side', 'length'],
+			pivot: 'Inner (chassis) end. Rotates about Z so the outer end follows the wheel.'
+		},
+		{
+			name: `armLower${w}`,
+			parent: WICK_ROOT,
+			needs: ['side', 'length'],
+			pivot: 'Inner (chassis) end. Rotates about Z so the outer end follows the wheel.'
+		},
+		{
+			name: `damper${w}`,
+			parent: WICK_ROOT,
+			needs: ['restLength'],
+			pivot: 'Upper mount, pointing down (-Y). Aims at the lower arm’s outer end and stretches.'
+		},
+		{
+			name: `fender${w}`,
+			parent: WICK_ROOT,
+			needs: ['restY'],
+			pivot: 'Static shape. position.y = restY + the wheel’s travel; it does not steer.'
+		}
+	]),
+	{ name: 'noseLampL', parent: WICK_ROOT, pivot: 'Facing -Z. Gold; the headlight hangs off it.' },
+	{ name: 'noseLampR', parent: WICK_ROOT, pivot: 'Facing -Z. Gold; the headlight hangs off it.' },
+	{ name: 'tailLight', parent: WICK_ROOT, pivot: 'Static. Gold; brighter on brake and reverse.' },
+	{ name: 'hatch', parent: WICK_ROOT, pivot: 'Top edge (a hinge for later). Static for now.' },
+	{ name: 'winch', parent: WICK_ROOT, pivot: 'Drum axis, along X. Static for now.' },
+	{ name: 'winchHook', parent: 'winch', pivot: 'Top of the line, under the drum.' },
+	{
+		name: 'turretRing',
+		parent: WICK_ROOT,
+		pivot: 'Static collar on the deck. Violet; brightens when the turret is up.'
+	},
+	{
+		name: 'turret',
+		parent: WICK_ROOT,
+		needs: ['restY', 'lift'],
+		pivot: 'Base centre on the deck. position.y = restY + lift × the rise.'
+	},
+	{
+		name: 'turretHead',
+		parent: 'turret',
+		pivot: 'Turret axis. rotation.y yaws (0 = forward, left positive).'
+	},
+	{
+		name: 'turretGun',
+		parent: 'turretHead',
+		pivot: 'Trunnion. rotation.x pitches; the barrel runs along -Z.'
+	},
+	{
+		name: 'turretMuzzle',
+		parent: 'turretGun',
+		pivot: 'Barrel tip, facing -Z. Tracers start here.'
+	},
+	{ name: 'jetL', parent: WICK_ROOT, pivot: 'Nozzle centre, facing +Z (aft). Violet core.' },
+	{ name: 'jetR', parent: WICK_ROOT, pivot: 'Nozzle centre, facing +Z (aft). Violet core.' },
+	{
+		name: 'plumeL',
+		parent: 'jetL',
+		pivot: 'At the nozzle, along +Z. scale.z is the plume length.'
+	},
+	{ name: 'plumeR', parent: 'jetR', pivot: 'At the nozzle, along +Z. scale.z is the plume length.' }
+];
+
+export const WICK_PART_NAMES: readonly string[] = WICK_PARTS.map((p) => p.name);
+
+/**
+ * Contract breaches in a model: missing parts, wrong parents, missing userData. Checks
+ * the Lantern II unless given another contract.
+ */
+export function checkParts(
+	root: NamedNode,
+	parts: readonly PartSpec[] = PARTS,
+	rootName: string = SHIP_ROOT
+): string[] {
 	const problems: string[] = [];
-	if (root.name !== SHIP_ROOT) problems.push(`The root is "${root.name}", not "${SHIP_ROOT}"`);
-	for (const part of PARTS) {
+	if (root.name !== rootName) problems.push(`The root is "${root.name}", not "${rootName}"`);
+	for (const part of parts) {
 		const node = root.getObjectByName(part.name);
 		if (!node) {
 			problems.push(`Missing ${part.name}`);

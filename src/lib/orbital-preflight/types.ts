@@ -42,7 +42,7 @@ export interface Action {
 	local?: boolean;
 }
 
-export type AnalogRole = 'pitch' | 'roll' | 'yaw' | 'throttle';
+export type AnalogRole = 'pitch' | 'roll' | 'yaw' | 'throttle' | 'steer' | 'drive';
 
 export type HatDirection = 'up' | 'down' | 'left' | 'right';
 

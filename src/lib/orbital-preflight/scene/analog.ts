@@ -1,19 +1,26 @@
 import type { Action, BindingMap } from '../types.ts';
 
-/** Bound stick axes as the 3D scene reads them, each -1..1, with whether one is bound. */
+/** Bound stick axes as the 3D scene reads them, with whether each one is bound. */
 export interface Analog {
+	/** Ship: -1..1. */
 	pitch: number;
 	roll: number;
 	yaw: number;
+	/** SRV steering, -1 (left) .. 1 (right). */
+	steer: number;
+	/** SRV drive speed, 0 (stopped) .. 1 (full ahead). */
+	drive: number;
 	/** An axis is bound and the browser has reported it at least once. */
-	has: { pitch: boolean; roll: boolean; yaw: boolean };
+	has: { pitch: boolean; roll: boolean; yaw: boolean; steer: boolean; drive: boolean };
 }
 
 export const NO_ANALOG: Analog = {
 	pitch: 0,
 	roll: 0,
 	yaw: 0,
-	has: { pitch: false, roll: false, yaw: false }
+	steer: 0,
+	drive: 0,
+	has: { pitch: false, roll: false, yaw: false, steer: false, drive: false }
 };
 
 /** Below this, a centred stick reads as centred. */
@@ -26,12 +33,22 @@ function shape(value: number): number {
 }
 
 /**
- * The pitch, roll and yaw axes bound in `actions`, read from the hub's axis values
- * (`deviceId:axis` → -1..1). `axes` null means the ship is frozen: nothing reads.
+ * A throttle lever as forward drive, the way `setThrottle()` reads the ship's: full
+ * forward is -1, pulled back is +1 and means stopped. Elite can also run the drive axis
+ * full range (back half is reverse); that setting isn't in the binds file. UNVERIFIED.
+ */
+function lever(value: number): number {
+	const v = Math.max(0, Math.min(1, (1 - value) / 2));
+	return v < DEADZONE / 2 ? 0 : v;
+}
+
+/**
+ * The analogue axes bound in `actions`, read from the hub's axis values
+ * (`deviceId:axis` → -1..1). `axes` null means the vehicle is frozen: nothing reads.
  *
  * Signs are taken as the browser reports them: pushing the stick forward is negative on
- * most sticks, so it pitches the nose down, and right is positive for roll and yaw.
- * UNVERIFIED against Elite's own conventions and the file's Inverted flag.
+ * most sticks, so it pitches the nose down, and right is positive for roll, yaw and
+ * steering. UNVERIFIED against Elite's own conventions and the file's Inverted flag.
  */
 export function analogAxes(
 	actions: readonly Action[],
@@ -39,16 +56,16 @@ export function analogAxes(
 	axes: ReadonlyMap<string, number> | null
 ): Analog {
 	if (!axes) return NO_ANALOG;
-	const out = { pitch: 0, roll: 0, yaw: 0, has: { pitch: false, roll: false, yaw: false } };
+	const out: Analog = { ...NO_ANALOG, has: { ...NO_ANALOG.has } };
 	for (const action of actions) {
 		const role = action.analog;
-		if (role !== 'pitch' && role !== 'roll' && role !== 'yaw') continue;
+		if (!role || role === 'throttle') continue;
 		const input = bindings[action.id]?.[0]?.input;
 		if (input?.kind !== 'axis' || input.half) continue;
 		const value = axes.get(`${input.deviceId}:${input.axis}`);
 		if (value === undefined) continue;
 		out.has[role] = true;
-		out[role] = shape(value);
+		out[role] = role === 'drive' ? lever(value) : shape(value);
 	}
 	return out;
 }

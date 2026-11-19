@@ -420,14 +420,15 @@ export class OrbitalPreflight {
 	}
 
 	/**
-	 * Bound pitch, roll and yaw axes as they are now, for the 3D scene to fly by. Nothing
-	 * while listening for a rebind or with a drawer open: the ship freezes, as the mock
-	 * flight does.
+	 * Bound axes in this mode as they are now, for the 3D scene to fly or drive by: pitch,
+	 * roll and yaw for the ship, steering and drive speed for the SRV. Nothing while
+	 * listening for a rebind or with a drawer open: the vehicle freezes, as the mock flight
+	 * does.
 	 */
 	analog = $derived.by((): Analog => {
-		const idle = this.cap !== null || this.drawer !== null || this.leaving || this.mode !== 'ship';
+		const idle = this.cap !== null || this.drawer !== null || this.leaving || this.mode === 'foot';
 		return analogAxes(
-			this.store.actionsIn('ship'),
+			this.store.actionsIn(this.mode),
 			this.store.bindings,
 			idle ? null : this.hub.axes
 		);

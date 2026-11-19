@@ -107,13 +107,15 @@ pnpm build          # static output in build/
 
 ### The 3D scene
 
-The ship view is a real-time three.js scene: the Lantern II flying in space, driven by the same mock flight state the HUD reads. `Viewport.svelte` mounts `Scene3D.svelte`, which loads the engine (`scene/three/`) with a dynamic import, so three.js is a separate chunk fetched only when the viewport mounts. The scene reads `SceneProps` (`{ flight, mode }`) plus the bound stick axes once a frame, renders, and reports nothing back but whether WebGL came up. It never handles input. See [`scene/README.md`](./src/lib/orbital-preflight/scene/README.md) for the ship's part contract and how to swap in a glTF.
+The ship and SRV views are real-time three.js scenes: the Lantern II flying in space, and the Wick LR driving on a moon, both driven by the same mock flight state the HUD reads. `Viewport.svelte` mounts `Scene3D.svelte`, which loads the engine (`scene/three/`) with a dynamic import, so three.js is a separate chunk fetched only when the viewport mounts. The scene reads `SceneProps` (`{ flight, mode }`) plus the bound stick axes once a frame, renders, and reports nothing back but whether WebGL came up. It never handles input. Switching mode swaps scenes at once: the engine builds the new mode's scene and disposes the last one. See [`scene/README.md`](./src/lib/orbital-preflight/scene/README.md) for the part contracts and how to swap in a glTF.
 
-- **Falls back to the 2D placeholder** when WebGL isn't available or the context is lost, and in the SRV and on-foot modes, which have no 3D scene yet. A `scene` snippet passed to `Viewport` still replaces both.
+- **Falls back to the 2D placeholder** when WebGL isn't available or the context is lost, and on foot, which has no 3D scene yet. A `scene` snippet passed to `Viewport` still replaces both.
 - **Renders only when it's seen**: it pauses while the tab is hidden, the viewport is scrolled away, or a drawer, dialog or the full editor covers it, and disposes everything when it unmounts. The pixel ratio is capped at 1.5.
-- **Reduced motion**: no camera shake, fewer and shorter dust streaks.
-- **Analog axes**: a bound pitch, roll or yaw axis on a paired controller flies the ship directly; the digital binds still work. While the rebind card is listening, or a drawer is open, the axes are ignored, as every other input is.
-- **Toggle camera** switches between the chase camera and the pilot's seat. It is an Orbital Preflight action, not an Elite one: it's listed under Ship → Panels, bound to K by default and rebindable, but never written to an export. The viewport's camera button does the same.
+- **Reduced motion**: no camera shake, fewer and shorter dust streaks, and fewer, gentler wheel dust puffs.
+- **Analog axes**: a bound pitch, roll or yaw axis on a paired controller flies the ship directly, and a bound steering or drive speed axis drives the SRV; the digital binds still work. While the rebind card is listening, or a drawer is open, the axes are ignored, as every other input is, and the SRV holds still.
+- **Toggle camera** switches between the chase camera and the pilot's seat (the driver's seat in the SRV). It is an Orbital Preflight action, not an Elite one: it's listed under Panels in Ship and in SRV, bound to K by default and rebindable, but never written to an export. The view is shared by both modes. The viewport's camera button does the same.
+- **The SRV's turret** pops up out of the deck in turret mode and aims at the reticle, which the viewport draws over the 3D scene as the SRV placeholder does. It isn't on the v0.4 board yet; it follows the placeholder's turret.
+- **The SRV's moon** is a stand-in until a terrain is designed: seeded rolling ground, mounds, craters, rock-slab ramps and rocks (`scene/terrain.ts`). The drive model is kinematic, with no physics engine (`scene/drive.ts`).
 - **Frame time**: the canvas carries `data-op-frame-ms`, the rolling average CPU time per frame (update and render submit). In `pnpm dev`, `?op-orbit=135` swings the chase camera around the ship to look at it from another side.
 
 ### Exports
@@ -130,8 +132,9 @@ These were written from memory, not checked against real files or devices, and a
 - **Export file naming** (`‹name›.4.0.binds`) and whether the game accepts any `PresetName`.
 - **Browser HOTAS limits**: how many buttons and axes Chrome and Firefox expose for a stick with 32+ buttons, axis order, and how each reports POV hats.
 - **Throttle axis direction**: full forward is taken as −1.
-- **Stick axis signs** for the 3D scene: stick forward reads negative (nose down), right is positive for roll and yaw, and the file's `Inverted` flag isn't applied.
-- **K for Toggle camera**: free in the shipped presets; not checked against Elite's own default binds.
+- **Stick axis signs** for the 3D scene: stick forward reads negative (nose down), right is positive for roll, yaw and SRV steering, and the file's `Inverted` flag isn't applied.
+- **SRV drive speed axis**: read as a forward-only lever like the ship's throttle (full forward −1 is full speed, pulled back is stopped). Elite can also run it full range, with the back half as reverse; that setting isn't in the binds file.
+- **K for Toggle camera**, in Ship and in SRV: free in the shipped presets; not checked against Elite's own default binds.
 
 ## Licence
 

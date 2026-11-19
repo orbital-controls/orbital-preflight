@@ -18,6 +18,20 @@ export const LOCAL_ACTIONS: readonly { action: Action; binding: Binding }[] = [
 		},
 		// K: free in the shipped presets and in Elite's own defaults as far as we know. UNVERIFIED.
 		binding: [{ input: { kind: 'key', code: 'KeyK' } }, null]
+	},
+	{
+		// The same toggle in SRV mode: chase camera or the driver's seat. Binds are per mode,
+		// so the SRV needs its own action; the view itself is shared with the ship's.
+		action: {
+			id: 'OrbitalPreflightToggleCameraSrv',
+			name: 'Toggle camera',
+			category: 'Panels',
+			mode: 'srv',
+			effect: 'camera',
+			local: true
+		},
+		// K again: free in the SRV in the shipped presets. UNVERIFIED against Elite's defaults.
+		binding: [{ input: { kind: 'key', code: 'KeyK' } }, null]
 	}
 ];
 

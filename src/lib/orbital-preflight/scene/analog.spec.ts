@@ -29,7 +29,46 @@ describe('analogAxes', () => {
 		const a = analogAxes(actions, bindings, axes);
 		expect(a.pitch).toBe(-1);
 		expect(a.roll).toBe(0);
-		expect(a.has).toEqual({ pitch: true, roll: true, yaw: false });
+		expect(a.has).toEqual({ pitch: true, roll: true, yaw: false, steer: false, drive: false });
+	});
+
+	it('reads the SRV steering axis centred and the drive axis as a forward lever', () => {
+		const srv: Action[] = [
+			{
+				id: 'SteeringAxis',
+				name: 'Steering',
+				category: 'Driving',
+				mode: 'srv',
+				axis: true,
+				analog: 'steer'
+			},
+			{
+				id: 'DriveSpeedAxis',
+				name: 'Drive speed',
+				category: 'Driving',
+				mode: 'srv',
+				axis: true,
+				analog: 'drive'
+			}
+		];
+		const srvBindings: BindingMap = {
+			SteeringAxis: [{ input: { kind: 'axis', deviceId: 'T16000M', axis: 'X' } }, null],
+			DriveSpeedAxis: [{ input: { kind: 'axis', deviceId: 'THR', axis: 'Z' } }, null]
+		};
+		const read = (x: number, z: number) =>
+			analogAxes(
+				srv,
+				srvBindings,
+				new Map([
+					['T16000M:X', x],
+					['THR:Z', z]
+				])
+			);
+		expect(read(1, -1)).toMatchObject({ steer: 1, drive: 1 });
+		expect(read(-0.03, 1)).toMatchObject({ steer: 0, drive: 0 });
+		expect(read(-1, 0).steer).toBe(-1);
+		expect(read(-1, 0).drive).toBeCloseTo(0.5);
+		expect(read(0, 0).has).toMatchObject({ steer: true, drive: true, pitch: false });
 	});
 
 	it('reports nothing for an axis the browser has not seen, or while frozen', () => {

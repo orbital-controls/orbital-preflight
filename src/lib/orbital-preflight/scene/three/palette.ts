@@ -1,7 +1,7 @@
 import { Color } from 'three';
 
 /**
- * The Lantern II livery. Hull greys are the ship's own; the accents follow the theme's
+ * The livery of the Lantern II and the Wick LR. Hull greys are the ship's own; the accents follow the theme's
  * variables (a fork's `theme` override recolours the ship's violet and gold too), with
  * the brand values as fallbacks.
  */
@@ -17,6 +17,8 @@ export interface Palette {
 	glass: Color;
 	amber: Color;
 	trim: Color;
+	/** Dark metal: the Wick LR's rack, spare cell and winch drum. */
+	metal: Color;
 }
 
 export function readPalette(el?: Element | null): Palette {
@@ -40,6 +42,7 @@ export function readPalette(el?: Element | null): Palette {
 		warning: new Color('#FF9A7A'),
 		glass: new Color('#10123A'),
 		amber: new Color('#FFA62B'),
-		trim: new Color('#2C2F5A')
+		trim: new Color('#2C2F5A'),
+		metal: new Color('#3A3D66')
 	};
 }
