@@ -13,11 +13,19 @@ export default defineConfig({
 	testMatch: '**/*.e2e.ts',
 	fullyParallel: true,
 	reporter: process.env.CI ? 'github' : 'list',
+	// Software WebGL compiles the 3D scene's shaders on the main thread, a second or more
+	// with several workers at once, so give assertions room past that one-off stall.
+	expect: { timeout: 10_000 },
 	use: {
 		trace: 'off',
 		viewport: { width: 1440, height: 1150 },
 		// Lets a local run use an already installed Chromium (PW_CHROMIUM_PATH).
-		launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined }
+		launchOptions: {
+			executablePath: process.env.PW_CHROMIUM_PATH || undefined,
+			// Software WebGL, so the 3D viewport tests run on machines and CI runners with no
+			// GPU. Chromium no longer falls back to it on its own.
+			args: ['--enable-unsafe-swiftshader']
+		}
 	},
 	projects: VARIANTS.map((v) => ({
 		name: v.name,

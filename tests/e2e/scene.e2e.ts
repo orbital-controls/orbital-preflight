@@ -30,20 +30,43 @@ test('Toggle camera is a bind in Panels, and the viewport button does the same',
 	await page.goto('./');
 	const canvas = page.locator(scene);
 	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
+	const toast = page.locator('[aria-live="polite"]');
+
+	// The button first, before any key: the left mouse button is Primary fire in the demo
+	// preset, and the button sits outside the mouse zone, so nothing fires.
+	const button = page.getByRole('button', { name: /Cockpit view/ });
+	await button.click();
+	await expect(canvas).toHaveAttribute('data-op-camera', 'cockpit');
+	await expect(button).toHaveAttribute('aria-pressed', 'true');
+	await expect(toast).toContainText('Press anything');
+	// A click doesn't focus it, so Space and Enter don't press it again.
+	await expect(button).not.toBeFocused();
+	await page.keyboard.press('Space');
+	await page.keyboard.press('Enter');
+	await expect(canvas).toHaveAttribute('data-op-camera', 'cockpit');
+
 	await page
 		.getByRole('group', { name: 'Category' })
 		.getByRole('button', { name: 'Panels', exact: true })
 		.click();
 	await expect(page.getByText('Toggle camera')).toBeVisible();
-
 	await page.keyboard.press('KeyK');
-	await expect(canvas).toHaveAttribute('data-op-camera', 'cockpit');
-	const button = page.getByRole('button', { name: /Cockpit view/ });
-	await expect(button).toHaveAttribute('aria-pressed', 'true');
-	await button.click();
 	await expect(canvas).toHaveAttribute('data-op-camera', 'chase');
-	// The button isn't a mouse bind: clicking it fired nothing else.
-	await expect(page.locator('[aria-live="polite"]')).toContainText('Toggle camera');
+	await expect(toast).toContainText('Toggle camera');
+});
+
+test('a lost WebGL context falls back to the placeholder', async ({ page }) => {
+	await page.goto('./');
+	const canvas = page.locator(scene);
+	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
+	await canvas.evaluate((el) => {
+		const gl = (el as HTMLCanvasElement).getContext('webgl2');
+		gl?.getExtension('WEBGL_lose_context')?.loseContext();
+	});
+	await expect(page.getByText(/PLACEHOLDER · 3D SCENE · SHIP/)).toBeVisible();
+	await expect(canvas).toHaveCount(0);
+	await page.keyboard.press('KeyU');
+	await expect(page.locator('[aria-live="polite"]')).toContainText('Deploy hardpoints');
 });
 
 test('without WebGL the 2D placeholder stays and the page still works', async ({ page }) => {
