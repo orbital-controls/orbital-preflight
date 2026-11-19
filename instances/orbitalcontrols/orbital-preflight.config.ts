@@ -11,7 +11,10 @@ export default defineConfig({
 	description:
 		'Load your Elite Dangerous binds, connect your stick and throttle, test every bind against a mock flight, rebind anything and export a new preset.',
 	siteName: 'Orbital Controls',
-	siteUrl: 'https://preflight.orbitalcontrols.com',
+	// Turn on once preflight.orbitalcontrols.com serves the app. Until then the site is
+	// at orbital-controls.github.io/orbital-preflight/, and a canonical pointing at the
+	// subdomain would send search engines and link previews to a page that isn't there.
+	// siteUrl: 'https://preflight.orbitalcontrols.com',
 	homeUrl: 'https://orbitalcontrols.com',
 	sim: 'elite-dangerous',
 	// Phil's own presets go in static/binds/ and here once there are real files.

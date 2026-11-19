@@ -58,7 +58,7 @@ The look comes from [`@orbital-controls/theme`](https://www.npmjs.com/package/@o
 
 ## Phil's instance: Preflight on orbitalcontrols.com
 
-Phil's instance lives in `instances/orbitalcontrols/`: its own config (title, `siteUrl`, `homeUrl: https://orbitalcontrols.com`; the brand is the default Orbital Controls mark and "Preflight", copied from the site's `Mark.svelte` into `src/lib/orbital-preflight/brand.ts`). It builds with:
+Phil's instance lives in `instances/orbitalcontrols/`: its own config (title, `homeUrl: https://orbitalcontrols.com`, and `siteUrl` commented out until the subdomain serves it; the brand is the default Orbital Controls mark and "Preflight", copied from the site's `Mark.svelte` into `src/lib/orbital-preflight/brand.ts`). It builds with:
 
 ```sh
 ORBITAL_PREFLIGHT_CONFIG=instances/orbitalcontrols/orbital-preflight.config.ts pnpm build
@@ -70,6 +70,7 @@ and deploys with the same GitHub Pages workflow as a fork, served at `preflight.
 2. Settings → Pages: Source _GitHub Actions_, custom domain `preflight.orbitalcontrols.com`, then tick _Enforce HTTPS_ once the certificate is issued.
 3. At the DNS host for orbitalcontrols.com, add a `CNAME` record from `preflight` to `orbital-controls.github.io`. Verifying the domain for the `orbital-controls` organisation (Settings → Pages → Verified domains) stops anyone else claiming it.
 4. Push to `main`. With a custom domain the base path is empty, so the app is served at the root.
+5. Uncomment `siteUrl` in `instances/orbitalcontrols/orbital-preflight.config.ts`, so the page gets its canonical and Open Graph tags.
 
 The build output is plain static files, so any static host works too.
 
