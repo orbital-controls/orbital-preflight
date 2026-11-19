@@ -167,12 +167,14 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 	}
 };
 
-/** The axes the 3D scene flies by. */
+/** The axes the 3D scene flies and drives by. */
 const ANALOG: Record<string, AnalogRole> = {
 	ThrottleAxis: 'throttle',
 	PitchAxisRaw: 'pitch',
 	RollAxisRaw: 'roll',
-	YawAxisRaw: 'yaw'
+	YawAxisRaw: 'yaw',
+	SteeringAxis: 'steer',
+	DriveSpeedAxis: 'drive'
 };
 
 interface Known {

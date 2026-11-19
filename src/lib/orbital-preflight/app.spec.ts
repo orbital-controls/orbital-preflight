@@ -65,6 +65,22 @@ describe('OrbitalPreflight', () => {
 		expect(app.analog.pitch).toBeGreaterThan(0.7);
 	});
 
+	it('K toggles the same camera in SRV mode, and the steering axis reaches the scene', () => {
+		const app = loaded();
+		app.setMode('srv');
+		app.onInput({ input: { kind: 'key', code: 'KeyK' }, pressed: true });
+		expect(app.flight.cam).toBe('cockpit');
+		expect(app.lastActs).toEqual(['OrbitalPreflightToggleCameraSrv']);
+		const steer = app.store.bindings.SteeringAxis[0]!.input;
+		if (steer.kind !== 'axis') throw new Error('expected an axis');
+		app.hub.axes.set(`${steer.deviceId}:${steer.axis}`, -0.9);
+		expect(app.analog.has.steer).toBe(true);
+		expect(app.analog.steer).toBeLessThan(-0.8);
+		expect(app.analog.has.pitch).toBe(false);
+		app.startCapture({ actionId: 'SteerLeftButton', slot: 0 });
+		expect(app.analog.steer).toBe(0);
+	});
+
 	it('the camera button is ignored while listening for a rebind or with a drawer open', () => {
 		const app = loaded();
 		app.startCapture({ actionId: 'SetSpeed50', slot: 0 });

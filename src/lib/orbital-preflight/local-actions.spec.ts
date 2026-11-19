@@ -41,12 +41,28 @@ describe('local actions', () => {
 
 	it('leaves a file alone that already has the id', () => {
 		const parsed = parseEliteBinds(source);
-		const id = LOCAL_ACTIONS[0].action.id;
+		const ids = LOCAL_ACTIONS.map((l) => [l.action.id, [null, null] as [null, null]]);
 		const already = {
 			...parsed,
-			bindings: { ...parsed.bindings, [id]: [null, null] as [null, null] }
+			bindings: { ...parsed.bindings, ...Object.fromEntries(ids) }
 		};
 		expect(withLocalActions(already)).toBe(already);
+	});
+
+	it('adds Toggle camera to the SRV panels too, bound to K, and never exports it', () => {
+		const parsed = withLocalActions(parseEliteBinds(source));
+		const camera = parsed.actions.find((a) => a.id === 'OrbitalPreflightToggleCameraSrv');
+		expect(camera).toMatchObject({
+			name: 'Toggle camera',
+			category: 'Panels',
+			mode: 'srv',
+			effect: 'camera',
+			local: true
+		});
+		expect(parsed.bindings.OrbitalPreflightToggleCameraSrv[0]).toEqual({
+			input: { kind: 'key', code: 'KeyK' }
+		});
+		expect(writeEliteBinds(parsed, parsed.bindings, 'Test')).not.toContain('OrbitalPreflight');
 	});
 
 	it('the camera effect toggles chase and cockpit', () => {
