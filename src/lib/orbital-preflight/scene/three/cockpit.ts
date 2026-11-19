@@ -7,7 +7,7 @@ import {
 	Group,
 	Mesh,
 	MeshBasicMaterial,
-	MeshStandardMaterial,
+	MeshLambertMaterial,
 	PlaneGeometry,
 	SphereGeometry,
 	SRGBColorSpace,
@@ -68,21 +68,10 @@ function screenTexture(): CanvasTexture {
 export function buildCockpit(p: Palette): Cockpit {
 	const group = new Group();
 	group.name = 'cockpit';
-	const shell = new MeshStandardMaterial({
-		color: new Color('#1A1C3A'),
-		roughness: 0.75,
-		metalness: 0.3
-	});
-	const panel = new MeshStandardMaterial({
-		color: new Color('#23264A'),
-		roughness: 0.6,
-		metalness: 0.35
-	});
-	const grip = new MeshStandardMaterial({
-		color: new Color('#2A2D4E'),
-		roughness: 0.5,
-		metalness: 0.2
-	});
+	// Lambert, not PBR: matte panels fill the screen from the seat, so this is the cheap win.
+	const shell = new MeshLambertMaterial({ color: new Color('#1A1C3A') });
+	const panel = new MeshLambertMaterial({ color: new Color('#23264A') });
+	const grip = new MeshLambertMaterial({ color: new Color('#2A2D4E') });
 
 	// Floor, side consoles and the sill under the windshield.
 	group.add(box([12.3, 19.8], [-5.2, 5.2], [ROOF, ROOF + 0.04], shell));

@@ -27,7 +27,7 @@ The animation finds every moving part by name, so a glTF exported from Blender c
 | `lantern`                              | (root)      | Ship origin. The engine sets its rotation (bank, pitch, heading) and lift.       |
 | `hull`                                 | `lantern`   | Static. Flat-shaded; the facets are the look.                                    |
 | `stripe`                               | `lantern`   | Static. Violet emissive, dimmed by silent running.                               |
-| `canopyGlass`                          | `lantern`   | Static. Smooth, one surface. Opacity drops in the cockpit camera.                |
+| `canopyGlass`                          | `lantern`   | Static. Smooth, one surface. Hidden in the cockpit camera.                       |
 | `pylonL`, `pylonR`                     | `lantern`   | Static.                                                                          |
 | `ringL`, `ringR`                       | `lantern`   | Ring centre, axis along Z. Rotates about Y with the yaw rate (up to 12°).        |
 | `ringGlowL`, `ringGlowR`               | ring        | Gold glow disc and hot core, deep in the duct. Colour and brightness animate.    |

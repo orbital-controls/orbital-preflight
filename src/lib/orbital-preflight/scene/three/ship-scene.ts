@@ -328,8 +328,9 @@ export class ShipScene implements ModeScene {
 		const cam = this.camera;
 		const cockpit = t.cockpit;
 		this.#cockpit.group.visible = cockpit;
-		this.#mat.glass.opacity = cockpit ? 0.08 : 0.94;
-		this.#mat.glass.depthWrite = !cockpit;
+		// From the seat the windshield is simply clear: skipping the glass saves a
+		// full-screen transparent pass.
+		this.#parts.canopyGlass.visible = !cockpit;
 		const fov = cockpit ? COCKPIT.fov : CHASE.fov;
 		if (cam.fov !== fov) {
 			cam.fov = fov;

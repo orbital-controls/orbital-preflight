@@ -26,7 +26,7 @@ export const PARTS: readonly PartSpec[] = [
 	{
 		name: 'canopyGlass',
 		parent: SHIP_ROOT,
-		pivot: 'Static. Its material opacity drops in the cockpit camera.'
+		pivot: 'Static. Hidden in the cockpit camera, so the windshield is clear.'
 	},
 	{ name: 'pylonL', parent: SHIP_ROOT, pivot: 'Static.' },
 	{ name: 'pylonR', parent: SHIP_ROOT, pivot: 'Static.' },
