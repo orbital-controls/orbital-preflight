@@ -40,7 +40,10 @@ The animation finds every moving part by name, so a glTF exported from Blender c
 | `gearDoorFL` … `gearDoorRR`            | `lantern`   | Outer edge of the belly door. Rotates about Z up to 100°, dropping outward.      |
 | `noseLight`                            | `lantern`   | Nose tip, facing −Z. Gold emissive; the floodlight (a `SpotLight`) hangs off it. |
 
-Signs: a part with `userData.openSign` (doors) opens toward `openSign × angle`; port parts are +1, starboard −1. Turrets carry `userData.stowedZ`.
+Required `userData` (`checkParts()` checks it):
+
+- Every door carries `openSign`, and opens to `rotation.z = openSign × angle`. Bay doors (opening up): port +1, starboard −1. Gear doors (dropping down): port −1, starboard +1.
+- Turrets carry `stowedZ`, their stowed `position.z`; deployed is `stowedZ − 1.8`.
 
 Materials are matched by role, not name: the engine recolours the materials it created. A glTF should be loaded and then have its materials swapped for `makeShipMaterials()`'s, by mesh name, until the art pipeline settles.
 

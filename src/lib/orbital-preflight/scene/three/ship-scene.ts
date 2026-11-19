@@ -60,7 +60,19 @@ const FORWARD = new Vector3(0, 0, -1);
 const YAW_RATE = 0.9;
 const PITCH_RATE = 0.85;
 const CHASE = { offset: new Vector3(0, 15, 64), pitch: -0.2, fov: 50 };
+const CHASE_TILT = new Quaternion().setFromAxisAngle(RIGHT, CHASE.pitch);
 const COCKPIT = { pitch: -0.1, fov: 74 };
+const COCKPIT_TILT = new Quaternion().setFromAxisAngle(RIGHT, COCKPIT.pitch);
+const EYE_POS = m(EYE.x, EYE.y, EYE.z);
+
+// Scratch objects, reused every frame so the loop allocates nothing.
+const _pathQ = new Quaternion();
+const _shipQ = new Quaternion();
+const _q = new Quaternion();
+const _euler = new Euler(0, 0, 0, 'XYZ');
+const _v = new Vector3();
+const _world = new Vector3();
+const _color = new Color();
 /** The HUD draws its target bracket here (px of the 900 × 560 viewport). */
 const CONTACT_PX = { x: 712, y: 132, w: 900, h: 560, range: 650 };
 
@@ -196,18 +208,17 @@ export class ShipScene implements ModeScene {
 		this.#trim = approach(this.#trim, t.trim + a.pitch * 0.12, 5, dt);
 		this.#lift = approach(this.#lift, t.lift > 0 ? 2.4 : t.lift < 0 ? -2.4 : 0, 3, dt);
 
-		const pathQ = new Quaternion()
+		const pathQ = _pathQ
 			.setFromAxisAngle(UP, -this.#heading)
-			.multiply(new Quaternion().setFromAxisAngle(RIGHT, this.#pitch));
-		const shipQ = pathQ
-			.clone()
-			.multiply(new Quaternion().setFromEuler(new Euler(this.#trim, 0, -this.#bank, 'XYZ')));
+			.multiply(_q.setFromAxisAngle(RIGHT, this.#pitch));
+		const shipQ = _shipQ
+			.copy(pathQ)
+			.multiply(_q.setFromEuler(_euler.set(this.#trim, 0, -this.#bank, 'XYZ')));
 		this.#ship.quaternion.copy(shipQ);
-		const shipUp = UP.clone().applyQuaternion(pathQ);
-		this.#ship.position.copy(shipUp).multiplyScalar(this.#lift);
+		this.#ship.position.copy(UP).applyQuaternion(pathQ).multiplyScalar(this.#lift);
 
 		// Velocity catches up with the nose: slowly with flight assist off, so the ship drifts.
-		const want = FORWARD.clone().applyQuaternion(pathQ).multiplyScalar(t.speed);
+		const want = _v.copy(FORWARD).applyQuaternion(pathQ).multiplyScalar(t.speed);
 		this.#velocity.lerp(want, 1 - Math.exp(-t.follow * dt));
 
 		this.#animateParts(t, dt);
@@ -246,7 +257,7 @@ export class ShipScene implements ModeScene {
 		for (const id of ['FL', 'FR', 'RL', 'RR']) {
 			P[`gear${id}`].rotation.x = -OPEN_ANGLE.gearLeg * (1 - pose.leg);
 			const door = P[`gearDoor${id}`];
-			door.rotation.z = -door.userData.openSign * OPEN_ANGLE.gearDoor * pose.door;
+			door.rotation.z = door.userData.openSign * OPEN_ANGLE.gearDoor * pose.door;
 		}
 		for (const id of ['bayDoorL', 'bayDoorR']) {
 			P[id].rotation.z = P[id].userData.openSign * OPEN_ANGLE.bayDoor * this.#bay;
@@ -265,7 +276,7 @@ export class ShipScene implements ModeScene {
 		const g = this.#glow;
 		const heat = this.#heat * (0.85 + 0.15 * Math.sin(this.#t * 9));
 		// Idle burns a deep amber inside; boost is full gold.
-		const glowColor = p.gold.clone().lerp(p.warning, 0.55).lerp(p.gold, this.#gold);
+		const glowColor = _color.copy(p.gold).lerp(p.warning, 0.55).lerp(p.gold, this.#gold);
 		this.#mat.glow.color.copy(glowColor).multiplyScalar(g * 1.5);
 		this.#mat.core.color
 			.set('#FFF4D6')
@@ -298,7 +309,7 @@ export class ShipScene implements ModeScene {
 		dt: number,
 		reduced: boolean
 	) {
-		const world = new Vector3();
+		const world = _world;
 		this.#fireClock -= dt;
 		this.#fire2Clock -= dt;
 		if (t.fire && this.#turrets > 0.6 && this.#fireClock <= 0) {
@@ -320,7 +331,7 @@ export class ShipScene implements ModeScene {
 		}
 		if (events.heatSink) {
 			this.#ship.localToWorld(world.copy(m(-21, 0, 2.2)));
-			this.#fx.puff(world, UP.clone().applyQuaternion(shipQ), this.#velocity);
+			this.#fx.puff(world, _v.copy(UP).applyQuaternion(shipQ), this.#velocity);
 		}
 	}
 
@@ -337,26 +348,21 @@ export class ShipScene implements ModeScene {
 			cam.updateProjectionMatrix();
 		}
 		if (cockpit) {
-			cam.position
-				.copy(m(EYE.x, EYE.y, EYE.z))
-				.applyQuaternion(shipQ)
-				.add(this.#ship.position);
-			cam.quaternion.copy(shipQ).multiply(new Quaternion().setFromAxisAngle(RIGHT, COCKPIT.pitch));
+			cam.position.copy(EYE_POS).applyQuaternion(shipQ).add(this.#ship.position);
+			cam.quaternion.copy(shipQ).multiply(COCKPIT_TILT);
 			this.#camQ.copy(pathQ);
 		} else {
 			this.#camQ.slerp(pathQ, 1 - Math.exp(-3.5 * dt));
 			if (orbit) {
-				const q = pathQ
-					.clone()
+				const q = _q
+					.copy(pathQ)
 					.multiply(new Quaternion().setFromAxisAngle(UP, (orbit * Math.PI) / 180));
 				cam.position.copy(CHASE.offset).applyQuaternion(q);
 				cam.lookAt(0, 0, 0);
 				return;
 			}
 			cam.position.copy(CHASE.offset).applyQuaternion(this.#camQ);
-			cam.quaternion
-				.copy(this.#camQ)
-				.multiply(new Quaternion().setFromAxisAngle(RIGHT, CHASE.pitch));
+			cam.quaternion.copy(this.#camQ).multiply(CHASE_TILT);
 			if (t.shake > 0) {
 				cam.position.x += (Math.random() - 0.5) * t.shake;
 				cam.position.y += (Math.random() - 0.5) * t.shake;

@@ -12,6 +12,8 @@ export interface PartSpec {
 	parent: string;
 	/** Where its origin is, and what the animation does to it. */
 	pivot: string;
+	/** `userData` keys the animation reads (numbers). */
+	needs?: readonly string[];
 }
 
 export const SHIP_ROOT = 'lantern';
@@ -34,8 +36,18 @@ export const PARTS: readonly PartSpec[] = [
 	{ name: 'ringR', parent: SHIP_ROOT, pivot: 'Ring centre. Rotates about Y with yaw.' },
 	{ name: 'ringGlowL', parent: 'ringL', pivot: 'Static in the ring. Gold, scaled by the glow.' },
 	{ name: 'ringGlowR', parent: 'ringR', pivot: 'Static in the ring. Gold, scaled by the glow.' },
-	{ name: 'turretL', parent: 'ringL', pivot: 'Stowed in the ring front. Slides along -Z.' },
-	{ name: 'turretR', parent: 'ringR', pivot: 'Stowed in the ring front. Slides along -Z.' },
+	{
+		name: 'turretL',
+		parent: 'ringL',
+		pivot: 'Stowed in the ring front. Slides along -Z.',
+		needs: ['stowedZ']
+	},
+	{
+		name: 'turretR',
+		parent: 'ringR',
+		pivot: 'Stowed in the ring front. Slides along -Z.',
+		needs: ['stowedZ']
+	},
 	{ name: 'tailBlock', parent: SHIP_ROOT, pivot: 'Static.' },
 	{
 		name: 'rampDoor',
@@ -45,11 +57,13 @@ export const PARTS: readonly PartSpec[] = [
 	{
 		name: 'bayDoorL',
 		parent: SHIP_ROOT,
+		needs: ['openSign'],
 		pivot: 'Outer (port) edge on the roof. Rotates about Z, opening up and out.'
 	},
 	{
 		name: 'bayDoorR',
 		parent: SHIP_ROOT,
+		needs: ['openSign'],
 		pivot: 'Outer (starboard) edge on the roof. Rotates about Z, opening up and out.'
 	},
 	...(['FL', 'FR', 'RL', 'RR'] as const).flatMap((g) => [
@@ -61,6 +75,7 @@ export const PARTS: readonly PartSpec[] = [
 		{
 			name: `gearDoor${g}`,
 			parent: SHIP_ROOT,
+			needs: ['openSign'],
 			pivot: 'Outer edge of the belly door. Rotates about Z, dropping outward.'
 		}
 	]),
@@ -78,10 +93,11 @@ export const PART_NAMES: readonly string[] = PARTS.map((p) => p.name);
 export interface NamedNode {
 	name: string;
 	parent: NamedNode | null;
+	userData?: Record<string, unknown>;
 	getObjectByName(name: string): NamedNode | undefined;
 }
 
-/** Contract breaches in a ship model: missing parts, or parts under the wrong parent. */
+/** Contract breaches in a ship model: missing parts, wrong parents, missing userData. */
 export function checkParts(root: NamedNode): string[] {
 	const problems: string[] = [];
 	if (root.name !== SHIP_ROOT) problems.push(`The root is "${root.name}", not "${SHIP_ROOT}"`);
@@ -93,6 +109,10 @@ export function checkParts(root: NamedNode): string[] {
 		}
 		if (node.parent?.name !== part.parent)
 			problems.push(`${part.name} is under ${node.parent?.name ?? 'nothing'}, not ${part.parent}`);
+		for (const key of part.needs ?? []) {
+			if (typeof node.userData?.[key] !== 'number')
+				problems.push(`${part.name} has no userData.${key}`);
+		}
 	}
 	return problems;
 }

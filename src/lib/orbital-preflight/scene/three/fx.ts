@@ -26,6 +26,7 @@ import { random } from './space.ts';
  */
 
 const FORWARD = new Vector3(0, 0, -1);
+const _dir = new Vector3();
 
 interface Tracer {
 	mesh: Mesh;
@@ -131,7 +132,8 @@ export class Effects {
 		t.mesh.material = heavy ? this.#secondary : this.#primary;
 		t.mesh.scale.set(heavy ? 2.2 : 1, heavy ? 2.2 : 1, heavy ? 0.8 : 1);
 		t.mesh.quaternion.copy(q);
-		t.mesh.position.copy(from).addScaledVector(FORWARD.clone().applyQuaternion(q), 8);
+		_dir.copy(FORWARD).applyQuaternion(q);
+		t.mesh.position.copy(from).addScaledVector(_dir, 8);
 		t.vel
 			.copy(FORWARD)
 			.applyQuaternion(q)
@@ -173,7 +175,7 @@ export class Effects {
 			p.vel
 				.copy(up)
 				.multiplyScalar(6 + this.#rnd() * 6)
-				.add(new Vector3(this.#rnd() - 0.5, 0, this.#rnd() - 0.5).multiplyScalar(8))
+				.add(_dir.set(this.#rnd() - 0.5, 0, this.#rnd() - 0.5).multiplyScalar(8))
 				.add(velocity);
 			p.life = 1.4;
 			p.sprite.visible = true;

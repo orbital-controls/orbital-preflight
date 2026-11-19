@@ -18,7 +18,7 @@ describe('the Lantern II part contract', () => {
 		}
 	});
 
-	it('reports a missing part and a part under the wrong parent', () => {
+	it('reports a missing part, a wrong parent and missing userData', () => {
 		const node = (name: string, parent: NamedNode | null): NamedNode => ({
 			name,
 			parent,
@@ -28,9 +28,12 @@ describe('the Lantern II part contract', () => {
 		const hull = node('hull', root);
 		const ring = node('ringL', root);
 		const misplaced = node('turretL', root);
-		root.getObjectByName = (n) => ({ hull, ringL: ring, turretL: misplaced })[n];
+		const door = node('bayDoorL', root);
+		root.getObjectByName = (n) => ({ hull, ringL: ring, turretL: misplaced, bayDoorL: door })[n];
 		const problems = checkParts(root);
 		expect(problems).toContain('Missing ringR');
 		expect(problems).toContain('turretL is under lantern, not ringL');
+		expect(problems).toContain('turretL has no userData.stowedZ');
+		expect(problems).toContain('bayDoorL has no userData.openSign');
 	});
 });

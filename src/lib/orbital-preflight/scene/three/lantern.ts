@@ -404,6 +404,7 @@ function bay(mat: ShipMaterials): Group[] {
 		const seam = new LineSegments(new EdgesGeometry(panel.geometry), mat.edges);
 		seam.position.copy(panel.position);
 		door.add(seam);
+		// Rotating about Z by openSign × angle lifts the inner edge: +1 on port, −1 starboard.
 		door.userData.openSign = side;
 		out.push(door);
 	}
@@ -469,7 +470,8 @@ function gear(mat: ShipMaterials): Group[] {
 		const plate = mesh(new BoxGeometry(1.7, 0.1, 3.9), mat.hullLower);
 		plate.position.set(0.85 * side, -0.05, 0);
 		door.add(plate);
-		door.userData.openSign = side;
+		// Rotating about Z by openSign × angle drops the inner edge: −1 on port, +1 starboard.
+		door.userData.openSign = -side;
 		out.push(door);
 	}
 	return out;
