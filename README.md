@@ -102,11 +102,19 @@ pnpm build          # static output in build/
 | `src/lib/orbital-preflight/binds.svelte.ts` | The bind store: the file, the edits, undo per action, reset per mode, export.   |
 | `src/lib/orbital-preflight/flight.ts`       | The mock flight state machine and the HUD values. Pure.                         |
 | `src/lib/orbital-preflight/inputs/`         | Keyboard, mouse and Gamepad API input, and controller pairing.                  |
+| `src/lib/orbital-preflight/scene/`          | The 3D viewport: pure flight → part mappings, and the three.js engine.          |
 | `src/lib/components/`                       | One component per UI piece.                                                     |
 
-### Plugging in the 3D scene
+### The 3D scene
 
-`Viewport.svelte` takes an optional `scene` snippet. It receives `SceneProps` from `flight.ts`, `{ flight, mode }`, renders, and reports nothing back. The HUD is DOM on top and reads the same state, so it doesn't depend on the scene. Until a scene is passed, the boards' 2D placeholder draws.
+The ship view is a real-time three.js scene: the Lantern II flying in space, driven by the same mock flight state the HUD reads. `Viewport.svelte` mounts `Scene3D.svelte`, which loads the engine (`scene/three/`) with a dynamic import, so three.js is a separate chunk fetched only when the viewport mounts. The scene reads `SceneProps` (`{ flight, mode }`) plus the bound stick axes once a frame, renders, and reports nothing back but whether WebGL came up. It never handles input. See [`scene/README.md`](./src/lib/orbital-preflight/scene/README.md) for the ship's part contract and how to swap in a glTF.
+
+- **Falls back to the 2D placeholder** when WebGL isn't available or the context is lost, and in the SRV and on-foot modes, which have no 3D scene yet. A `scene` snippet passed to `Viewport` still replaces both.
+- **Renders only when it's seen**: it pauses while the tab is hidden, the viewport is scrolled away, or a drawer, dialog or the full editor covers it, and disposes everything when it unmounts. The pixel ratio is capped at 1.5.
+- **Reduced motion**: no camera shake, fewer and shorter dust streaks.
+- **Analog axes**: a bound pitch, roll or yaw axis on a paired controller flies the ship directly; the digital binds still work. While the rebind card is listening, or a drawer is open, the axes are ignored, as every other input is.
+- **Toggle camera** switches between the chase camera and the pilot's seat. It is an Orbital Preflight action, not an Elite one: it's listed under Ship → Panels, bound to K by default and rebindable, but never written to an export. The viewport's camera button does the same.
+- **Frame time**: the canvas carries `data-op-frame-ms`, the rolling average CPU time per frame (update and render submit). In `pnpm dev`, `?op-orbit=135` swings the chase camera around the ship to look at it from another side.
 
 ### Exports
 
@@ -122,6 +130,8 @@ These were written from memory, not checked against real files or devices, and a
 - **Export file naming** (`‹name›.4.0.binds`) and whether the game accepts any `PresetName`.
 - **Browser HOTAS limits**: how many buttons and axes Chrome and Firefox expose for a stick with 32+ buttons, axis order, and how each reports POV hats.
 - **Throttle axis direction**: full forward is taken as −1.
+- **Stick axis signs** for the 3D scene: stick forward reads negative (nose down), right is positive for roll and yaw, and the file's `Inverted` flag isn't applied.
+- **K for Toggle camera**: free in the shipped presets; not checked against Elite's own default binds.
 
 ## Licence
 

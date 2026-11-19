@@ -172,7 +172,8 @@ export function filterCounts(
 		all: inMode.length,
 		unbound: inMode.filter((a) => isUnbound(bindings[a.id])).length,
 		clashes: clashing.size,
-		changed: inMode.filter((a) => isChanged(bindings, original, a.id)).length
+		// Local actions are never exported, so a change to one isn't an unsaved change.
+		changed: inMode.filter((a) => !a.local && isChanged(bindings, original, a.id)).length
 	};
 }
 
@@ -198,6 +199,6 @@ export function matchesFilter(
 		case 'clashes':
 			return clashing.has(action.id);
 		case 'changed':
-			return isChanged(bindings, original, action.id);
+			return !action.local && isChanged(bindings, original, action.id);
 	}
 }

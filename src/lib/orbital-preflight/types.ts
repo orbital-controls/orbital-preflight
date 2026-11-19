@@ -30,7 +30,19 @@ export interface Action {
 	 * and scanners read keys separately from flight, so W can steer menus and pitch.
 	 */
 	context?: string;
+	/**
+	 * Which flight axis an analogue action drives, for the 3D scene: a bound stick or
+	 * throttle axis moves the ship directly rather than through the mock flight's steps.
+	 */
+	analog?: AnalogRole;
+	/**
+	 * Kept by Orbital Preflight, not by the sim: listed and rebindable like any other
+	 * action, but never written to an export (e.g. "Toggle camera").
+	 */
+	local?: boolean;
 }
+
+export type AnalogRole = 'pitch' | 'roll' | 'yaw' | 'throttle';
 
 export type HatDirection = 'up' | 'down' | 'left' | 'right';
 

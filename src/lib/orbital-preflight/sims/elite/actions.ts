@@ -1,4 +1,4 @@
-import type { Action, Mode } from '../../types.ts';
+import type { Action, AnalogRole, Mode } from '../../types.ts';
 
 /**
  * Readable names and categories for the Elite Dangerous actions people bind most.
@@ -167,6 +167,14 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 	}
 };
 
+/** The axes the 3D scene flies by. */
+const ANALOG: Record<string, AnalogRole> = {
+	ThrottleAxis: 'throttle',
+	PitchAxisRaw: 'pitch',
+	RollAxisRaw: 'roll',
+	YawAxisRaw: 'yaw'
+};
+
 interface Known {
 	name: string;
 	category: string;
@@ -242,6 +250,7 @@ export function describeAction(id: string, axisInFile: boolean): Action {
 			mode: known.mode,
 			...(known.axis && { axis: true }),
 			...(known.effect && { effect: known.effect }),
+			...(ANALOG[id] && { analog: ANALOG[id] }),
 			...(context && { context })
 		};
 	}
