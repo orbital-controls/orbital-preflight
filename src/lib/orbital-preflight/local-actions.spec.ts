@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { act, initialFlight } from './flight.ts';
 import { LOCAL_ACTIONS, withLocalActions } from './local-actions.ts';
+import { filterCounts } from './bindings.ts';
 import { parseEliteBinds, writeEliteBinds } from './sims/elite/index.ts';
+import type { Binding } from './types.ts';
 
 const source = readFileSync('tests/fixtures/hotas.binds', 'utf8');
 
@@ -51,5 +53,25 @@ describe('local actions', () => {
 		const once = act(initialFlight(), 'camera', 'Toggle camera');
 		expect(once.cam).toBe('cockpit');
 		expect(act(once, 'camera', 'Toggle camera').cam).toBe('chase');
+	});
+
+	it('leaves the default off when the file already uses K in ship mode', () => {
+		const taken = source.replace(
+			/<CycleNextTarget>\s*<Primary Device="[^"]*" Key="[^"]*"/,
+			'<CycleNextTarget>\n\t\t<Primary Device="Keyboard" Key="Key_K"'
+		);
+		expect(taken).not.toBe(source);
+		const parsed = withLocalActions(parseEliteBinds(taken));
+		expect(parsed.bindings.OrbitalPreflightToggleCamera).toEqual([null, null]);
+		expect(parsed.actions.some((a) => a.id === 'OrbitalPreflightToggleCamera')).toBe(true);
+	});
+
+	it('a rebound local action is not an unsaved change', () => {
+		const parsed = withLocalActions(parseEliteBinds(source));
+		const moved = {
+			...parsed.bindings,
+			OrbitalPreflightToggleCamera: [{ input: { kind: 'key', code: 'KeyP' } }, null] as Binding
+		};
+		expect(filterCounts(parsed.actions, moved, parsed.bindings, 'ship').changed).toBe(0);
 	});
 });

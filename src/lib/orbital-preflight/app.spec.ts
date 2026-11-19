@@ -64,4 +64,18 @@ describe('OrbitalPreflight', () => {
 		app.cancelCapture();
 		expect(app.analog.pitch).toBeGreaterThan(0.7);
 	});
+
+	it('the camera button is ignored while listening for a rebind or with a drawer open', () => {
+		const app = loaded();
+		app.startCapture({ actionId: 'SetSpeed50', slot: 0 });
+		app.toggleCamera();
+		expect(app.flight.cam).toBe('chase');
+		app.cancelCapture();
+		app.openDrawer('load');
+		app.toggleCamera();
+		expect(app.flight.cam).toBe('chase');
+		app.closeDrawer();
+		app.toggleCamera();
+		expect(app.flight.cam).toBe('cockpit');
+	});
 });

@@ -62,6 +62,11 @@ export class OrbitalPreflight {
 	remember = $state(false);
 	sim = $state<SimId>('elite-dangerous');
 	loadError = $state<string | null>(null);
+	/**
+	 * WebGL couldn't start, or the 3D scene failed mid-flight: the viewport keeps the 2D
+	 * placeholder for the rest of the visit, even when it remounts.
+	 */
+	sceneFailed = $state(false);
 
 	/**
 	 * Every device binds can name: the file's, then controllers plugged in that the file
@@ -428,8 +433,12 @@ export class OrbitalPreflight {
 		);
 	});
 
-	/** The viewport's camera button: the same as pressing a bound Toggle camera. */
+	/**
+	 * The viewport's camera button: the same as pressing a bound Toggle camera, so it's
+	 * ignored at the same times (listening for a rebind, a drawer or dialog open).
+	 */
 	toggleCamera() {
+		if (this.cap || this.drawer || this.leaving || !this.loaded) return;
 		this.flight = act(this.flight, 'camera', 'Toggle camera');
 	}
 

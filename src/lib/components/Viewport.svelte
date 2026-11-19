@@ -23,12 +23,14 @@
 	let { scene, onwhere }: Props = $props();
 	const app = useOrbitalPreflight();
 
-	/** `failed` falls back to the placeholder for the rest of the visit. */
-	let three = $state<'loading' | 'ready' | 'failed'>('loading');
+	/** WebGL came up. A failure is kept in `app.sceneFailed`, for the rest of the visit. */
+	let ready = $state(false);
 	/** Modes with a 3D scene so far. */
 	const IN_3D = new Set(['ship']);
-	const live = $derived(!scene && three === 'ready' && IN_3D.has(app.mode));
-	const covered = $derived(app.drawer !== null || app.leaving || app.editor);
+	const live = $derived(!scene && ready && !app.sceneFailed && IN_3D.has(app.mode));
+	// The full editor replaces the page, so the viewport unmounts (and the engine is
+	// disposed) rather than being covered.
+	const covered = $derived(app.drawer !== null || app.leaving);
 
 	const cameraKey = $derived.by(() => {
 		const action = app.store.actionsIn('ship').find((a) => a.effect === 'camera');
@@ -71,7 +73,9 @@
 	});
 </script>
 
-<!-- The camera button sits outside the mouse zone, so clicking it isn't a mouse bind. -->
+<!-- The camera button sits outside the mouse zone, so clicking it isn't a mouse bind, and a
+     click doesn't focus it, so Space or Enter pressed afterwards fly the ship rather than
+     pressing the button again. -->
 <div class="relative h-[560px] w-[900px]">
 	<div
 		data-op-mouse-zone
@@ -85,14 +89,17 @@
 					{#if !live}
 						<PlaceholderScene flight={app.flight} mode={app.mode} />
 					{/if}
-					{#if three !== 'failed'}
+					{#if !app.sceneFailed}
 						<div class={['absolute inset-0', { invisible: !live }]}>
 							<Scene3D
 								flight={app.flight}
 								mode={app.mode}
 								analog={app.analog}
 								covered={covered || !live}
-								onstatus={(status) => (three = status)}
+								onstatus={(status) => {
+									if (status === 'ready') ready = true;
+									else app.sceneFailed = true;
+								}}
 							/>
 						</div>
 					{/if}
@@ -127,6 +134,7 @@
 			type="button"
 			aria-pressed={app.flight.cam === 'cockpit'}
 			onclick={() => app.toggleCamera()}
+			onmousedown={(event) => event.preventDefault()}
 			class="absolute top-4 left-[256px] flex items-center gap-2 border border-course/40 bg-abyss/70 px-[10px] py-[5px] font-mono text-[11px] font-bold tracking-[.1em] text-ink-500 uppercase notch op-notch-xs hover:border-course aria-pressed:border-trail aria-pressed:text-trail"
 		>
 			<svg

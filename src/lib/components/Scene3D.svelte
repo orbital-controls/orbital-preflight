@@ -40,7 +40,7 @@
 		let gone = false;
 		let local: Engine | null = null;
 		import('#lib/orbital-preflight/scene/three/index.ts')
-			.then(({ createEngine }) => {
+			.then(async ({ createEngine }) => {
 				if (gone) return;
 				try {
 					local = createEngine({
@@ -48,13 +48,15 @@
 						themeRoot: canvas,
 						reducedMotion,
 						read: () => ({ flight, mode, analog, reducedMotion, orbit }),
-						onlost: () => onstatus('failed')
+						onfail: () => onstatus('failed')
 					});
 				} catch {
 					onstatus('failed');
 					return;
 				}
 				local.resize(canvas.clientWidth || 900, canvas.clientHeight || 560);
+				await local.ready;
+				if (gone) return;
 				engine = local;
 				onstatus('ready');
 			})

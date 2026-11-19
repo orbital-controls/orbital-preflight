@@ -1,3 +1,4 @@
+import { clashingActions } from './bindings.ts';
 import type { Action, Binding, ParsedBinds } from './types.ts';
 
 /**
@@ -20,16 +21,22 @@ export const LOCAL_ACTIONS: readonly { action: Action; binding: Binding }[] = [
 	}
 ];
 
-/** `parsed` with the local actions added, unless the file already has one by that id. */
+/**
+ * `parsed` with the local actions added, unless the file already has one by that id. A
+ * default bind the file already uses in that mode is left off, so adding the action never
+ * creates a clash or makes an existing key fire twice.
+ */
 export function withLocalActions(parsed: ParsedBinds): ParsedBinds {
 	const extra = LOCAL_ACTIONS.filter(({ action }) => !(action.id in parsed.bindings));
 	if (!extra.length) return parsed;
-	return {
-		...parsed,
-		actions: [...parsed.actions, ...extra.map((e) => e.action)],
-		bindings: {
-			...parsed.bindings,
-			...Object.fromEntries(extra.map((e) => [e.action.id, e.binding]))
-		}
+	const actions = [...parsed.actions, ...extra.map((e) => e.action)];
+	const bindings = {
+		...parsed.bindings,
+		...Object.fromEntries(extra.map((e) => [e.action.id, e.binding]))
 	};
+	for (const { action } of extra) {
+		if (clashingActions(actions, bindings, action.mode).has(action.id))
+			bindings[action.id] = [null, null];
+	}
+	return { ...parsed, actions, bindings };
 }
