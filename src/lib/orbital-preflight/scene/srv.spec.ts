@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { act, initialFlight, tick, type FlightState } from '../flight.ts';
 import { NO_ANALOG, type Analog } from './analog.ts';
-import { JET_GLOW, LOW_FUEL, MAX_SPEED, MAX_STEER, srvTargets, TAIL, wheelYaw } from './srv.ts';
+import {
+	JET_GLOW,
+	LOW_FUEL,
+	MAX_SPEED,
+	MAX_STEER,
+	srvTargets,
+	TAIL,
+	TURRET,
+	turretPitch,
+	turretPose,
+	wheelYaw
+} from './srv.ts';
 
 const flight = (patch: Partial<FlightState> = {}): FlightState => ({
 	...initialFlight(),
@@ -91,5 +102,42 @@ describe('srvTargets', () => {
 	it('the camera toggle picks the driver seat', () => {
 		expect(srvTargets(flight()).driver).toBe(false);
 		expect(srvTargets(act(flight(), 'camera', 'Toggle camera')).driver).toBe(true);
+	});
+
+	it('turret mode raises the turret; fire only counts in turret mode', () => {
+		expect(srvTargets(flight())).toMatchObject({ turret: false, fire: false, fire2: false });
+		const up = act(flight(), 'turret', 'Turret mode');
+		expect(srvTargets(up).turret).toBe(true);
+		expect(srvTargets(act(up, 'tFire', 'Primary fire')).fire).toBe(true);
+		expect(srvTargets(act(up, 'tFire2', 'Secondary fire')).fire2).toBe(true);
+		// Out of turret mode the mock flight refuses to fire, so nothing reaches the scene.
+		expect(srvTargets(act(flight(), 'tFire', 'Primary fire')).fire).toBe(false);
+	});
+});
+
+describe('the roof turret', () => {
+	it('stows facing aft, rises first, then swings to the aim', () => {
+		expect(turretPose(0, 0.3, 0.1)).toEqual({ lift: 0, yaw: TURRET.stowedYaw, pitch: 0 });
+		const rising = turretPose(0.3, 0.3, 0.1);
+		expect(rising.lift).toBeGreaterThan(0);
+		expect(rising.yaw).toBe(TURRET.stowedYaw);
+		const up = turretPose(1, 0.3, 0.1);
+		expect(up.lift).toBeCloseTo(TURRET.lift);
+		expect(up.yaw).toBeCloseTo(0.3);
+		expect(up.pitch).toBeCloseTo(0.1);
+	});
+
+	it('swings the short way round', () => {
+		// Aft-left is closer to the stowed yaw going left than going through the nose.
+		const yaw = turretPose(0.8, Math.PI - 0.5, 0).yaw;
+		expect(yaw).toBeGreaterThan(Math.PI - 0.5);
+		expect(yaw).toBeLessThanOrEqual(Math.PI);
+	});
+
+	it('keeps the barrel off the cabin glass ahead and the rack behind', () => {
+		expect(turretPitch(0, -0.5)).toBeCloseTo(TURRET.minPitchFront);
+		expect(turretPitch(Math.PI, -0.5)).toBeCloseTo(TURRET.minPitchRear);
+		expect(turretPitch(0, 2)).toBeCloseTo(TURRET.maxPitch);
+		expect(turretPitch(0.2, 0.1)).toBe(0.1);
 	});
 });

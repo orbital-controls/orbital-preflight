@@ -53,6 +53,11 @@ export interface SrvTargets {
 	shake: number;
 	/** The driver's seat camera rather than the chase camera. */
 	driver: boolean;
+	/** Turret mode: the roof turret rises and aims at the HUD's reticle. */
+	turret: boolean;
+	/** Primary and secondary turret fire, this tick. */
+	fire: boolean;
+	fire2: boolean;
 }
 
 export interface SrvOptions {
@@ -106,8 +111,56 @@ export function srvTargets(s: FlightState, analog?: Analog, options: SrvOptions 
 		cellPulse: s.fuel < LOW_FUEL,
 		dust: reduced ? 0.35 : 1,
 		shake: reduced ? 0 : jets ? 0.025 : 0,
-		driver: s.cam === 'cockpit'
+		driver: s.cam === 'cockpit',
+		turret: s.turret,
+		fire: s.turret && s.fireT > 0,
+		fire2: s.turret && s.fire2T > 0
 	};
+}
+
+/**
+ * The roof turret. It isn't on the v0.4 board: it follows the SRV placeholder's turret
+ * (StandFly), a roof mount with one long barrel aimed at the HUD's reticle.
+ */
+export const TURRET = {
+	/** How far the turret rises out of the deck, metres. */
+	lift: 0.32,
+	/** Stowed, it faces aft over the roof rack. */
+	stowedYaw: Math.PI,
+	maxPitch: (35 * Math.PI) / 180,
+	/** Lowest pitch over the cabin (front arc) and elsewhere (rack and sides). */
+	minPitchFront: (-5 * Math.PI) / 180,
+	minPitchRear: (-12 * Math.PI) / 180,
+	/** Half-width of the front arc, where the barrel passes over the cabin glass. */
+	frontArc: (70 * Math.PI) / 180
+} as const;
+
+/** Wraps an angle to -π..π. */
+export function wrapAngle(a: number): number {
+	return Math.atan2(Math.sin(a), Math.cos(a));
+}
+
+/** Turret pitch, clamped so the barrel clears the cabin glass ahead and the rack behind. */
+export function turretPitch(yaw: number, pitch: number): number {
+	const front = Math.abs(wrapAngle(yaw)) < TURRET.frontArc;
+	const min = front ? TURRET.minPitchFront : TURRET.minPitchRear;
+	return Math.max(min, Math.min(TURRET.maxPitch, pitch));
+}
+
+/**
+ * The turret's pose for deploy progress 0..1 and an aim (yaw relative to the nose,
+ * positive left; pitch up). It rises first, then swings to the aim; stowing reverses.
+ */
+export function turretPose(
+	progress: number,
+	aimYaw: number,
+	aimPitch: number
+): { lift: number; yaw: number; pitch: number } {
+	const p = Math.max(0, Math.min(1, progress));
+	const rise = Math.min(1, p / 0.55);
+	const swing = Math.max(0, (p - 0.45) / 0.55);
+	const yaw = TURRET.stowedYaw + wrapAngle(aimYaw - TURRET.stowedYaw) * swing;
+	return { lift: TURRET.lift * rise, yaw, pitch: turretPitch(yaw, aimPitch) * swing };
 }
 
 /** What the HUD-mirroring dash screens show. */

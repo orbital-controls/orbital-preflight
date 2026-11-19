@@ -114,6 +114,7 @@ The ship and SRV views are real-time three.js scenes: the Lantern II flying in s
 - **Reduced motion**: no camera shake, fewer and shorter dust streaks, and fewer, gentler wheel dust puffs.
 - **Analog axes**: a bound pitch, roll or yaw axis on a paired controller flies the ship directly, and a bound steering or drive speed axis drives the SRV; the digital binds still work. While the rebind card is listening, or a drawer is open, the axes are ignored, as every other input is, and the SRV holds still.
 - **Toggle camera** switches between the chase camera and the pilot's seat (the driver's seat in the SRV). It is an Orbital Preflight action, not an Elite one: it's listed under Panels in Ship and in SRV, bound to K by default and rebindable, but never written to an export. The view is shared by both modes. The viewport's camera button does the same.
+- **The SRV's turret** pops up out of the deck in turret mode and aims at the reticle, which the viewport draws over the 3D scene as the SRV placeholder does. It isn't on the v0.4 board yet; it follows the placeholder's turret.
 - **The SRV's moon** is a stand-in until a terrain is designed: seeded rolling ground, mounds, craters, rock-slab ramps and rocks (`scene/terrain.ts`). The drive model is kinematic, with no physics engine (`scene/drive.ts`).
 - **Frame time**: the canvas carries `data-op-frame-ms`, the rolling average CPU time per frame (update and render submit). In `pnpm dev`, `?op-orbit=135` swings the chase camera around the ship to look at it from another side.
 

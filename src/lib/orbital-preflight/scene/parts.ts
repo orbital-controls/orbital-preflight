@@ -171,6 +171,32 @@ export const WICK_PARTS: readonly PartSpec[] = [
 	{ name: 'hatch', parent: WICK_ROOT, pivot: 'Top edge (a hinge for later). Static for now.' },
 	{ name: 'winch', parent: WICK_ROOT, pivot: 'Drum axis, along X. Static for now.' },
 	{ name: 'winchHook', parent: 'winch', pivot: 'Top of the line, under the drum.' },
+	{
+		name: 'turretRing',
+		parent: WICK_ROOT,
+		pivot: 'Static collar on the deck. Violet; brightens when the turret is up.'
+	},
+	{
+		name: 'turret',
+		parent: WICK_ROOT,
+		needs: ['restY', 'lift'],
+		pivot: 'Base centre on the deck. position.y = restY + lift × the rise.'
+	},
+	{
+		name: 'turretHead',
+		parent: 'turret',
+		pivot: 'Turret axis. rotation.y yaws (0 = forward, left positive).'
+	},
+	{
+		name: 'turretGun',
+		parent: 'turretHead',
+		pivot: 'Trunnion. rotation.x pitches; the barrel runs along -Z.'
+	},
+	{
+		name: 'turretMuzzle',
+		parent: 'turretGun',
+		pivot: 'Barrel tip, facing -Z. Tracers start here.'
+	},
 	{ name: 'jetL', parent: WICK_ROOT, pivot: 'Nozzle centre, facing +Z (aft). Violet core.' },
 	{ name: 'jetR', parent: WICK_ROOT, pivot: 'Nozzle centre, facing +Z (aft). Violet core.' },
 	{

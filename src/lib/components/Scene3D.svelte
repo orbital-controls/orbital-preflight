@@ -118,6 +118,7 @@
 	data-op-scene-mode={shown ?? 'none'}
 	data-op-steer={Math.round((srv.steer * 180) / Math.PI)}
 	data-op-jets={srv.jets ? 'boost' : 'idle'}
+	data-op-turret={srv.turret ? 'up' : 'stowed'}
 	data-op-camera={flight.cam}
 	data-op-frame-ms={frameMs}
 	class="absolute inset-0 size-full {flight.nv ? 'op-nv' : ''}"

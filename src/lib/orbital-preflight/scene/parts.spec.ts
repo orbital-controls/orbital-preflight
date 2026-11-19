@@ -84,7 +84,12 @@ describe('the Wick LR part contract', () => {
 			'jetL',
 			'jetR',
 			'plumeL',
-			'plumeR'
+			'plumeR',
+			'turret',
+			'turretRing',
+			'turretHead',
+			'turretGun',
+			'turretMuzzle'
 		])
 			expect(WICK_PART_NAMES).toContain(name);
 		for (const id of ['FL', 'FR', 'RL', 'RR'])

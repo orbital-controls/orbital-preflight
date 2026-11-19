@@ -79,32 +79,39 @@ The SRV is built the same way (`wick.ts`, from the StandWickLR3D v0.4 block-out)
 
 **Frame:** three.js, +Y up, −Z forward (the nose), +X to the right, in metres. The origin is on the ground between the axles (block-out x = 2.69). The block-out's own numbers (x forward from the tail, y to the left, z up) go through `w()` in `wick.ts`. Each part's origin is its pivot; rest pose is the vehicle standing still on flat ground.
 
-| Name                                         | Parent      | Pivot and motion                                                                                                                     |
-| -------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `wick`                                       | (root)      | Model origin. The scene sets its position and rotation (heading, then pitch, then roll) from the drive model.                        |
-| `body`                                       | `wick`      | Static. Flat-shaded. Carries the door outline and handle, the panel seams and the step.                                              |
-| `stripe`                                     | `wick`      | Static. The violet waist stripe.                                                                                                     |
-| `cabinGlass`                                 | `wick`      | Static. Dark tinted, transparent. Hidden from the driver's seat (its edges, `cabinFrame`, stay).                                     |
-| `lightStrip`                                 | `wick`      | Static. Gold; brighter with the headlights. A top face only, with a thin lip along the glass's front-top edge.                       |
-| `seatL`, `seatR`, `jumpSeat`                 | `wick`      | Static.                                                                                                                              |
-| `dash`                                       | `wick`      | Static.                                                                                                                              |
-| `screenDrive`, `screenRecall`, `screenRange` | `dash`      | Static. Canvas textures mirroring the HUD: speed and drive assist; the ship; fuel and the spare cell.                                |
-| `rack`, `spareCell`                          | `wick`      | Static.                                                                                                                              |
-| `cellSeam`                                   | `spareCell` | Static. Gold; pulses on low fuel (steady with reduced motion).                                                                       |
-| `wheelFL`, `wheelFR`, `wheelRL`, `wheelRR`   | `wick`      | Wheel centre, axle along X, rotation order YXZ. `position.y = restY + travel`; `rotation.y` steers (front only), `rotation.x` rolls. |
-| `wheelGlowFL` …                              | the wheel   | Static in the wheel. The gold glow ring.                                                                                             |
-| `armUpperFL`, `armLowerFL` …                 | `wick`      | Inner (chassis) end. `rotation.z = −side × asin(travel / length)`, so the outer end follows the wheel.                               |
-| `damperFL` …                                 | `wick`      | Upper mount, pointing down (−Y). Aimed at the lower arm, `damperAt` along it, and stretched (`scale.y`).                             |
-| `fenderFL` …                                 | `wick`      | `position.y = restY + travel`: rides with its wheel, doesn't steer.                                                                  |
-| `noseLampL`, `noseLampR`                     | `wick`      | Set into the upper nose facet. Gold; one headlight `SpotLight` sits between them.                                                    |
-| `tailLight`                                  | `wick`      | Static. Gold; brighter on brake and reverse.                                                                                         |
-| `hatch`                                      | `wick`      | Top edge (a hinge for later). Static for now.                                                                                        |
-| `winch`                                      | `wick`      | Drum axis, along X. Static for now.                                                                                                  |
-| `winchHook`                                  | `winch`     | Top of the line, under the drum.                                                                                                     |
-| `jetL`, `jetR`                               | `wick`      | Nozzle centre, facing +Z (aft). The violet core: dim at idle, bright when the jets fire.                                             |
-| `plumeL`, `plumeR`                           | the jet     | At the nozzle, along +Z, angled down. `scale.z` is the plume length; hidden at idle.                                                 |
+| Name                                         | Parent       | Pivot and motion                                                                                                                     |
+| -------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `wick`                                       | (root)       | Model origin. The scene sets its position and rotation (heading, then pitch, then roll) from the drive model.                        |
+| `body`                                       | `wick`       | Static. Flat-shaded. Carries the door outline and handle, the panel seams and the step.                                              |
+| `stripe`                                     | `wick`       | Static. The violet waist stripe.                                                                                                     |
+| `cabinGlass`                                 | `wick`       | Static. Dark tinted, transparent. Hidden from the driver's seat (its edges, `cabinFrame`, stay).                                     |
+| `lightStrip`                                 | `wick`       | Static. Gold; brighter with the headlights. A top face only, with a thin lip along the glass's front-top edge.                       |
+| `seatL`, `seatR`, `jumpSeat`                 | `wick`       | Static.                                                                                                                              |
+| `dash`                                       | `wick`       | Static.                                                                                                                              |
+| `screenDrive`, `screenRecall`, `screenRange` | `dash`       | Static. Canvas textures mirroring the HUD: speed and drive assist; the ship; fuel and the spare cell.                                |
+| `rack`, `spareCell`                          | `wick`       | Static.                                                                                                                              |
+| `cellSeam`                                   | `spareCell`  | Static. Gold; pulses on low fuel (steady with reduced motion).                                                                       |
+| `wheelFL`, `wheelFR`, `wheelRL`, `wheelRR`   | `wick`       | Wheel centre, axle along X, rotation order YXZ. `position.y = restY + travel`; `rotation.y` steers (front only), `rotation.x` rolls. |
+| `wheelGlowFL` …                              | the wheel    | Static in the wheel. The gold glow ring.                                                                                             |
+| `armUpperFL`, `armLowerFL` …                 | `wick`       | Inner (chassis) end. `rotation.z = −side × asin(travel / length)`, so the outer end follows the wheel.                               |
+| `damperFL` …                                 | `wick`       | Upper mount, pointing down (−Y). Aimed at the lower arm, `damperAt` along it, and stretched (`scale.y`).                             |
+| `fenderFL` …                                 | `wick`       | `position.y = restY + travel`: rides with its wheel, doesn't steer.                                                                  |
+| `noseLampL`, `noseLampR`                     | `wick`       | Set into the upper nose facet. Gold; one headlight `SpotLight` sits between them.                                                    |
+| `tailLight`                                  | `wick`       | Static. Gold; brighter on brake and reverse.                                                                                         |
+| `hatch`                                      | `wick`       | Top edge (a hinge for later). Static for now.                                                                                        |
+| `winch`                                      | `wick`       | Drum axis, along X. Static for now.                                                                                                  |
+| `winchHook`                                  | `winch`      | Top of the line, under the drum.                                                                                                     |
+| `turretRing`                                 | `wick`       | Static collar on the deck between the cabin and the rack. Violet; brightens when the turret is up.                                   |
+| `turret`                                     | `wick`       | Base centre on the deck. `position.y = restY + lift × rise`.                                                                         |
+| `turretHead`                                 | `turret`     | Turret axis. `rotation.y` yaws (0 = forward, left positive); stowed facing aft (π).                                                  |
+| `turretGun`                                  | `turretHead` | Trunnion. `rotation.x` pitches; the barrel runs along −Z.                                                                            |
+| `turretMuzzle`                               | `turretGun`  | Barrel tip, facing −Z. Tracers start here; the gold muzzle flash hangs off it.                                                       |
+| `jetL`, `jetR`                               | `wick`       | Nozzle centre, facing +Z (aft). The violet core: dim at idle, bright when the jets fire.                                             |
+| `plumeL`, `plumeR`                           | the jet      | At the nozzle, along +Z, angled down. `scale.z` is the plume length; hidden at idle.                                                 |
 
-Required `userData` (`checkParts()` checks it): wheels carry `restY` and `side` (+1 left, −1 right); arms carry `side` and `length`; dampers carry `restLength`; fenders carry `restY`.
+Required `userData` (`checkParts()` checks it): wheels carry `restY` and `side` (+1 left, −1 right); arms carry `side` and `length`; dampers carry `restLength`; fenders carry `restY`; `turret` carries `restY` and `lift`.
+
+The roof turret is **not on the v0.4 board**. It follows the SRV placeholder's turret (StandFly): a roof mount with one long barrel, aimed at the reticle, firing gold (primary) or the warning colour (secondary). It pops up between the cabin and the rack: stowed, it sits low facing aft over the rack, mostly hidden behind the cabin; in turret mode it rises 0.32 m, clear of the glass. Its pitch is clamped so the barrel clears the cabin ahead and the rack behind (`turretPitch()` in `srv.ts`).
 
 ### What the SRV reacts to
 
@@ -118,6 +125,9 @@ Required `userData` (`checkParts()` checks it): wheels carry `restY` and `side` 
 | Drive assist off                             | Sideways slip dies away slowly, and it turns in harder: the SRV slides                            |
 | Headlights                                   | Nose lamps and the cabin strip glow and the headlights light the ground                           |
 | Low fuel (under 25 %)                        | The spare cell's gold seam pulses                                                                 |
-| Recall ship, turret, cargo scoop             | HUD only. The Wick LR has no turret (an open design question)                                     |
+| Turret mode                                  | The roof turret rises and aims at the reticle; the chase camera rises so the turret sits below it |
+| Primary / secondary fire (turret mode)       | Gold tracers, or heavier warning-coloured ones, from the muzzle toward the reticle                |
+| Target ahead                                 | The HUD's bracket; a contact holds that spot on screen, as in the ship scene                      |
+| Recall ship, cargo scoop                     | HUD only                                                                                          |
 | Toggle camera                                | Chase camera or the driver's seat, with the Drive / Recall / Range screens                        |
 | Listening for a rebind                       | The vehicle holds still; the scene keeps drawing                                                  |

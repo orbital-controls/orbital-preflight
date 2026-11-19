@@ -136,6 +136,15 @@ test('SRV mode mounts the Wick LR scene; steer and thruster keys reach it', asyn
 	await expect.poll(jets).toContain('boost');
 	await expect(canvas).toHaveAttribute('data-op-jets', 'idle');
 
+	// U is Turret mode: the roof turret rises and the reticle shows; U again stows it.
+	await expect(canvas).toHaveAttribute('data-op-turret', 'stowed');
+	await expect(page.locator('[data-op-reticle]')).toHaveCount(0);
+	await page.keyboard.press('KeyU');
+	await expect(canvas).toHaveAttribute('data-op-turret', 'up');
+	await expect(page.locator('[data-op-reticle]')).toBeVisible();
+	await page.keyboard.press('KeyU');
+	await expect(canvas).toHaveAttribute('data-op-turret', 'stowed');
+
 	// K toggles the same camera in SRV: the driver's seat.
 	const button = page.getByRole('button', { name: /Driver's view/ });
 	await page.keyboard.press('KeyK');

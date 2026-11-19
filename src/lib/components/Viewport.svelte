@@ -108,6 +108,21 @@
 							/>
 						</div>
 					{/if}
+					{#if live && app.mode === 'srv' && app.flight.turret}
+						<!-- The turret reticle, as the SRV placeholder draws it: the 3D turret aims here. -->
+						<svg
+							class="pointer-events-none absolute inset-0"
+							viewBox="0 0 900 560"
+							aria-hidden="true"
+							data-op-reticle
+						>
+							<g stroke="var(--color-trail)" stroke-width="1.5" fill="none"
+								><circle cx="450" cy="250" r="24" /><path
+									d="M450 214 V234 M450 266 V286 M414 250 H434 M466 250 H486"
+								/></g
+							>
+						</svg>
+					{/if}
 				{/if}
 			{:else}
 				<PlaceholderScene flight={app.flight} mode="ship" empty />

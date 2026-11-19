@@ -29,6 +29,7 @@ import {
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { ORIGIN_X, WHEEL_RADIUS, WHEELS } from '../drive.ts';
 import { WICK_ROOT } from '../parts.ts';
+import { TURRET } from '../srv.ts';
 import { convexCorners, grow, prismPlanes, slab, type Plane, type V3 } from './convex.ts';
 import { facetGeometry, hexahedron, type Tri } from './geometry.ts';
 import type { Palette } from './palette.ts';
@@ -144,6 +145,10 @@ export interface WickMaterials {
 	plumeCore: MeshBasicMaterial;
 	jetHalo: SpriteMaterial;
 	lampHalo: SpriteMaterial;
+	/** The turret's violet collar and barrel sleeve: brighter when it's up. */
+	power: MeshStandardMaterial;
+	/** The turret's gold muzzle flash. */
+	flash: SpriteMaterial;
 	screens: MeshBasicMaterial[];
 }
 
@@ -226,6 +231,15 @@ export function makeWickMaterials(p: Palette, glow: Texture): WickMaterials {
 		plumeCore: additive(p.violetBright, 0.8),
 		jetHalo: halo(p.violetBright),
 		lampHalo: halo(p.gold),
+		power: new MeshStandardMaterial({
+			color: p.violet,
+			emissive: p.violet,
+			emissiveIntensity: 0.2,
+			roughness: 0.35,
+			metalness: 0.3,
+			flatShading: true
+		}),
+		flash: halo(p.gold),
 		screens: []
 	};
 }
@@ -627,12 +641,76 @@ function rear(mat: WickMaterials): { parts: Object3D[]; halos: Sprite[] } {
 	return { parts, halos };
 }
 
+/** Deck height between the cabin and the rack, where the turret sits (block-out x 2.33). */
+const TURRET_X = 2.33;
+const TURRET_DECK = 1.59 - ((TURRET_X - 0.81) * 0.08) / 3.44;
+
+/**
+ * The roof turret, after the SRV placeholder's (StandFly): a faceted head on a post with
+ * one long barrel. Stowed, it sits low between the cabin and the rack, facing aft over the
+ * rack; deployed, it rises clear of the cabin glass. Not on the v0.4 board.
+ */
+function turret(mat: WickMaterials): { parts: Object3D[]; flash: Sprite } {
+	const ring = new Mesh(new CylinderGeometry(0.31, 0.33, 0.04, 6), mat.power);
+	ring.name = 'turretRing';
+	ring.position.copy(w(TURRET_X, 0, TURRET_DECK + 0.01));
+
+	const base = new Group();
+	base.name = 'turret';
+	// Its base sits 6 cm proud of the deck, so the stowed barrel clears the rack.
+	const restY = w(TURRET_X, 0, TURRET_DECK + 0.06).y;
+	base.position.copy(w(TURRET_X, 0, TURRET_DECK + 0.06));
+	base.userData = { restY, lift: TURRET.lift };
+	const post = new Mesh(new CylinderGeometry(0.09, 0.09, 0.42, 8), mat.dark);
+	post.position.y = -0.2;
+	base.add(post);
+
+	const head = new Group();
+	head.name = 'turretHead';
+	head.rotation.y = TURRET.stowedYaw;
+	const shell = new CylinderGeometry(0.19, 0.25, 0.26, 6);
+	const shellMesh = new Mesh(shell, mat.panel);
+	shellMesh.position.y = 0.1;
+	const shellEdges = outline(shell, mat);
+	shellEdges.position.y = 0.1;
+	head.add(shellMesh, shellEdges);
+
+	const gun = new Group();
+	gun.name = 'turretGun';
+	gun.position.y = 0.16;
+	const mantlet = new Mesh(new BoxGeometry(0.16, 0.13, 0.26), mat.panel);
+	mantlet.position.z = -0.1;
+	const mantletEdges = outline(mantlet.geometry, mat);
+	mantletEdges.position.copy(mantlet.position);
+	const barrel = new Mesh(
+		new CylinderGeometry(0.042, 0.048, 0.62, 10).rotateX(Math.PI / 2).translate(0, 0, -0.49),
+		mat.metal
+	);
+	const sleeve = new Mesh(
+		new CylinderGeometry(0.05, 0.05, 0.12, 6).rotateX(Math.PI / 2).translate(0, 0, -0.3),
+		mat.power
+	);
+	const muzzle = new Group();
+	muzzle.name = 'turretMuzzle';
+	muzzle.position.z = -0.8;
+	const flash = new Sprite(mat.flash);
+	flash.scale.setScalar(0.5);
+	flash.visible = false;
+	muzzle.add(flash);
+	gun.add(mantlet, mantletEdges, barrel, sleeve, muzzle);
+	head.add(gun);
+	base.add(head);
+	return { parts: [ring, base], flash };
+}
+
 export interface Wick {
 	root: Group;
 	/** The headlight between the nose lamps, aimed ahead and down. */
 	headlights: SpotLight[];
 	/** The jets' glow sprites, scaled with the jet glow. */
 	jetHalos: Sprite[];
+	/** The turret's muzzle flash. */
+	turretFlash: Sprite;
 	/** The dash screens' canvas textures: Drive, Recall, Range. */
 	screens: { drive: CanvasTexture; recall: CanvasTexture; range: CanvasTexture };
 }
@@ -657,12 +735,15 @@ export function buildWick(p: Palette, mat: WickMaterials): Wick {
 	root.add(...front.parts);
 	const back = rear(mat);
 	root.add(...back.parts);
+	const gun = turret(mat);
+	root.add(...gun.parts);
 	const tex = (name: string) =>
 		((root.getObjectByName(name) as Mesh).material as MeshBasicMaterial).map as CanvasTexture;
 	return {
 		root,
 		headlights: front.spots,
 		jetHalos: back.halos,
+		turretFlash: gun.flash,
 		screens: { drive: tex('screenDrive'), recall: tex('screenRecall'), range: tex('screenRange') }
 	};
 }
