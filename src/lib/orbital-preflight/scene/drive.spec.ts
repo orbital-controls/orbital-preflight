@@ -98,6 +98,34 @@ describe('the drive model', () => {
 		expect(c.contact).toEqual([true, true, true, true]);
 	});
 
+	it('levels out in the air after a ramp launch, and lands upright', () => {
+		const c = run(restChassis(flat), cruise(), flat, 0.5);
+		c.vy = 4;
+		c.y = 1;
+		c.pitchRate = 1.5;
+		c.rollRate = -1;
+		run(c, cruise(), flat, 6);
+		expect(Math.abs(c.pitch)).toBeLessThan(0.02);
+		expect(Math.abs(c.roll)).toBeLessThan(0.02);
+		expect(c.contact).toEqual([true, true, true, true]);
+	});
+
+	it('a hard edge at full speed bumps the chassis rather than flinging it', () => {
+		const wall: Ground = (_x, z) => (z < -20 ? 0.9 : 0);
+		const c = run(restChassis(flat), cruise({ speed: 28 }), wall, 2.5);
+		expect(c.vy).toBeLessThanOrEqual(9);
+		expect(c.y).toBeLessThan(6);
+		expect(Number.isFinite(c.y)).toBe(true);
+	});
+
+	it('turns no harder than the tyres allow at speed', () => {
+		const c = run(restChassis(flat), cruise({ speed: 28, lateral: 8 }), flat, 3);
+		const before = c.heading;
+		run(c, cruise({ speed: 28, lateral: 8, steer: 0.35 }), flat, 1);
+		expect(c.heading - before).toBeLessThan(8 / 28 + 0.02);
+		expect(c.heading - before).toBeGreaterThan(0.15);
+	});
+
 	it('the front wheels ride over a step and the chassis pitches with it', () => {
 		const step: Ground = (_x, z) => (z < -3 ? 0.15 : 0);
 		const c = run(restChassis(flat), cruise({ speed: 4 }), step, 0.2);

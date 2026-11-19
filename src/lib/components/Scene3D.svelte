@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { SceneProps } from '#lib/orbital-preflight/flight.ts';
 	import type { Analog } from '#lib/orbital-preflight/scene/analog.ts';
+	import { srvTargets } from '#lib/orbital-preflight/scene/srv.ts';
 	import { partTargets } from '#lib/orbital-preflight/scene/targets.ts';
 	import type { Engine } from '#lib/orbital-preflight/scene/three/index.ts';
 
@@ -15,10 +16,12 @@
 		analog: Analog;
 		/** A drawer, dialog or the full editor covers the viewport. */
 		covered: boolean;
+		/** Listening for a rebind: the SRV holds still. */
+		frozen: boolean;
 		onstatus: (status: 'ready' | 'failed') => void;
 	}
 
-	let { flight, mode, analog, covered, onstatus }: Props = $props();
+	let { flight, mode, analog, covered, frozen, onstatus }: Props = $props();
 
 	// A plain ref rather than an attachment: the engine is created once, after an async
 	// import, and disposed with the component.
@@ -27,9 +30,12 @@
 	let tabVisible = $state(true);
 	let onScreen = $state(true);
 	let frameMs = $state(0);
+	/** The mode whose 3D scene is built, if any. */
+	let shown = $state<string | null>(null);
 
 	// Exposed as data attributes for the smoke test and for measuring on real hardware.
 	const targets = $derived(partTargets(flight));
+	const srv = $derived(srvTargets(flight, analog));
 
 	onMount(() => {
 		const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -39,6 +45,7 @@
 			: 0;
 		let gone = false;
 		let local: Engine | null = null;
+		const firstMode = mode;
 		import('#lib/orbital-preflight/scene/three/index.ts')
 			.then(async ({ createEngine }) => {
 				if (gone) return;
@@ -47,10 +54,13 @@
 						canvas,
 						themeRoot: canvas,
 						reducedMotion,
-						read: () => ({ flight, mode, analog, reducedMotion, orbit }),
+						mode: firstMode,
+						read: () => ({ flight, mode, analog, reducedMotion, orbit, frozen }),
+						onscene: (m) => (shown = m),
 						onfail: () => onstatus('failed')
 					});
-				} catch {
+				} catch (error) {
+					console.error(error);
 					onstatus('failed');
 					return;
 				}
@@ -60,7 +70,8 @@
 				engine = local;
 				onstatus('ready');
 			})
-			.catch(() => {
+			.catch((error) => {
+				console.error(error);
 				if (!gone) onstatus('failed');
 			});
 
@@ -83,6 +94,13 @@
 		};
 	});
 
+	// Builds the mode's scene and drops the last one as soon as the mode changes, even when
+	// the loop is stopped (on foot has no 3D scene yet). The engine reports back through
+	// `onscene`, which sets `shown`: a data attribute only, read by no effect.
+	$effect(() => {
+		engine?.select(mode);
+	});
+
 	// Starts and stops the engine's own render loop; it assigns no Svelte state.
 	$effect(() => {
 		engine?.setRunning(tabVisible && onScreen && !covered && engine.supports(mode));
@@ -97,6 +115,9 @@
 	data-op-scene="3d"
 	data-op-ready={engine !== null}
 	data-op-gear={targets.gear}
+	data-op-scene-mode={shown}
+	data-op-steer={Math.round((srv.steer * 180) / Math.PI)}
+	data-op-jets={srv.jets ? 'boost' : 'idle'}
 	data-op-camera={flight.cam}
 	data-op-frame-ms={frameMs}
 	class="absolute inset-0 size-full {flight.nv ? 'op-nv' : ''}"

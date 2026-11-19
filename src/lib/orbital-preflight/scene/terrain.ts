@@ -71,12 +71,33 @@ function smoothstep(a: number, b: number, x: number): number {
 	return t * t * (3 - 2 * t);
 }
 
+/** The terrain mesh's cell size: the facet noise below sits on the same lattice. */
+export const FACET = 2.5;
+
+/** Small per-facet jitter on the mesh lattice, interpolated, so the ground reads faceted. */
+function facets(x: number, z: number): number {
+	const u = x / FACET;
+	const v = z / FACET;
+	const i = Math.floor(u);
+	const j = Math.floor(v);
+	const fu = u - i;
+	const fv = v - j;
+	const n = (a: number, b: number) => hash(a, b, 21) - 0.5;
+	return (
+		n(i, j) * (1 - fu) * (1 - fv) +
+		n(i + 1, j) * fu * (1 - fv) +
+		n(i, j + 1) * (1 - fu) * fv +
+		n(i + 1, j + 1) * fu * fv
+	);
+}
+
 /** The rolling ground under everything, flattened near the start. */
 export function baseHeight(x: number, z: number): number {
 	const roll =
 		0.6 * Math.sin(x * 0.043 + 0.7) * Math.sin(z * 0.037 + 1.9) +
 		0.3 * Math.sin(x * 0.11 + z * 0.07 + 0.4) +
-		0.12 * Math.sin(x * 0.29 - z * 0.23);
+		0.12 * Math.sin(x * 0.29 - z * 0.23) +
+		0.34 * facets(x, z);
 	const r = Math.hypot(x, z);
 	return roll * (0.15 + 0.85 * smoothstep(SPAWN_CLEAR, SPAWN_CLEAR + 22, r));
 }
@@ -85,9 +106,9 @@ export function baseHeight(x: number, z: number): number {
 function fixedFeature(i: number, j: number): Feature | null | undefined {
 	if (i === 0 && j === 0) return null;
 	if (i === 0 && j === -1) {
-		const x = 1.5;
+		const x = 0;
 		const z = -36;
-		return { kind: 'ramp', x, z, angle: 0, length: 7.5, width: 4.6, height: 1.35, base: 0 };
+		return { kind: 'ramp', x, z, angle: 0, length: 8, width: 4.6, height: 1, base: 0 };
 	}
 	if (i === -1 && j === -1) return { kind: 'mound', x: -38, z: -62, r: 6, h: 1.2 };
 	return undefined;
@@ -181,7 +202,11 @@ export function heightAt(x: number, z: number): number {
 	if (rock) h += rockHeight(rock, x, z);
 	if (f?.kind === 'ramp') {
 		const at = onRamp(f, x, z);
-		if (at) h = Math.max(h, f.base + (f.height * at.u) / f.length);
+		if (at) {
+			// The last 0.5 m each side slopes down, so a ramp's edge isn't a wall.
+			const edge = Math.min(1, (f.width / 2 - Math.abs(at.v)) / 0.5);
+			h = Math.max(h, f.base + ((f.height * at.u) / f.length) * edge);
+		}
 	}
 	return h;
 }

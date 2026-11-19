@@ -39,21 +39,30 @@ export const GRAVITY = 3.2;
 
 /**
  * Per wheel, per unit of vehicle mass. Heave settles at about 1.6 Hz, a little under
- * critically damped; the bump stop catches hard landings.
+ * critically damped. No wheel goes past its bump stop (see `MAX_LIFT`).
  */
 export const SUSPENSION = {
 	/** Wheel travel down (droop) and up (bump) from rest, metres. */
 	droop: 0.2,
 	bump: 0.18,
 	stiffness: 26,
-	damping: 3.4,
-	stop: 700
+	damping: 3.4
 } as const;
 const PRELOAD = GRAVITY / (4 * SUSPENSION.stiffness);
 /** Pitch and roll inertia per unit mass, m² (a 5.4 × 2.1 × 1.2 m box, roughly). */
 const INERTIA = { pitch: 2.4, roll: 1.1 };
 const ANGULAR_DRAG = 0.6;
+/** In the air the SRV eases back toward level (pitch and roll per second²), as drive assist does in the sims. */
+const AIR_LEVEL = { spring: 5, drag: 2.5 };
 const STEER_RATE = 7;
+/**
+ * A hard hit (a ramp edge, a rock at full speed) mustn't fling the chassis: the damper
+ * sees at most this rate, and past the bump stop the chassis is lifted rather than
+ * pushed, rising no faster than `MAX_LIFT`.
+ */
+const MAX_DAMPER_RATE = 6;
+const MAX_LIFT = 4;
+const MAX_RISE = 9;
 const STEP = 1 / 120;
 
 export interface Chassis {
@@ -98,6 +107,8 @@ export interface DriveInput {
 	grip: number;
 	/** Upward thrust, m/s². */
 	thrust: number;
+	/** The most sideways acceleration the tyres give, m/s²: caps the turn rate at speed. */
+	lateral?: number;
 }
 
 /** Travel from a raw compression: what the wheel and its fender show. */
@@ -174,18 +185,24 @@ export function stepChassis(c: Chassis, input: DriveInput, ground: Ground, dt: n
 function subStep(c: Chassis, input: DriveInput, ground: Ground, dt: number) {
 	const S = SUSPENSION;
 	const comp = compressions(c, ground);
+	// The bump stop: lift the chassis so no wheel is pushed past it.
+	const excess = Math.max(0, ...comp.map((v) => v - S.bump));
+	if (excess > 0) {
+		c.y += excess;
+		c.vy = Math.max(c.vy, Math.min(MAX_LIFT, excess / dt));
+		for (let i = 0; i < 4; i++) comp[i] -= excess;
+	}
 	let heave = input.thrust - GRAVITY;
 	let pitchTorque = 0;
 	let rollTorque = 0;
 	let touching = 0;
 	for (let i = 0; i < 4; i++) {
 		const w = WHEELS[i];
-		const rate = (comp[i] - c.comp[i]) / dt;
+		const rate = clamp((comp[i] - c.comp[i]) / dt, -MAX_DAMPER_RATE, MAX_DAMPER_RATE);
 		const contact = comp[i] > -S.droop;
 		let force = 0;
 		if (contact) {
 			force = Math.max(0, S.stiffness * (comp[i] + PRELOAD) + S.damping * rate);
-			if (comp[i] > S.bump) force += S.stop * (comp[i] - S.bump) + 8 * Math.max(0, rate);
 			touching++;
 		}
 		heave += force;
@@ -199,9 +216,13 @@ function subStep(c: Chassis, input: DriveInput, ground: Ground, dt: number) {
 	if (touching > 0 && c.air > 0) c.landed = Math.max(0, -c.vy);
 	c.air = touching > 0 ? 0 : c.air + dt;
 
-	c.vy += heave * dt;
+	c.vy = Math.min(MAX_RISE, c.vy + heave * dt);
 	c.pitchRate += (pitchTorque / INERTIA.pitch - ANGULAR_DRAG * c.pitchRate) * dt;
 	c.rollRate += (rollTorque / INERTIA.roll - ANGULAR_DRAG * c.rollRate) * dt;
+	if (touching === 0) {
+		c.pitchRate -= (AIR_LEVEL.spring * c.pitch + AIR_LEVEL.drag * c.pitchRate) * dt;
+		c.rollRate -= (AIR_LEVEL.spring * c.roll + AIR_LEVEL.drag * c.rollRate) * dt;
+	}
 	c.y += c.vy * dt;
 	c.pitch = clamp(c.pitch + c.pitchRate * dt, -0.6, 0.6);
 	c.roll = clamp(c.roll + c.rollRate * dt, -0.6, 0.6);
@@ -220,7 +241,13 @@ function subStep(c: Chassis, input: DriveInput, ground: Ground, dt: number) {
 		const traction = touching / 4;
 		forward += (input.speed - forward) * (1 - Math.exp(-input.follow * traction * dt));
 		side *= Math.exp(-input.grip * traction * dt);
-		c.heading += ((forward * Math.tan(c.steer)) / WHEELBASE) * traction * dt;
+		let yawRate = (forward * Math.tan(c.steer)) / WHEELBASE;
+		const lateral = input.lateral ?? Infinity;
+		if (Math.abs(forward) > 0.5) {
+			const most = lateral / Math.abs(forward);
+			yawRate = clamp(yawRate, -most, most);
+		}
+		c.heading += yawRate * traction * dt;
 	}
 	c.vx = fx * forward + lx * side;
 	c.vz = fz * forward + lz * side;

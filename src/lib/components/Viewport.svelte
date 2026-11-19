@@ -9,11 +9,11 @@
 	import Scene3D from './Scene3D.svelte';
 
 	/**
-	 * The flight view. The ship flies in the 3D scene (`Scene3D`): it gets the mock flight,
-	 * the mode and the bound stick axes, renders, and reports nothing back but whether
-	 * WebGL came up. Where it can't (no WebGL, a lost context) and in the modes that have
-	 * no 3D scene yet, the boards' 2D placeholder draws. A `scene` snippet still replaces
-	 * both. The HUD is DOM on top and doesn't depend on either.
+	 * The flight view. The ship flies and the SRV drives in the 3D scene (`Scene3D`): it
+	 * gets the mock flight, the mode and the bound axes, renders, and reports nothing back
+	 * but whether WebGL came up. Where it can't (no WebGL, a lost context) and on foot,
+	 * which has no 3D scene yet, the boards' 2D placeholder draws. A `scene` snippet still
+	 * replaces both. The HUD is DOM on top and doesn't depend on either.
 	 */
 	interface Props {
 		scene?: Snippet<[SceneProps]>;
@@ -26,14 +26,14 @@
 	/** WebGL came up. A failure is kept in `app.sceneFailed`, for the rest of the visit. */
 	let ready = $state(false);
 	/** Modes with a 3D scene so far. */
-	const IN_3D = new Set(['ship']);
+	const IN_3D = new Set(['ship', 'srv']);
 	const live = $derived(!scene && ready && !app.sceneFailed && IN_3D.has(app.mode));
 	// The full editor replaces the page, so the viewport unmounts (and the engine is
 	// disposed) rather than being covered.
 	const covered = $derived(app.drawer !== null || app.leaving);
 
 	const cameraKey = $derived.by(() => {
-		const action = app.store.actionsIn('ship').find((a) => a.effect === 'camera');
+		const action = app.store.actionsIn(app.mode).find((a) => a.effect === 'camera');
 		const slot = action ? app.store.bindings[action.id]?.[0] : null;
 		return slot ? bindLabel(slot, app.roles) : null;
 	});
@@ -66,6 +66,10 @@
 		}
 		if (app.mode === 'srv') {
 			const h = srvHud(s);
+			if (live) {
+				const view = s.cam === 'cockpit' ? "from the driver's seat" : 'chase camera';
+				return `3D driving view, ${view}. Speed ${h.spd} metres per second, ${h.assist}.`;
+			}
 			return `Placeholder for the 3D SRV driving view. Speed ${h.spd} metres per second, ${h.assist}.`;
 		}
 		const h = footHud(s);
@@ -96,6 +100,7 @@
 								mode={app.mode}
 								analog={app.analog}
 								covered={covered || !live}
+								frozen={app.cap !== null}
 								onstatus={(status) => {
 									if (status === 'ready') ready = true;
 									else app.sceneFailed = true;
@@ -149,7 +154,9 @@
 					d="M9.3 4 L13.3 1.7 V8.3 L9.3 6"
 				/></svg
 			>
-			Cockpit view{#if cameraKey}<span class="text-ink-900">· {cameraKey}</span>{/if}
+			{app.mode === 'srv' ? "Driver's view" : 'Cockpit view'}{#if cameraKey}<span
+					class="text-ink-900">· {cameraKey}</span
+				>{/if}
 		</button>
 	{/if}
 </div>

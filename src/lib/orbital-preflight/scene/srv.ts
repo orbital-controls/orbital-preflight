@@ -27,6 +27,8 @@ export interface SrvTargets {
 	follow: number;
 	/** How fast sideways slip dies away, per second: high with drive assist, low without. */
 	grip: number;
+	/** Most sideways acceleration, m/s²: caps the turn rate at speed. Off, it turns in harder. */
+	lateral: number;
 	/** The hop jets are firing (vertical thrusters, the SRV's jump). */
 	jets: boolean;
 	/** Jet core brightness: dim violet at idle, bright violet when firing. */
@@ -91,6 +93,7 @@ export function srvTargets(s: FlightState, analog?: Analog, options: SrvOptions 
 		speed: drive ? (analog?.drive ?? 0) * MAX_SPEED : s.sSpd,
 		follow: drive ? perSecond(0.08) : 8,
 		grip: s.daOff ? 1.1 : 9,
+		lateral: s.daOff ? 14 : 8,
 		jets,
 		jetGlow: jets ? JET_GLOW.firing : JET_GLOW.idle,
 		plume: jets ? Math.min(1, 0.35 + (0.65 * s.jetT) / JET_TICKS) : 0,
