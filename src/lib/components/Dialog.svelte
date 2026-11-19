@@ -16,16 +16,15 @@
 	}
 
 	let { open, opener = null, labelledby, variant = 'drawer', onclose, children }: Props = $props();
-	let dialog: HTMLDialogElement | undefined = $state();
 
-	$effect(() => {
-		if (!dialog) return;
+	// Runs again whenever `open` changes.
+	function modal(dialog: HTMLDialogElement) {
 		if (open && !dialog.open) dialog.showModal();
 		if (!open && dialog.open) {
 			dialog.close();
 			opener?.focus();
 		}
-	});
+	}
 
 	function cancel(event: Event) {
 		event.preventDefault();
@@ -33,12 +32,12 @@
 	}
 
 	function backdrop(event: MouseEvent) {
-		if (event.target === dialog) onclose();
+		if (event.target === event.currentTarget) onclose();
 	}
 </script>
 
 <dialog
-	bind:this={dialog}
+	{@attach modal}
 	aria-labelledby={labelledby}
 	oncancel={cancel}
 	onclick={backdrop}

@@ -17,20 +17,9 @@
 			return { device, pad };
 		})
 	);
+	// The controller pairs on the next press while this drawer is open (`armPairing`).
 	const listeningFor = $derived(rows.find((r) => !r.pad)?.device.id ?? null);
 	const strays = $derived(app.hub.pads.filter((p) => !p.deviceId));
-
-	// While the drawer is open, the next button press on an unpaired controller pairs it
-	// with the first device in the file that has none yet.
-	$effect(() => {
-		const target = listeningFor;
-		if (!target) {
-			app.hub.pairNext(null);
-			return;
-		}
-		app.hub.pairNext((pad) => app.hub.pair(pad.index, target, 'press'));
-		return () => app.hub.pairNext(null);
-	});
 </script>
 
 <div class="flex flex-col gap-[18px] px-7 py-6">
@@ -95,7 +84,7 @@
 				{#if pad}
 					<button
 						type="button"
-						onclick={() => app.hub.pair(pad.index, null)}
+						onclick={() => app.unpair(pad.index)}
 						class="min-h-9 cursor-pointer border-0 bg-transparent font-mono text-[13px] text-course underline"
 						>Re-pair</button
 					>

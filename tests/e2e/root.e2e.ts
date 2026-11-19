@@ -183,3 +183,19 @@ test('a controller pulled out mid-press lets go of its button', async ({ page })
 	// Had B2 stayed held from before, this press would be ignored.
 	await expect(toast).toContainText('Secondary fire');
 });
+
+test('with the Controllers drawer open, pressing a button pairs an unknown controller', async ({
+	page
+}) => {
+	// No USB id in Gamepad.id, so it can't match by USB and waits for a press.
+	await fakeGamepads(page, [{ id: 'Mystery Stick', buttons: 12 }]);
+	await page.goto('./');
+	await ready(page);
+	await page.getByRole('button', { name: '1 controller connected' }).click();
+	const drawer = page.getByRole('dialog', { name: 'Controllers' });
+	await expect(drawer.getByText('Press any button', { exact: true })).toBeVisible();
+	await press(page, 0, 2);
+	await expect(drawer.getByText('Paired', { exact: true })).toBeVisible();
+	await expect(drawer.getByText('Mystery Stick', { exact: true })).toBeVisible();
+	await expect(drawer.getByText(/Thrustmaster T\.16000M in your file/)).toBeVisible();
+});

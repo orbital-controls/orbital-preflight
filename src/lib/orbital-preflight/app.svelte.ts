@@ -86,6 +86,47 @@ export class OrbitalPreflight {
 	) {
 		this.sim = config.sim;
 		this.hub.newDeviceId = simById(config.sim).newDeviceId ?? null;
+		// A remembered layout follows every edit.
+		this.store.onchange = () => this.persist();
+	}
+
+	openDrawer(kind: 'load' | 'devices') {
+		this.cancelCapture();
+		this.drawer = kind;
+		if (kind === 'devices') this.armPairing();
+	}
+
+	closeDrawer() {
+		this.drawer = null;
+		this.hub.pairNext(null);
+	}
+
+	/** The first device in the file with no controller paired to it. */
+	unpairedDevice(): string | null {
+		const devices = this.store.file?.parsed.devices ?? [];
+		return devices.find((d) => !this.hub.pads.some((p) => p.deviceId === d.id))?.id ?? null;
+	}
+
+	/**
+	 * While the Controllers drawer is open, the next button pressed on a controller that
+	 * isn't paired yet pairs it with the first device in the file that has none.
+	 */
+	armPairing() {
+		if (this.drawer !== 'devices' || !this.unpairedDevice()) {
+			this.hub.pairNext(null);
+			return;
+		}
+		this.hub.pairNext((pad) => {
+			const target = this.unpairedDevice();
+			if (target) this.hub.pair(pad.index, target, 'press');
+			this.armPairing();
+		});
+	}
+
+	/** "Re-pair": let go of this controller and wait for a press. */
+	unpair(index: number) {
+		this.hub.pair(index, null);
+		this.armPairing();
 	}
 
 	/** Restores a remembered layout, or opens the pilot's default preset. */
@@ -164,7 +205,7 @@ export class OrbitalPreflight {
 		this.hub.newDeviceId = simById(parsed.sim).newDeviceId ?? null;
 		this.hub.repair();
 		this.loadError = null;
-		this.drawer = null;
+		this.closeDrawer();
 		this.cat = 'All';
 		this.filter = 'all';
 		this.q = '';
@@ -359,7 +400,7 @@ export class OrbitalPreflight {
 		this.lastActs = hits.map((h) => h.action.id);
 	}
 
-	/** Follows a bound throttle axis. */
+	/** Follows a bound throttle axis. Called by the hub when an axis moves. */
 	followThrottle() {
 		if (this.mode !== 'ship') return;
 		const action = this.store.actionsIn('ship').find((a) => a.effect === 'throttle');

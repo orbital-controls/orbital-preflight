@@ -76,6 +76,7 @@ export class InputHub {
 
 	#heldInputs = new Map<string, InputId>();
 	#listeners = new Set<(event: InputEvent) => void>();
+	#axisListeners = new Set<(key: string, value: number) => void>();
 	#capture: ((bind: Bind) => void) | null = null;
 	#cancel: (() => void) | null = null;
 	/** A modifier pressed alone while listening; it becomes the bind if nothing joins it. */
@@ -92,6 +93,12 @@ export class InputHub {
 	subscribe(listener: (event: InputEvent) => void): () => void {
 		this.#listeners.add(listener);
 		return () => this.#listeners.delete(listener);
+	}
+
+	/** Called when an axis moves, with its `deviceId:axis` key. Returns an unsubscribe. */
+	subscribeAxes(listener: (key: string, value: number) => void): () => void {
+		this.#axisListeners.add(listener);
+		return () => this.#axisListeners.delete(listener);
 	}
 
 	/**
@@ -320,7 +327,11 @@ export class InputHub {
 				const name = AXIS_NAMES[i] ?? `A${i}`;
 				const previous = state.axes[i] ?? 0;
 				state.axes[i] = value;
-				if (Math.abs(value - previous) > 0.002) this.axes.set(`${deviceId}:${name}`, value);
+				if (Math.abs(value - previous) > 0.002) {
+					const axisKey = `${deviceId}:${name}`;
+					this.axes.set(axisKey, value);
+					for (const listener of this.#axisListeners) listener(axisKey, value);
+				}
 				// Crossing the halfway mark counts as a press, for rebinding an axis and for
 				// button actions bound to one half of it.
 				for (const half of ['pos', 'neg'] as const) {

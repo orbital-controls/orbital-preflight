@@ -34,9 +34,6 @@
 	const counts = $derived(app.store.counts[app.mode]);
 	const owners = $derived(ownersByInput(app));
 	const changes = $derived(app.store.changes);
-	let heading: HTMLHeadingElement | undefined = $state();
-
-	$effect(() => heading?.focus());
 
 	const categories = $derived(['All', ...new Set(actions.map((a) => a.category))]);
 	const label = (b: Parameters<typeof bindLabel>[0], long = false) => bindLabel(b, app.roles, long);
@@ -149,7 +146,7 @@
 				>
 				<div class="flex items-center gap-4">
 					<h2
-						bind:this={heading}
+						{@attach (el) => el.focus()}
 						tabindex="-1"
 						class="font-display text-[52px] leading-[0.9] font-black uppercase outline-none"
 					>

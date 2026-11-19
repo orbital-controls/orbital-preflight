@@ -28,6 +28,8 @@ export interface LoadedFile {
  */
 export class BindStore {
 	file = $state.raw<LoadedFile | null>(null);
+	/** Called after every edit (settle, undo, reset…), e.g. to save a remembered layout. */
+	onchange: (() => void) | null = null;
 	bindings = $state.raw<BindingMap>({});
 	#history = $state.raw<Record<string, Binding[]>>({});
 
@@ -84,6 +86,7 @@ export class BindStore {
 		}
 		this.#history = history;
 		this.bindings = next;
+		this.onchange?.();
 	}
 
 	canUndo(actionId: string): boolean {
@@ -97,6 +100,7 @@ export class BindStore {
 		if (!previous) return;
 		this.#history = { ...this.#history, [actionId]: stack.slice(0, -1) };
 		this.bindings = { ...this.bindings, [actionId]: previous };
+		this.onchange?.();
 	}
 
 	/** Replaces one action's binds outright (the editor's swap and clear). */

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { onMount } from 'svelte';
 	import { OrbitalPreflight, setOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { TICK_MS } from '#lib/orbital-preflight/flight.ts';
 	import { presetSources } from '#lib/orbital-preflight/presets.ts';
@@ -36,32 +36,20 @@
 		ready = true;
 		const detach = app.hub.attach(window);
 		const unsubscribe = app.hub.subscribe((event) => app.onInput(event));
+		// A bound throttle axis drives the throttle.
+		const unsubscribeAxes = app.hub.subscribeAxes(() => app.followThrottle());
 		const timer = setInterval(() => app.step(), TICK_MS);
 		return () => {
 			detach();
 			unsubscribe();
+			unsubscribeAxes();
 			clearInterval(timer);
 		};
 	});
 
-	// A bound throttle axis drives the throttle.
-	$effect(() => {
-		void app.hub.axes.size;
-		for (const _ of app.hub.axes.values()) void _;
-		untrack(() => app.followThrottle());
-	});
-
-	// Remembered layouts follow every change.
-	$effect(() => {
-		void app.store.bindings;
-		void app.remember;
-		untrack(() => app.persist());
-	});
-
 	function openDrawer(kind: 'load' | 'devices', el: HTMLElement) {
-		app.cancelCapture();
 		opener = el;
-		app.drawer = kind;
+		app.openDrawer(kind);
 	}
 
 	function openEditor() {
@@ -127,17 +115,17 @@
 	open={app.drawer === 'load'}
 	{opener}
 	labelledby="load-title"
-	onclose={() => (app.drawer = null)}
+	onclose={() => app.closeDrawer()}
 >
-	<LoadDrawer onclose={() => (app.drawer = null)} />
+	<LoadDrawer onclose={() => app.closeDrawer()} />
 </Dialog>
 <Dialog
 	open={app.drawer === 'devices'}
 	{opener}
 	labelledby="devices-title"
-	onclose={() => (app.drawer = null)}
+	onclose={() => app.closeDrawer()}
 >
-	<ControllersDrawer onclose={() => (app.drawer = null)} />
+	<ControllersDrawer onclose={() => app.closeDrawer()} />
 </Dialog>
 <Dialog
 	open={app.leaving}

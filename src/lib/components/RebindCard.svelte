@@ -26,7 +26,9 @@
 	const btn = 'cursor-pointer font-mono notch op-notch-xs';
 </script>
 
+<!-- Opening inside a scrolling list, the card scrolls itself into view. -->
 <div
+	{@attach (el) => el.scrollIntoView({ block: 'nearest' })}
 	role="group"
 	data-op-capture-controls
 	aria-label="Rebinding {action.name}"

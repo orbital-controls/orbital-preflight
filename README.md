@@ -82,6 +82,7 @@ Node 24 and pnpm.
 pnpm install
 pnpm dev            # http://localhost:5173
 pnpm check          # svelte-check and TypeScript
+pnpm check:svelte   # the Svelte team's autofixer over every component
 pnpm lint           # Prettier and ESLint
 pnpm test:unit      # Vitest
 pnpm test:e2e       # builds root, base-path and theme variants, then Playwright

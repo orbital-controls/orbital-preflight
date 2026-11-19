@@ -27,7 +27,7 @@ On Phil's instance the feature is "Preflight"; the framework is "Orbital Preflig
 - **Logic stays pure.** Parsers, writers, bind resolution and the mock flight are plain TS modules under `src/lib/orbital-preflight/` with Vitest specs beside them. The writer splices into the original file text; never rebuild a binds file from the model.
 - Anything taken from memory rather than a real file or device (binds format details, file paths, browser HOTAS limits) is marked `UNVERIFIED` in code and listed in the README.
 - Ask Phil before adding a dependency beyond the stack above.
-- Use the Svelte MCP (list-sections → get-documentation, svelte-autofixer on every component) when it's available.
+- Svelte MCP: `.mcp.json` gives Claude Code sessions the official Svelte MCP (`list-sections` → `get-documentation` for Svelte 5 / SvelteKit questions, `svelte-autofixer` on code you write). Without it, `pnpm exec svelte-mcp <command>` runs the same tools. `pnpm check:svelte` runs the autofixer over every component and `.svelte.ts` module: fix every issue, and fix or justify every suggestion (they're heuristics). Keep the `@sveltejs/mcp` versions in `package.json` and `.mcp.json` the same.
 
 ## Semantic HTML, accessibility and SEO
 
@@ -41,7 +41,7 @@ Follow the Orbital Controls voice where it applies (see ../orbital-controls/docs
 
 ## Checks
 
-Run before every commit: `pnpm check`, `pnpm lint`, `pnpm test:unit --run`, `pnpm build`. `pnpm test:e2e` builds three variants (root, non-root base, theme override) and runs the Playwright smoke tests against them.
+Run before every commit: `pnpm check`, `pnpm check:svelte`, `pnpm lint`, `pnpm test:unit --run`, `pnpm build`. `pnpm test:e2e` builds three variants (root, non-root base, theme override) and runs the Playwright smoke tests against them.
 
 ## Git
 

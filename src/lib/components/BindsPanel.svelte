@@ -170,7 +170,6 @@
 					{@const editing = app.cap?.target.actionId === action.id}
 					{@const changed = app.store.isChanged(action.id)}
 					<li
-						data-action={action.id}
 						class="flex flex-col gap-[6px] px-1 py-[6px] {editing
 							? 'bg-trail/5'
 							: app.lastActs.includes(action.id)
