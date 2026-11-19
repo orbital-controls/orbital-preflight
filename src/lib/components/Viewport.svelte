@@ -2,14 +2,18 @@
 	import type { Snippet } from 'svelte';
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { footHud, shipHud, srvHud, type SceneProps } from '#lib/orbital-preflight/flight.ts';
+	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
 	import FirstVisit from './FirstVisit.svelte';
 	import Hud from './Hud.svelte';
 	import PlaceholderScene from './PlaceholderScene.svelte';
+	import Scene3D from './Scene3D.svelte';
 
 	/**
-	 * The flight view. `scene` is where the 3D scene plugs in later: it gets the mock
-	 * flight and the mode, renders, and reports nothing back. Until then the boards' 2D
-	 * placeholder draws. The HUD is DOM on top and doesn't depend on the scene.
+	 * The flight view. The ship flies in the 3D scene (`Scene3D`): it gets the mock flight,
+	 * the mode and the bound stick axes, renders, and reports nothing back but whether
+	 * WebGL came up. Where it can't (no WebGL, a lost context) and in the modes that have
+	 * no 3D scene yet, the boards' 2D placeholder draws. A `scene` snippet still replaces
+	 * both. The HUD is DOM on top and doesn't depend on either.
 	 */
 	interface Props {
 		scene?: Snippet<[SceneProps]>;
@@ -18,6 +22,19 @@
 
 	let { scene, onwhere }: Props = $props();
 	const app = useOrbitalPreflight();
+
+	/** `failed` falls back to the placeholder for the rest of the visit. */
+	let three = $state<'loading' | 'ready' | 'failed'>('loading');
+	/** Modes with a 3D scene so far. */
+	const IN_3D = new Set(['ship']);
+	const live = $derived(!scene && three === 'ready' && IN_3D.has(app.mode));
+	const covered = $derived(app.drawer !== null || app.leaving || app.editor);
+
+	const cameraKey = $derived.by(() => {
+		const action = app.store.actionsIn('ship').find((a) => a.effect === 'camera');
+		const slot = action ? app.store.bindings[action.id]?.[0] : null;
+		return slot ? bindLabel(slot, app.roles) : null;
+	});
 
 	const SCENE_COPY = {
 		ship: {
@@ -39,6 +56,10 @@
 		const s = app.flight;
 		if (app.mode === 'ship') {
 			const h = shipHud(s);
+			if (live) {
+				const view = s.cam === 'cockpit' ? 'from the cockpit' : 'chase camera';
+				return `3D flight view, ${view}. Throttle ${h.thr} percent, speed ${h.spd} metres per second.`;
+			}
 			return `Placeholder for the 3D flight view. Throttle ${h.thr} percent, speed ${h.spd} metres per second.`;
 		}
 		if (app.mode === 'srv') {
@@ -50,39 +71,77 @@
 	});
 </script>
 
-<div
-	data-op-mouse-zone
-	class="relative h-[560px] w-[900px] overflow-hidden border border-course/25 bg-abyss space notch-card"
->
-	<div role="img" aria-label={label} class="absolute inset-0">
-		{#if app.loaded}
-			{#if scene}
-				{@render scene({ flight: app.flight, mode: app.mode })}
+<!-- The camera button sits outside the mouse zone, so clicking it isn't a mouse bind. -->
+<div class="relative h-[560px] w-[900px]">
+	<div
+		data-op-mouse-zone
+		class="relative h-[560px] w-[900px] overflow-hidden border border-course/25 bg-abyss space notch-card"
+	>
+		<div role="img" aria-label={label} class="absolute inset-0">
+			{#if app.loaded}
+				{#if scene}
+					{@render scene({ flight: app.flight, mode: app.mode })}
+				{:else}
+					{#if !live}
+						<PlaceholderScene flight={app.flight} mode={app.mode} />
+					{/if}
+					{#if three !== 'failed'}
+						<div class={['absolute inset-0', { invisible: !live }]}>
+							<Scene3D
+								flight={app.flight}
+								mode={app.mode}
+								analog={app.analog}
+								covered={covered || !live}
+								onstatus={(status) => (three = status)}
+							/>
+						</div>
+					{/if}
+				{/if}
 			{:else}
-				<PlaceholderScene flight={app.flight} mode={app.mode} />
+				<PlaceholderScene flight={app.flight} mode="ship" empty />
 			{/if}
+		</div>
+
+		{#if app.loaded}
+			{#if !scene && !live}
+				<div
+					class="pointer-events-none absolute top-24 left-1/2 flex -translate-x-1/2 flex-col items-center gap-[6px] text-center"
+					aria-hidden="true"
+				>
+					<span
+						class="border border-dashed border-course/60 bg-abyss/60 px-[10px] py-1 font-mono text-[11px] font-bold tracking-[.14em] text-course notch op-notch-xs"
+						>PLACEHOLDER · 3D SCENE · {SCENE_COPY[app.mode].tag}</span
+					>
+					<span class="max-w-[440px] font-mono text-[13px] text-ink-900"
+						>{SCENE_COPY[app.mode].text}</span
+					>
+				</div>
+			{/if}
+			<Hud />
 		{:else}
-			<PlaceholderScene flight={app.flight} mode="ship" empty />
+			<FirstVisit {onwhere} />
 		{/if}
 	</div>
-
-	{#if app.loaded}
-		{#if !scene}
-			<div
-				class="pointer-events-none absolute top-24 left-1/2 flex -translate-x-1/2 flex-col items-center gap-[6px] text-center"
+	{#if live}
+		<button
+			type="button"
+			aria-pressed={app.flight.cam === 'cockpit'}
+			onclick={() => app.toggleCamera()}
+			class="absolute top-4 left-[256px] flex items-center gap-2 border border-course/40 bg-abyss/70 px-[10px] py-[5px] font-mono text-[11px] font-bold tracking-[.1em] text-ink-500 uppercase notch op-notch-xs hover:border-course aria-pressed:border-trail aria-pressed:text-trail"
+		>
+			<svg
+				width="14"
+				height="10"
+				viewBox="0 0 14 10"
 				aria-hidden="true"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.4"
+				><rect x="0.7" y="1.7" width="8.6" height="6.6" /><path
+					d="M9.3 4 L13.3 1.7 V8.3 L9.3 6"
+				/></svg
 			>
-				<span
-					class="border border-dashed border-course/60 bg-abyss/60 px-[10px] py-1 font-mono text-[11px] font-bold tracking-[.14em] text-course notch op-notch-xs"
-					>PLACEHOLDER · 3D SCENE · {SCENE_COPY[app.mode].tag}</span
-				>
-				<span class="max-w-[440px] font-mono text-[13px] text-ink-900"
-					>{SCENE_COPY[app.mode].text}</span
-				>
-			</div>
-		{/if}
-		<Hud />
-	{:else}
-		<FirstVisit {onwhere} />
+			Cockpit view{#if cameraKey}<span class="text-ink-900">· {cameraKey}</span>{/if}
+		</button>
 	{/if}
 </div>
