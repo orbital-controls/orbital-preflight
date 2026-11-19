@@ -1,0 +1,52 @@
+name: Deploy to GitHub Pages
+
+# A fork goes live once Pages is enabled with "GitHub Actions" as the source
+# (Settings → Pages). To build with a config other than orbital-preflight.config.ts,
+# set the repository variable ORBITAL_PREFLIGHT_CONFIG to its path: Phil's instance
+# uses instances/orbitalcontrols/orbital-preflight.config.ts.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - id: pages
+        uses: actions/configure-pages@v5
+      - run: pnpm install --frozen-lockfile
+      # `/<repo>` for a project site, empty for a user site or a custom domain.
+      - run: pnpm build
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          ORBITAL_PREFLIGHT_CONFIG: ${{ vars.ORBITAL_PREFLIGHT_CONFIG || 'orbital-preflight.config.ts' }}
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
