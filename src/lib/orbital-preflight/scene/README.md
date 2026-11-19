@@ -2,19 +2,26 @@
 
 ```
 scene/
-  targets.ts     flight state → part targets (gear progress, glow, ring tilt, door angles…). Pure.
-  analog.ts      bound pitch / roll / yaw axes from the input hub. Pure.
-  parts.ts       the part contract below, and checkParts() to test a model against it.
+  targets.ts     ship: flight state → part targets (gear progress, glow, ring tilt, door angles…). Pure.
+  srv.ts         SRV: flight state → Wick LR targets (wheel yaw, speed, grip, jets, lights). Pure.
+  drive.ts       SRV: the kinematic drive model (a ground query and spring per wheel, steering). Pure.
+  terrain.ts     SRV: the stand-in moon's height function, rocks and ramps. Pure.
+  analog.ts      bound stick, steering and drive axes from the input hub. Pure.
+  parts.ts       the part contracts below, and checkParts() to test a model against one.
   three/         the three.js side, loaded with a dynamic import
-    index.ts       the engine: renderer, loop, pause, dispose
+    index.ts       the engine: renderer, loop, pause, one mode scene at a time, dispose
     ship-scene.ts  the ship mode: flight path, part animation, cameras, effects
     lantern.ts     the procedural Lantern II
     cockpit.ts     the cockpit interior and its dash screens
     space.ts       stars, planet, dust, the contact
     fx.ts          tracers, chaff, the heat-sink puff
+    srv-scene.ts   the SRV mode: drive model, part posing, lights, cameras, dash screens
+    wick.ts        the procedural Wick LR
+    convex.ts      convex solids from half-spaces (the Wick LR's block-out shapes)
+    surface.ts     the moon's ground mesh, rocks, ramp slabs and wheel dust
 ```
 
-The engine reads the page's state once a frame and never writes back. A mode is a `ModeScene` (`ship-scene.ts`): its own `Scene`, camera and `update()`. SRV and on-foot scenes slot in beside `ShipScene` in `index.ts`; `Viewport.svelte` lists which modes are 3D (`IN_3D`).
+The engine reads the page's state once a frame and never writes back. A mode is a `ModeScene` (`ship-scene.ts`): its own `Scene`, camera and `update()`. The engine builds a mode's scene when the mode comes up and disposes the last one; an on-foot scene slots in beside `ShipScene` and `SrvScene` in `index.ts`, and `Viewport.svelte` lists which modes are 3D (`IN_3D`).
 
 ## The Lantern II part contract
 
@@ -65,3 +72,52 @@ The cockpit (`cockpit.ts`) is built the same way and rides under `lantern`: `coc
 | Bound pitch / roll / yaw axes        | Fly the ship directly; the cockpit stick follows                                       |
 | Chaff, night vision, target          | A glinting burst; a tint on the canvas; the HUD's bracket (the contact sits under it)  |
 | Toggle camera                        | Chase camera or the pilot's seat                                                       |
+
+## The Wick LR part contract
+
+The SRV is built the same way (`wick.ts`, from the StandWickLR3D v0.4 block-out) and checked by `checkParts(root, WICK_PARTS, WICK_ROOT)`. A Blender glTF can replace `buildWick()` if it keeps these names, parents, pivots and `userData`.
+
+**Frame:** three.js, +Y up, −Z forward (the nose), +X to the right, in metres. The origin is on the ground between the axles (block-out x = 2.69). The block-out's own numbers (x forward from the tail, y to the left, z up) go through `w()` in `wick.ts`. Each part's origin is its pivot; rest pose is the vehicle standing still on flat ground.
+
+| Name                                         | Parent      | Pivot and motion                                                                                                                     |
+| -------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `wick`                                       | (root)      | Model origin. The scene sets its position and rotation (heading, then pitch, then roll) from the drive model.                        |
+| `body`                                       | `wick`      | Static. Flat-shaded. Carries the door outline and handle, the panel seams and the step.                                              |
+| `stripe`                                     | `wick`      | Static. The violet waist stripe.                                                                                                     |
+| `cabinGlass`                                 | `wick`      | Static. Dark tinted, transparent. Hidden from the driver's seat (its edges, `cabinFrame`, stay).                                     |
+| `lightStrip`                                 | `wick`      | Static. Gold; brighter with the headlights. A top face only, with a thin lip along the glass's front-top edge.                       |
+| `seatL`, `seatR`, `jumpSeat`                 | `wick`      | Static.                                                                                                                              |
+| `dash`                                       | `wick`      | Static.                                                                                                                              |
+| `screenDrive`, `screenRecall`, `screenRange` | `dash`      | Static. Canvas textures mirroring the HUD: speed and drive assist; the ship; fuel and the spare cell.                                |
+| `rack`, `spareCell`                          | `wick`      | Static.                                                                                                                              |
+| `cellSeam`                                   | `spareCell` | Static. Gold; pulses on low fuel (steady with reduced motion).                                                                       |
+| `wheelFL`, `wheelFR`, `wheelRL`, `wheelRR`   | `wick`      | Wheel centre, axle along X, rotation order YXZ. `position.y = restY + travel`; `rotation.y` steers (front only), `rotation.x` rolls. |
+| `wheelGlowFL` …                              | the wheel   | Static in the wheel. The gold glow ring.                                                                                             |
+| `armUpperFL`, `armLowerFL` …                 | `wick`      | Inner (chassis) end. `rotation.z = −side × asin(travel / length)`, so the outer end follows the wheel.                               |
+| `damperFL` …                                 | `wick`      | Upper mount, pointing down (−Y). Aimed at the lower arm, `damperAt` along it, and stretched (`scale.y`).                             |
+| `fenderFL` …                                 | `wick`      | `position.y = restY + travel`: rides with its wheel, doesn't steer.                                                                  |
+| `noseLampL`, `noseLampR`                     | `wick`      | Set into the upper nose facet. Gold; a headlight `SpotLight` sits beside each.                                                       |
+| `tailLight`                                  | `wick`      | Static. Gold; brighter on brake and reverse.                                                                                         |
+| `hatch`                                      | `wick`      | Top edge (a hinge for later). Static for now.                                                                                        |
+| `winch`                                      | `wick`      | Drum axis, along X. Static for now.                                                                                                  |
+| `winchHook`                                  | `winch`     | Top of the line, under the drum.                                                                                                     |
+| `jetL`, `jetR`                               | `wick`      | Nozzle centre, facing +Z (aft). The violet core: dim at idle, bright when the jets fire.                                             |
+| `plumeL`, `plumeR`                           | the jet     | At the nozzle, along +Z, angled down. `scale.z` is the plume length; hidden at idle.                                                 |
+
+Required `userData` (`checkParts()` checks it): wheels carry `restY` and `side` (+1 left, −1 right); arms carry `side` and `length`; dampers carry `restLength`; fenders carry `restY`.
+
+### What the SRV reacts to
+
+| Flight state                                 | Scene                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Accelerate, reverse, handbrake (`sSpd`)      | Speed, wheel roll, dust; the tail strip brightens on brake and reverse                            |
+| Steer left / right, or a bound steering axis | Front wheels yaw up to ±20°; the turn rate is capped by tyre grip at speed                        |
+| Drive speed axis                             | Sets the speed directly while it's off its rest; the HUD keeps the mock flight's numbers          |
+| Ground under each wheel                      | Spring and damper per wheel: travel, fenders, arms and dampers follow; the body pitches and rolls |
+| Vertical thrusters (`jetT`)                  | Hop jets go bright violet with a plume; a short hop                                               |
+| Drive assist off                             | Sideways slip dies away slowly, and it turns in harder: the SRV slides                            |
+| Headlights                                   | Nose lamps and the cabin strip glow and the headlights light the ground                           |
+| Low fuel (under 25 %)                        | The spare cell's gold seam pulses                                                                 |
+| Recall ship, turret, cargo scoop             | HUD only. The Wick LR has no turret (an open design question)                                     |
+| Toggle camera                                | Chase camera or the driver's seat, with the Drive / Recall / Range screens                        |
+| Listening for a rebind                       | The vehicle holds still; the scene keeps drawing                                                  |

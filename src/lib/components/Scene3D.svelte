@@ -115,7 +115,7 @@
 	data-op-scene="3d"
 	data-op-ready={engine !== null}
 	data-op-gear={targets.gear}
-	data-op-scene-mode={shown}
+	data-op-scene-mode={shown ?? 'none'}
 	data-op-steer={Math.round((srv.steer * 180) / Math.PI)}
 	data-op-jets={srv.jets ? 'boost' : 'idle'}
 	data-op-camera={flight.cam}

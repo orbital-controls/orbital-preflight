@@ -185,9 +185,9 @@ export function makeWickMaterials(p: Palette, glow: Texture): WickMaterials {
 		}),
 		// Dark tint: only the dash glow and the seat tops read through it.
 		glass: new MeshStandardMaterial({
-			color: p.glass,
-			roughness: 0.08,
-			metalness: 0.55,
+			color: p.glass.clone().lerp(p.violet, 0.3),
+			roughness: 0.12,
+			metalness: 0.3,
 			transparent: true,
 			opacity: 0.87,
 			flatShading: true,
