@@ -12,6 +12,9 @@ import type { Mode } from './types.ts';
 
 export const TICK_MS = 50;
 
+/** The ship view's camera: behind the ship, or from the pilot's seat. */
+export type CameraView = 'chase' | 'cockpit';
+
 export interface FlightState {
 	// shared
 	msg: string;
@@ -40,6 +43,7 @@ export interface FlightState {
 	scoop: boolean;
 	nv: boolean;
 	sc: boolean;
+	cam: CameraView;
 	// srv
 	sThr: number;
 	sSpd: number;
@@ -99,6 +103,7 @@ export function initialFlight(): FlightState {
 		scoop: false,
 		nv: false,
 		sc: false,
+		cam: 'chase',
 		sThr: 0.3,
 		sSpd: 0,
 		steerT: 0,
@@ -308,6 +313,9 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 			break;
 		case 'pBal':
 			p.pips = [2, 2, 2];
+			break;
+		case 'camera':
+			p.cam = s.cam === 'chase' ? 'cockpit' : 'chase';
 			break;
 		// srv
 		case 'drvFwd':

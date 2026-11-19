@@ -11,6 +11,8 @@ import type { ResolvedConfig } from './config.ts';
 import { act, enterMode, initialFlight, setThrottle, tick, type FlightState } from './flight.ts';
 import { InputHub, type InputEvent } from './inputs/hub.svelte.ts';
 import { deviceRoles } from './labels.ts';
+import { withLocalActions } from './local-actions.ts';
+import { analogAxes, type Analog } from './scene/analog.ts';
 import { clearLayout, loadLayout, saveLayout } from './persist.ts';
 import { BindsFormatError, simById } from './sims/index.ts';
 import type { Action, Bind, InputId, Mode, SimId } from './types.ts';
@@ -199,7 +201,7 @@ export class OrbitalPreflight {
 		edits?: Parameters<BindStore['load']>[2]
 	) {
 		this.cancelCapture();
-		this.store.load(parsed, origin, edits);
+		this.store.load(withLocalActions(parsed), origin, edits);
 		this.sim = parsed.sim;
 		this.hub.devices = parsed.devices;
 		this.hub.newDeviceId = simById(parsed.sim).newDeviceId ?? null;
@@ -211,7 +213,8 @@ export class OrbitalPreflight {
 		this.q = '';
 		this.last = null;
 		this.lastActs = [];
-		this.flight = initialFlight();
+		// The camera is the pilot's choice, not the file's: it stays across loads.
+		this.flight = { ...initialFlight(), cam: this.flight.cam };
 		this.ed = { sel: null, cat: 'All', filter: 'all', q: '', pend: null };
 		this.persist();
 	}
@@ -409,6 +412,25 @@ export class OrbitalPreflight {
 		// The hub names a paired controller's axes by the file device it stands for.
 		const value = this.hub.axes.get(`${input.deviceId}:${input.axis}`);
 		if (value !== undefined) this.flight = setThrottle(this.flight, value);
+	}
+
+	/**
+	 * Bound pitch, roll and yaw axes as they are now, for the 3D scene to fly by. Nothing
+	 * while listening for a rebind or with a drawer open: the ship freezes, as the mock
+	 * flight does.
+	 */
+	analog = $derived.by((): Analog => {
+		const idle = this.cap !== null || this.drawer !== null || this.leaving || this.mode !== 'ship';
+		return analogAxes(
+			this.store.actionsIn('ship'),
+			this.store.bindings,
+			idle ? null : this.hub.axes
+		);
+	});
+
+	/** The viewport's camera button: the same as pressing a bound Toggle camera. */
+	toggleCamera() {
+		this.flight = act(this.flight, 'camera', 'Toggle camera');
 	}
 
 	step() {

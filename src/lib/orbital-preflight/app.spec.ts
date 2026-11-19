@@ -39,4 +39,29 @@ describe('OrbitalPreflight', () => {
 		app.hub.press({ kind: 'key', code: 'KeyX' });
 		expect(app.holderOf(app.cap!.target, app.cap!.cand)).toBeNull();
 	});
+
+	it('K toggles the camera, the viewport button does the same, and a reload keeps it', () => {
+		const app = loaded();
+		app.onInput({ input: { kind: 'key', code: 'KeyK' }, pressed: true });
+		expect(app.flight.cam).toBe('cockpit');
+		expect(app.lastActs).toEqual(['OrbitalPreflightToggleCamera']);
+		app.toggleCamera();
+		expect(app.flight.cam).toBe('chase');
+		app.toggleCamera();
+		app.loadText(demo, { kind: 'upload', fileName: 'again.binds' });
+		expect(app.flight.cam).toBe('cockpit');
+	});
+
+	it('bound stick axes reach the scene, and freeze while listening for a rebind', () => {
+		const app = loaded();
+		const pitch = app.store.bindings.PitchAxisRaw[0]!.input;
+		if (pitch.kind !== 'axis') throw new Error('expected an axis');
+		app.hub.axes.set(`${pitch.deviceId}:${pitch.axis}`, 0.8);
+		expect(app.analog.has.pitch).toBe(true);
+		expect(app.analog.pitch).toBeGreaterThan(0.7);
+		app.startCapture({ actionId: 'SetSpeed50', slot: 0 });
+		expect(app.analog.pitch).toBe(0);
+		app.cancelCapture();
+		expect(app.analog.pitch).toBeGreaterThan(0.7);
+	});
 });
