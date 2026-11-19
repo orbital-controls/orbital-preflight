@@ -366,7 +366,8 @@ function dash(p: Palette, mat: WickMaterials): Group {
 		mat.screens.push(material);
 		const screen = mesh(new PlaneGeometry(width, height), material, name);
 		// On the dash's back face, tipped back toward the driver's eye.
-		screen.position.copy(w(4.285, y, 1.62));
+		// Clear of the dash face, so the top edge, tipped toward the driver, isn't buried.
+		screen.position.copy(w(4.25, y, 1.62));
 		screen.rotation.x = -0.45;
 		const border = new Mesh(
 			new PlaneGeometry(width + 0.016, height + 0.016),
@@ -641,7 +642,7 @@ export function buildWick(p: Palette, mat: WickMaterials): Wick {
 	root.name = WICK_ROOT;
 	root.add(body(mat), stripe(mat), ...cabin(mat));
 	// The cabin floor, so the deck under the glass reads dark from the seats.
-	root.add(box([2.66, 4.28], [-0.62, 0.62], [1.4, 1.56], mat.dark));
+	root.add(box([2.66, 4.28], [-0.7, 0.7], [1.4, 1.56], mat.dark));
 	root.add(
 		seat('seatL', 3.22, 0.33, 1.88, 0.42, mat),
 		seat('seatR', 3.22, -0.33, 1.88, 0.42, mat),

@@ -343,8 +343,8 @@ function lantern(p: Palette, glow: Texture): Object3D {
 	mat.halo.opacity = 0.35;
 	// [Placeholder scale] About 26 m long beside the 5.4 m Wick LR.
 	ship.root.scale.setScalar(0.55);
-	ship.root.position.set(24, heightAt(24, -88) + 12, -88);
-	ship.root.rotation.y = -0.6;
+	ship.root.position.set(-22, heightAt(-22, -88) + 12, -88);
+	ship.root.rotation.y = 0.6;
 	ship.root.updateMatrixWorld(true);
 	ship.root.traverse((o) => (o.matrixAutoUpdate = false));
 	return ship.root;
