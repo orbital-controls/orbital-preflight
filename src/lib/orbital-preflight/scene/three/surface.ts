@@ -10,6 +10,7 @@ import {
 	LineBasicMaterial,
 	LineSegments,
 	Matrix4,
+	MeshLambertMaterial,
 	Mesh,
 	MeshStandardMaterial,
 	Points,
@@ -87,26 +88,20 @@ export class Surface {
 		this.#low = p.ground.clone().lerp(p.trim, 0.3);
 		this.#high = p.trim.clone().lerp(p.metal, 0.25);
 		this.#lift = p.metal.clone().lerp(p.violet, 0.25);
+		// Lambert, not PBR: matte dust needs no reflections, and the ground fills half the
+		// frame, so it's the scene's biggest fragment cost.
 		const ground = new Mesh(
 			this.#geometry,
-			new MeshStandardMaterial({
-				vertexColors: true,
-				flatShading: true,
-				roughness: 0.95,
-				metalness: 0,
-				envMapIntensity: 0.25
-			})
+			new MeshLambertMaterial({ vertexColors: true, flatShading: true })
 		);
 		ground.name = 'ground';
 		ground.frustumCulled = false;
 
 		this.#rocks = new InstancedMesh(
 			new DodecahedronGeometry(1, 0),
-			new MeshStandardMaterial({
+			new MeshLambertMaterial({
 				color: p.metal.clone().lerp(p.hullLower, 0.2),
-				flatShading: true,
-				roughness: 0.85,
-				metalness: 0.1
+				flatShading: true
 			}),
 			MAX_ROCKS
 		);

@@ -529,13 +529,14 @@ function lamps(mat: WickMaterials): { parts: Object3D[]; spots: SpotLight[] } {
 		glow.position.z = -0.03;
 		lamp.add(glow);
 		parts.push(lamp);
-
-		const spot = new SpotLight(0xfff1cf, 0, 70, 0.42, 0.55, 1.2);
-		spot.position.copy(w(5.36, y, 1.06));
-		spot.target.position.copy(w(18, y * 2, 0));
-		parts.push(spot, spot.target);
-		spots.push(spot);
 	}
+	// One headlight between the two lamps: half the cost of one per lamp, for the same
+	// pool of light on the ground.
+	const spot = new SpotLight(0xfff1cf, 0, 70, 0.48, 0.55, 1.2);
+	spot.position.copy(w(5.36, 0, 1.06));
+	spot.target.position.copy(w(18, 0, 0));
+	parts.push(spot, spot.target);
+	spots.push(spot);
 	return { parts, spots };
 }
 
@@ -627,7 +628,7 @@ function rear(mat: WickMaterials): { parts: Object3D[]; halos: Sprite[] } {
 
 export interface Wick {
 	root: Group;
-	/** The headlights (one per nose lamp), aimed ahead and down. */
+	/** The headlight between the nose lamps, aimed ahead and down. */
 	headlights: SpotLight[];
 	/** The jets' glow sprites, scaled with the jet glow. */
 	jetHalos: Sprite[];

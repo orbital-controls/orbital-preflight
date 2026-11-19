@@ -220,7 +220,7 @@ export class SrvScene implements ModeScene {
 
 		mat.lamp.color.copy(p.gold).multiplyScalar(this.#lamps * 1.2);
 		mat.lampHalo.opacity = 0.85 * this.#headlights;
-		for (const spot of this.#wick.headlights) spot.intensity = this.#headlights * 55;
+		for (const spot of this.#wick.headlights) spot.intensity = this.#headlights * 90;
 		mat.strip.color.copy(p.gold).multiplyScalar(0.35 + 0.95 * this.#headlights);
 		mat.tail.color.copy(p.gold).multiplyScalar(this.#tail);
 		const pulse = t.cellPulse && !reduced ? 0.5 + 0.5 * Math.sin(this.#t * 5) : 1;

@@ -96,7 +96,7 @@ The SRV is built the same way (`wick.ts`, from the StandWickLR3D v0.4 block-out)
 | `armUpperFL`, `armLowerFL` …                 | `wick`      | Inner (chassis) end. `rotation.z = −side × asin(travel / length)`, so the outer end follows the wheel.                               |
 | `damperFL` …                                 | `wick`      | Upper mount, pointing down (−Y). Aimed at the lower arm, `damperAt` along it, and stretched (`scale.y`).                             |
 | `fenderFL` …                                 | `wick`      | `position.y = restY + travel`: rides with its wheel, doesn't steer.                                                                  |
-| `noseLampL`, `noseLampR`                     | `wick`      | Set into the upper nose facet. Gold; a headlight `SpotLight` sits beside each.                                                       |
+| `noseLampL`, `noseLampR`                     | `wick`      | Set into the upper nose facet. Gold; one headlight `SpotLight` sits between them.                                                    |
 | `tailLight`                                  | `wick`      | Static. Gold; brighter on brake and reverse.                                                                                         |
 | `hatch`                                      | `wick`      | Top edge (a hinge for later). Static for now.                                                                                        |
 | `winch`                                      | `wick`      | Drum axis, along X. Static for now.                                                                                                  |
