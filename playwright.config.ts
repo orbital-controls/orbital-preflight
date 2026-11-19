@@ -3,9 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 // `pnpm test:e2e` builds three variants first (scripts/build-e2e.ts); each is served as
 // plain static files, the way GitHub Pages would serve it.
 const VARIANTS = [
-	{ name: 'root', port: 4173, base: '' },
-	{ name: 'base', port: 4174, base: '/orbital-preflight' },
-	{ name: 'theme', port: 4175, base: '' }
+	{ name: 'root', port: 4173, base: '', tests: ['root', 'scene'] },
+	{ name: 'base', port: 4174, base: '/orbital-preflight', tests: ['base'] },
+	{ name: 'theme', port: 4175, base: '', tests: ['theme'] }
 ];
 
 export default defineConfig({
@@ -21,7 +21,7 @@ export default defineConfig({
 	},
 	projects: VARIANTS.map((v) => ({
 		name: v.name,
-		testMatch: `**/${v.name}.e2e.ts`,
+		testMatch: v.tests.map((t) => `**/${t}.e2e.ts`),
 		use: {
 			...devices['Desktop Chrome'],
 			viewport: { width: 1440, height: 1150 },
