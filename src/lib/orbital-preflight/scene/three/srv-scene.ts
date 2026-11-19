@@ -53,7 +53,9 @@ const DUST_RATE = 34;
  * The HUD draws the turret reticle here (px of the 900 × 560 viewport); the turret aims
  * at the point under it, this far out.
  */
-const RETICLE = { x: 450, y: 250, w: 900, h: 560, range: 80 };
+const RETICLE = { x: 450, y: 250, w: 900, h: 560, range: 120 };
+/** How long the fire line lingers after the trigger's released, seconds. */
+const BEAM_FADE = 0.2;
 /** How fast the turret rises or stows (progress per second) and slews (per second). */
 const TURRET_DEPLOY = 1.6;
 /** The HUD's target bracket in SRV mode (px); the contact holds that spot, at range. */
@@ -212,7 +214,7 @@ export class SrvScene implements ModeScene {
 		this.#dust.update(sim);
 		this.#surface.follow(c.x, c.z);
 		this.#cameraUpdate(t, dt, input.orbit ?? 0);
-		this.#turretUpdate(t, dt, sim);
+		this.#turretUpdate(t, dt, sim, input.reducedMotion);
 		this.#sky.position.copy(this.camera.position);
 		this.#placeContact(dt);
 		this.#screens(s, t, dt);
@@ -357,7 +359,12 @@ export class SrvScene implements ModeScene {
 	 * The roof turret: rises in turret mode and aims at the point under the HUD's reticle,
 	 * then fires gold tracers (primary) or heavier warning-coloured ones (secondary).
 	 */
-	#turretUpdate(t: SrvTargets, dt: number, sim: number) {
+	#aimPoint = new Vector3();
+	#aimHit = false;
+	#beamT = 0;
+	#beamHeavy = false;
+
+	#turretUpdate(t: SrvTargets, dt: number, sim: number, reduced: boolean) {
 		const P = this.#parts;
 		const root = this.#wick.root;
 		const target = t.turret ? 1 : 0;
@@ -366,16 +373,25 @@ export class SrvScene implements ModeScene {
 				? Math.min(target, this.#turret + TURRET_DEPLOY * sim)
 				: Math.max(target, this.#turret - TURRET_DEPLOY * sim);
 
-		// Aim: the camera ray through the reticle, out to range, in the turret's frame.
+		// Aim: where the camera ray through the reticle meets the ground, or out at range.
 		const cam = this.camera;
 		cam.updateMatrixWorld();
 		_aim
 			.set((RETICLE.x / RETICLE.w) * 2 - 1, 1 - (RETICLE.y / RETICLE.h) * 2, 0.5)
 			.unproject(cam)
 			.sub(cam.position)
-			.normalize()
-			.multiplyScalar(RETICLE.range)
-			.add(cam.position);
+			.normalize();
+		this.#aimHit = false;
+		this.#aimPoint.copy(_aim).multiplyScalar(RETICLE.range).add(cam.position);
+		for (let d = 4; d <= RETICLE.range; d += 2) {
+			_w.copy(_aim).multiplyScalar(d).add(cam.position);
+			if (_w.y <= heightAt(_w.x, _w.z)) {
+				this.#aimPoint.copy(_w);
+				this.#aimHit = true;
+				break;
+			}
+		}
+		_aim.copy(this.#aimPoint);
 		root.updateMatrixWorld();
 		root.worldToLocal(_aim);
 		const base = P.turret;
@@ -408,6 +424,10 @@ export class SrvScene implements ModeScene {
 			this.#tracers.fire(_v, _muzzleQ, _carry.set(c.vx, c.vy, c.vz), heavy);
 			this.#flashT = 0.07;
 			this.#wick.turretFlash.scale.setScalar(heavy ? 0.9 : 0.55);
+			// Where it lands, the ground kicks up.
+			if (this.#aimHit)
+				for (let i = 0; i < (heavy ? 6 : 3); i++)
+					this.#dust.emit(this.#aimPoint, _carry.set(0, 0, 0), heavy ? 2.4 : 1.6);
 		};
 		if (ready && t.fire && this.#fireClock <= 0) {
 			this.#fireClock = 0.08;
@@ -418,6 +438,19 @@ export class SrvScene implements ModeScene {
 			shoot(true);
 		}
 		this.#wick.turretFlash.visible = this.#flashT > 0;
+		// The fire line, muzzle to aim point, while the trigger's held, fading after.
+		if (this.#turret > 0.97 && (t.fire || t.fire2)) {
+			this.#beamT = BEAM_FADE;
+			this.#beamHeavy = t.fire2;
+		} else this.#beamT = Math.max(0, this.#beamT - dt);
+		if (this.#beamT > 0) {
+			P.turretMuzzle.getWorldPosition(_v);
+			P.turretMuzzle.getWorldQuaternion(_muzzleQ);
+			const flicker = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(this.#t * 60);
+			const fade = this.#beamT / BEAM_FADE;
+			const length = _v.distanceTo(this.#aimPoint);
+			this.#tracers.beam(_v, _muzzleQ, length, this.#beamHeavy, flicker * fade + 0.2 * fade);
+		} else this.#tracers.beam(_v, _muzzleQ, 0, false, 0);
 		this.#tracers.update(sim);
 	}
 

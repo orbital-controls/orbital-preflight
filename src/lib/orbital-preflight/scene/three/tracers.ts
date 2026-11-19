@@ -30,6 +30,8 @@ interface Bolt {
 
 export class Tracers {
 	readonly group = new Group();
+	/** The fire line, muzzle to aim point, while the trigger's held: as the placeholder draws it. */
+	#beam: Mesh;
 	#bolts: Bolt[] = [];
 	#next = 0;
 	#primary: MeshBasicMaterial;
@@ -46,6 +48,10 @@ export class Tracers {
 			});
 		this.#primary = material(gold);
 		this.#secondary = material(warning);
+		this.#beam = new Mesh(new BoxGeometry(1, 1, 1).translate(0, 0, -0.5), this.#primary);
+		this.#beam.visible = false;
+		this.#beam.frustumCulled = false;
+		this.group.add(this.#beam);
 		const bolt = new BoxGeometry(0.16, 0.16, 7);
 		for (let i = 0; i < POOL; i++) {
 			const mesh = new Mesh(bolt, this.#primary);
@@ -69,6 +75,20 @@ export class Tracers {
 		b.vel.copy(FORWARD).applyQuaternion(facing).multiplyScalar(spec.speed).add(carry);
 		b.life = spec.life;
 		b.mesh.visible = true;
+	}
+
+	/**
+	 * Shows the fire line from `at` along `facing`'s -Z for `length` metres, or hides it
+	 * (`length` 0). `flicker` 0..1 varies its width.
+	 */
+	beam(at: Vector3, facing: Quaternion, length: number, heavy: boolean, flicker: number) {
+		this.#beam.visible = length > 0;
+		if (!length) return;
+		const width = (heavy ? 0.2 : 0.09) * (0.5 + 0.6 * flicker);
+		this.#beam.material = heavy ? this.#secondary : this.#primary;
+		this.#beam.position.copy(at);
+		this.#beam.quaternion.copy(facing);
+		this.#beam.scale.set(width, width, length);
 	}
 
 	update(dt: number) {
