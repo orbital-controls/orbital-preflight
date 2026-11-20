@@ -1,4 +1,4 @@
-import type { Action, BindingMap } from '../types.ts';
+import type { Action, AnalogRole, BindingMap } from '../types.ts';
 
 /** Bound stick axes as the 3D scene reads them, with whether each one is bound. */
 export interface Analog {
@@ -10,8 +10,13 @@ export interface Analog {
 	steer: number;
 	/** SRV drive speed, 0 (stopped) .. 1 (full ahead). */
 	drive: number;
+	/** On foot, -1..1: strafe (right positive), move (as reported: forward is negative on most sticks), look. */
+	moveX: number;
+	moveY: number;
+	lookX: number;
+	lookY: number;
 	/** An axis is bound and the browser has reported it at least once. */
-	has: { pitch: boolean; roll: boolean; yaw: boolean; steer: boolean; drive: boolean };
+	has: Record<Exclude<AnalogRole, 'throttle'>, boolean>;
 }
 
 export const NO_ANALOG: Analog = {
@@ -20,7 +25,21 @@ export const NO_ANALOG: Analog = {
 	yaw: 0,
 	steer: 0,
 	drive: 0,
-	has: { pitch: false, roll: false, yaw: false, steer: false, drive: false }
+	moveX: 0,
+	moveY: 0,
+	lookX: 0,
+	lookY: 0,
+	has: {
+		pitch: false,
+		roll: false,
+		yaw: false,
+		steer: false,
+		drive: false,
+		moveX: false,
+		moveY: false,
+		lookX: false,
+		lookY: false
+	}
 };
 
 /** Below this, a centred stick reads as centred. */

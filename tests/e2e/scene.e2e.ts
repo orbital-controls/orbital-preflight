@@ -111,6 +111,8 @@ async function recordAttribute(page: import('@playwright/test').Page, name: stri
 }
 
 test('SRV mode mounts the Wick LR scene; steer and thruster keys reach it', async ({ page }) => {
+	// Software WebGL on a two-core CI runner, beside another scene test: give it room.
+	test.slow();
 	await page.goto('./');
 	const canvas = page.locator(scene);
 	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
@@ -154,10 +156,7 @@ test('SRV mode mounts the Wick LR scene; steer and thruster keys reach it', asyn
 	// Back to the ship: its scene comes back, the SRV's is dropped.
 	await page.getByRole('tab', { name: /Ship/ }).click();
 	await expect(canvas).toHaveAttribute('data-op-scene-mode', 'ship');
-	// On foot has no 3D scene yet: the placeholder, and no scene built.
-	await page.getByRole('tab', { name: /On foot/ }).click();
-	await expect(page.getByText(/PLACEHOLDER · 3D SCENE · ON FOOT/)).toBeVisible();
-	await expect(canvas).toHaveAttribute('data-op-scene-mode', 'none');
+	// Switching to On foot is covered by the on-foot tests, which start from Ship.
 });
 
 test('without WebGL the SRV keeps its 2D placeholder', async ({ page }) => {
@@ -183,4 +182,86 @@ test('without WebGL the SRV keeps its 2D placeholder', async ({ page }) => {
 	// The tab keeps focus after the click, and Space would press it: steer instead.
 	await page.keyboard.press('KeyA');
 	await expect(page.locator('[aria-live="polite"]')).toContainText('Steer left');
+});
+
+/** Opens the on-foot scene, standing where `spawn` says (a stop, or "x,z,yawDegrees"). */
+async function onFoot(page: import('@playwright/test').Page, spawn: string) {
+	await page.goto(`./?op-spawn=${spawn}`);
+	const canvas = page.locator(scene);
+	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
+	await page.getByRole('tab', { name: /On foot/ }).click();
+	await expect(canvas).toHaveAttribute('data-op-scene-mode', 'foot');
+	await expect(page.getByText(/PLACEHOLDER · 3D SCENE/)).toHaveCount(0);
+	return canvas;
+}
+
+test('on foot mounts Pad 7; fire spends a segment and lights a target, reload refills', async ({
+	page
+}) => {
+	// Software WebGL on a two-core CI runner, beside another scene test: give it room.
+	test.slow();
+	// Stop 5 faces the middle ring, with its prompts.
+	const canvas = await onFoot(page, '5');
+	await expect(page.locator('[data-op-stop-prompt="5"]')).toContainText('Fire');
+	await expect(page.locator('[data-op-crosshair]')).toBeVisible();
+	await expect(canvas).toHaveAttribute('data-op-ammo', '6');
+	await expect(canvas).toHaveAttribute('data-op-hits', '0');
+
+	// Fire weapon is the left mouse button in the demo preset: a click in the viewport.
+	const box = (await canvas.boundingBox())!;
+	await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+	await expect(canvas).toHaveAttribute('data-op-ammo', '5');
+	await expect(canvas).toHaveAttribute('data-op-hits', '1');
+	await expect(page.locator('[aria-live="polite"]')).toContainText('Fire weapon');
+
+	// R reloads: the cartridge refills to six after the mock flight's 24 ticks, which run
+	// slower when software WebGL shares two cores with another test.
+	await page.keyboard.press('KeyR');
+	await expect(canvas).toHaveAttribute('data-op-ammo', '6', { timeout: 20_000 });
+});
+
+test('walking into stop 6 shows the interact prompt with the bound key', async ({ page }) => {
+	// Software WebGL on a two-core CI runner, beside another scene test: give it room.
+	test.slow();
+	// Four and a half metres south of the pad console, facing it.
+	const canvas = await onFoot(page, '-4.05,-4.2,0');
+	const prompt = page.locator('[data-op-stop-prompt="6"]');
+	await expect(prompt).toHaveCount(0);
+	await page.keyboard.down('KeyW');
+	await expect(prompt).toBeVisible({ timeout: 20_000 });
+	await page.keyboard.up('KeyW');
+	// E is Interact in the demo preset (tap, and hold); scan has no bind.
+	await expect(prompt).toContainText('Stop 6 · Pad console');
+	const use = prompt.locator('span', { hasText: /Use console$/ });
+	await expect(use.getByText('E', { exact: true })).toBeVisible();
+	await expect(prompt.getByText('E', { exact: true })).toHaveCount(2);
+	await expect(prompt).toContainText('Not bound');
+	await expect(page.getByText('Pad 7 · 1 of 7 stops')).toBeVisible();
+	await expect(canvas).toHaveAttribute('data-op-scene-mode', 'foot');
+});
+
+test('without WebGL on foot keeps its 2D placeholder', async ({ page }) => {
+	await page.addInitScript(() => {
+		const original = HTMLCanvasElement.prototype.getContext;
+		HTMLCanvasElement.prototype.getContext = function (
+			this: HTMLCanvasElement,
+			type: string,
+			...rest: unknown[]
+		) {
+			if (/webgl/.test(type)) return null;
+			return (original as (...args: unknown[]) => RenderingContext | null).call(
+				this,
+				type,
+				...rest
+			);
+		} as typeof original;
+	});
+	await page.goto('./');
+	await page.getByRole('tab', { name: /On foot/ }).click();
+	await expect(page.getByText(/PLACEHOLDER · 3D SCENE · ON FOOT/)).toBeVisible();
+	await expect(page.locator(scene)).toHaveCount(0);
+	// The board's interact prompt is still there, and the binds still fire.
+	await expect(page.getByText('Interact · [Terminal]')).toBeVisible();
+	await page.keyboard.press('KeyR');
+	await expect(page.locator('[aria-live="polite"]')).toContainText('Reload');
 });

@@ -1,5 +1,6 @@
 /**
- * The part contracts for the 3D models: Lantern II (ship) and Wick LR (SRV). The
+ * The part contracts for the 3D models: Lantern II (ship), Wick LR (SRV) and the Tracer
+ * P1 viewmodel (on foot). The
  * animation finds every moving part by name, so a glTF exported from Blender can replace
  * a procedural model as long as it keeps these names, parents and pivots. See README.md
  * in this folder.
@@ -206,6 +207,88 @@ export const WICK_PARTS: readonly PartSpec[] = [
 	},
 	{ name: 'plumeR', parent: 'jetR', pivot: 'At the nozzle, along +Z. scale.z is the plume length.' }
 ];
+
+/**
+ * The Tracer P1 in the Crew Soft right hand: the on-foot viewmodel. Gun frame, in
+ * centimetres: +X the muzzle, +Y up, +Z the gun's right side (see tracer.ts). Only
+ * `forearmRoll`, `wristFlex` and the index chain are bones that animate; the slide,
+ * stripe segments and cartridges move or recolour; the other fingers are locked to the grip.
+ */
+export const TRACER_ROOT = 'tracer';
+
+const bones = (name: string, parent: string, pivot: string): PartSpec[] => [
+	{ name, parent, pivot: `${pivot} Bone 1 of 3: its local +X runs to the next joint.` },
+	{ name: `${name}1`, parent: name, pivot: 'Middle joint. Local +X to the next joint.' },
+	{ name: `${name}2`, parent: `${name}1`, pivot: 'Last joint. Local +X to the tip.' }
+];
+
+export const TRACER_PARTS: readonly PartSpec[] = [
+	{
+		name: 'forearmRoll',
+		parent: TRACER_ROOT,
+		pivot: 'The elbow, local +X along the forearm to the wrist. rotation.x rolls the forearm.',
+		needs: ['length']
+	},
+	{
+		name: 'wristFlex',
+		parent: 'forearmRoll',
+		pivot: 'The wrist, axes parallel to the gun frame at rest. rotation.z lifts the muzzle.'
+	},
+	{
+		name: 'slide',
+		parent: 'wristFlex',
+		pivot: 'Gun origin. position.x = −travel: back 1.8 on fire, locked back when empty.'
+	},
+	...Array.from({ length: 6 }, (_, i) => ({
+		name: `ammoSeg${i}`,
+		parent: 'slide',
+		pivot: 'Static on the slide. Violet emissive when loaded, metal grey when spent.'
+	})),
+	{ name: 'rearSightL', parent: 'slide', pivot: 'Static. Gold emissive post.' },
+	{ name: 'rearSightR', parent: 'slide', pivot: 'Static. Gold emissive post.' },
+	{ name: 'frontSight', parent: 'slide', pivot: 'Static.' },
+	{ name: 'frame', parent: 'wristFlex', pivot: 'Static. Gun origin.' },
+	{ name: 'barrel', parent: 'wristFlex', pivot: 'Static. Shows when the slide kicks.' },
+	{
+		name: 'emitter',
+		parent: 'wristFlex',
+		pivot: 'The muzzle disc, facing +X. Gold; flashes on fire. Holo rounds start here.'
+	},
+	{ name: 'triggerGuard', parent: 'wristFlex', pivot: 'Static.' },
+	{ name: 'trigger', parent: 'wristFlex', pivot: 'Static.' },
+	{
+		name: 'grip',
+		parent: 'wristFlex',
+		pivot: 'Top centre of the grip, local −Y down the grip (raked back 18°).',
+		needs: ['length']
+	},
+	{
+		name: 'cartridge',
+		parent: 'grip',
+		pivot: 'Bottom of the grip. Slides along local −Y and fades on reload.'
+	},
+	{
+		name: 'cartridgeHolo',
+		parent: 'grip',
+		pivot: 'Bottom of the grip. The violet hologram that rises in along +Y on reload.'
+	},
+	{ name: 'palm', parent: 'wristFlex', pivot: 'Static. Wraps the backstrap and right side.' },
+	...bones('fingerMid', 'wristFlex', 'Knuckle, locked to the front strap.'),
+	...bones('fingerRing', 'wristFlex', 'Knuckle, locked to the front strap.'),
+	...bones('fingerPinky', 'wristFlex', 'Knuckle, locked to the front strap.'),
+	...bones('index', 'wristFlex', 'Index base. Animates from the frame to the trigger.'),
+	...bones('thumb', 'wristFlex', 'Thenar, locked along the frame’s left side.'),
+	{ name: 'glove', parent: 'wristFlex', pivot: 'Static. The back of the hand, wrist to knuckles.' },
+	{ name: 'cuffSeam', parent: 'forearmRoll', pivot: 'Static. Where the glove meets the sleeve.' },
+	{ name: 'sleeve', parent: 'forearmRoll', pivot: 'Static. Cuff to elbow along local +X.' },
+	{
+		name: 'sleeveStripe',
+		parent: 'forearmRoll',
+		pivot: 'Static. Violet, along the top-outer side.'
+	}
+];
+
+export const TRACER_PART_NAMES: readonly string[] = TRACER_PARTS.map((p) => p.name);
 
 export const WICK_PART_NAMES: readonly string[] = WICK_PARTS.map((p) => p.name);
 
