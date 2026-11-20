@@ -1,0 +1,34 @@
+{
+	// fallow (https://fallow.tools): unused code and dependencies, duplication, complexity.
+	// `pnpm check:fallow` runs the dead-code pass and CI fails on it; `pnpm exec fallow`
+	// runs everything (dupes and health report, they don't gate).
+	"$schema": "./node_modules/fallow/schema.json",
+	"entry": [
+		// Swapped in through ORBITAL_PREFLIGHT_CONFIG, never imported.
+		"instances/*/orbital-preflight.config.ts"
+	],
+	// Tools run with `node scripts/<name>.ts` (package.json, playwright.config.ts): their
+	// dev dependencies aren't production ones.
+	"supportEntry": ["scripts/*.ts"],
+	// A constant or helper exported for a spec, or as a named tunable, and used in its own
+	// file is fine; one used nowhere at all still shows up.
+	"ignoreExportsUsedInFile": true,
+	"duplicates": {
+		"minOccurrences": 3
+	},
+	// The engine calls these through the ModeScene interface, optional members included.
+	"usedClassMembers": [
+		{ "implements": "ModeScene", "members": ["info", "targets", "update", "dispose"] }
+	],
+	"rules": {
+		"unused-dependencies": "warn"
+	},
+	"overrides": [
+		{
+			// Shared state classes reach components through context (`useOrbitalPreflight()`),
+			// and fallow doesn't follow a member call from a Svelte template back to them.
+			"files": ["src/**/*.svelte.ts"],
+			"rules": { "unused-class-members": "off" }
+		}
+	]
+}

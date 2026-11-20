@@ -205,13 +205,6 @@ for (const [mode, categories] of Object.entries(CATALOGUE) as [Mode, Record<stri
 	}
 }
 
-/** Categories per mode, in the boards' order. Actions we don't know go under "Other". */
-export const CATEGORIES: Record<Mode, string[]> = {
-	ship: [...Object.keys(CATALOGUE.ship), 'Other'],
-	srv: [...Object.keys(CATALOGUE.srv), 'Other'],
-	foot: [...Object.keys(CATALOGUE.foot), 'Other']
-};
-
 /** SRV actions whose ids don't say "Buggy". */
 const SRV_IDS = new Set(
 	Object.values(CATALOGUE.srv)
