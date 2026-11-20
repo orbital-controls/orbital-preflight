@@ -8,6 +8,8 @@
  * layer drawn over the world with its own camera (see three/tracer.ts).
  */
 
+import { TRACER_ROUNDS } from '../flight.ts';
+
 export type V3 = readonly [number, number, number];
 
 const DEG = Math.PI / 180;
@@ -33,7 +35,7 @@ export const FRAME = { x: [-6.4, 8.6], y: [-1.7, 0.15], z: [-1.15, 1.15] } as co
 export const RAIL_GROOVES = { from: 4.4, to: 8.4, step: 0.9 } as const;
 
 /** Rounds per cartridge, one stripe segment each. */
-export const ROUNDS = 6;
+export const ROUNDS = TRACER_ROUNDS;
 export function ammoSegment(i: number) {
 	const x = -5.6 + 2.15 * i;
 	return { x: [x, x + 1.7] as const, y: [3.12, 3.36] as const, z: [-0.32, 0.32] as const };

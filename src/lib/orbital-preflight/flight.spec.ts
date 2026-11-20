@@ -60,10 +60,17 @@ describe('mock flight', () => {
 
 	it('on foot: fire spends ammo, reload refills after its timer', () => {
 		let s = run(initialFlight(), 'primary', 'reload');
-		expect(s.ammo).toBe(23);
+		expect(s.ammo).toBe(5);
 		while (s.reloadT > 0) s = tick(s, 'foot');
-		expect(s).toMatchObject({ ammo: 30, reserve: 113 });
-		expect(run(s, 'holster', 'primary')).toMatchObject({ ammo: 30, msg: 'Weapon holstered' });
+		expect(s).toMatchObject({ ammo: 6, reserve: 119 });
+		expect(run(s, 'holster', 'primary')).toMatchObject({ ammo: 6, msg: 'Weapon holstered' });
+	});
+
+	it('on foot: the Tracer empties after six and says so', () => {
+		let s = initialFlight();
+		for (let i = 0; i < 6; i++) s = run(s, 'primary');
+		expect(s.ammo).toBe(0);
+		expect(run(s, 'primary')).toMatchObject({ ammo: 0, msg: 'Empty · reload' });
 	});
 
 	it('on foot: every walk direction is the board walk', () => {

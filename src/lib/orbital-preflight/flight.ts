@@ -12,6 +12,9 @@ import type { Mode } from './types.ts';
 
 export const TICK_MS = 50;
 
+/** Rounds in a Tracer P1 cartridge: one stripe segment each. */
+export const TRACER_ROUNDS = 6;
+
 /** The ship view's camera: behind the ship, or from the pilot's seat. */
 export type CameraView = 'chase' | 'cockpit';
 
@@ -124,11 +127,13 @@ export function initialFlight(): FlightState {
 		holster: false,
 		flash: false,
 		fNv: false,
-		ammo: 24,
-		mag: 30,
+		// The Tracer P1's cartridge holds six (StandFly's mock had 24 of 30). It starts in
+		// hand, so the HUD names the sidearm.
+		ammo: TRACER_ROUNDS,
+		mag: TRACER_ROUNDS,
 		reserve: 120,
 		reloadT: 0,
-		weapon: 0,
+		weapon: 1,
 		health: 0.72,
 		shield: 1,
 		battery: 0.64
