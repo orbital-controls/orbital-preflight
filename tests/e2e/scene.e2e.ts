@@ -111,6 +111,8 @@ async function recordAttribute(page: import('@playwright/test').Page, name: stri
 }
 
 test('SRV mode mounts the Wick LR scene; steer and thruster keys reach it', async ({ page }) => {
+	// Software WebGL on a two-core CI runner, beside another scene test: give it room.
+	test.slow();
 	await page.goto('./');
 	const canvas = page.locator(scene);
 	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
@@ -154,10 +156,7 @@ test('SRV mode mounts the Wick LR scene; steer and thruster keys reach it', asyn
 	// Back to the ship: its scene comes back, the SRV's is dropped.
 	await page.getByRole('tab', { name: /Ship/ }).click();
 	await expect(canvas).toHaveAttribute('data-op-scene-mode', 'ship');
-	// On foot swaps in Pad 7 at once.
-	await page.getByRole('tab', { name: /On foot/ }).click();
-	await expect(canvas).toHaveAttribute('data-op-scene-mode', 'foot');
-	await expect(page.getByText(/PLACEHOLDER · 3D SCENE/)).toHaveCount(0);
+	// Switching to On foot is covered by the on-foot tests, which start from Ship.
 });
 
 test('without WebGL the SRV keeps its 2D placeholder', async ({ page }) => {
@@ -199,6 +198,8 @@ async function onFoot(page: import('@playwright/test').Page, spawn: string) {
 test('on foot mounts Pad 7; fire spends a segment and lights a target, reload refills', async ({
 	page
 }) => {
+	// Software WebGL on a two-core CI runner, beside another scene test: give it room.
+	test.slow();
 	// Stop 5 faces the middle ring, with its prompts.
 	const canvas = await onFoot(page, '5');
 	await expect(page.locator('[data-op-stop-prompt="5"]')).toContainText('Fire');
@@ -213,12 +214,15 @@ test('on foot mounts Pad 7; fire spends a segment and lights a target, reload re
 	await expect(canvas).toHaveAttribute('data-op-hits', '1');
 	await expect(page.locator('[aria-live="polite"]')).toContainText('Fire weapon');
 
-	// R reloads: the cartridge refills to six.
+	// R reloads: the cartridge refills to six after the mock flight's 24 ticks, which run
+	// slower when software WebGL shares two cores with another test.
 	await page.keyboard.press('KeyR');
-	await expect(canvas).toHaveAttribute('data-op-ammo', '6');
+	await expect(canvas).toHaveAttribute('data-op-ammo', '6', { timeout: 20_000 });
 });
 
 test('walking into stop 6 shows the interact prompt with the bound key', async ({ page }) => {
+	// Software WebGL on a two-core CI runner, beside another scene test: give it room.
+	test.slow();
 	// Four and a half metres south of the pad console, facing it.
 	const canvas = await onFoot(page, '-4.05,-4.2,0');
 	const prompt = page.locator('[data-op-stop-prompt="6"]');
