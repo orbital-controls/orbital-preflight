@@ -30,10 +30,16 @@ export const FOOT_ANIM = {
 	reload: {
 		/** The mock flight's reload timer, in seconds (24 ticks). */
 		seconds: (24 * TICK_MS) / 1000,
-		/** The forearm rolls inward (the gun's top toward the screen centre). */
-		roll: -40 * DEG,
+		/**
+		 * The forearm rolls inward: the grip's base turns in toward the player, presenting
+		 * the magwell, so the spent and holo cartridges are in view. (Rolling the gun's top
+		 * toward the centre instead hides the grip behind the slide from this camera.)
+		 */
+		roll: 40 * DEG,
 		/** And lifts the gun toward the centre, in gun-frame cm. Eased back from the block-out. */
-		lift: [1.2, 0.4, -2.2] as V3,
+		lift: [2.0, 2.6, -3.0] as V3,
+		/** And tips the muzzle up at the wrist, so the grip's base swings into view. */
+		flex: 12 * DEG,
 		/** Phases, as fractions of the reload. */
 		rollIn: [0, 0.18],
 		out: [0.12, 0.45],
@@ -72,7 +78,7 @@ export interface TracerPose {
 	segments: boolean[];
 	/** Muzzle up at the wrist, radians. */
 	flex: number;
-	/** Forearm roll, radians (negative is inward). */
+	/** Forearm roll, radians (positive is inward: the grip's base toward the player). */
 	roll: number;
 	/** Forearm offset, gun-frame cm. */
 	lift: V3;
@@ -160,6 +166,7 @@ export function reloadPose(p: number) {
 	const into = phase(p, r.in);
 	return {
 		roll: r.roll * k,
+		flex: r.flex * k,
 		lift: [r.lift[0] * k, r.lift[1] * k, r.lift[2] * k] as V3,
 		// The spent one slides out and fades; once the hologram is seated, the real one
 		// fades back in under it.
@@ -210,7 +217,7 @@ export function tracerPose(i: PoseInput): TracerPose {
 	return {
 		slide: slideOffset(i.sinceFire, i.ammo, reload),
 		segments: segmentStates(i.ammo, reload),
-		flex: reload ? 0 : recoilFlex(i.sinceFire),
+		flex: r ? r.flex : recoilFlex(i.sinceFire),
 		roll: r?.roll ?? 0,
 		lift: r?.lift ?? [0, 0, 0],
 		index: reload ? 0 : indexPose(i.sinceFire),

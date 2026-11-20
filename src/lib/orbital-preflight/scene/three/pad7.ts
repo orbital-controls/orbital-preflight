@@ -37,6 +37,7 @@ import {
 	WALLS,
 	type Solid
 } from '../pad.ts';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Palette } from './palette.ts';
 
 /**
@@ -437,5 +438,34 @@ export function buildPad7(p: Palette): Pad7 {
 		group.add(light);
 	}
 
+	bake(group);
 	return { group, rings, setHits, ringColor, coreColor };
+}
+
+/**
+ * Merges the bay's unnamed static meshes that sit directly in `group` into one mesh per
+ * material: hundreds of ribs, dashes and strips become a handful of draw calls.
+ */
+function bake(group: Group) {
+	const byMaterial = new Map<Material, BufferGeometry[]>();
+	for (const child of [...group.children]) {
+		const m = child as Mesh;
+		if (!m.isMesh || m.name || Array.isArray(m.material)) continue;
+		m.updateMatrix();
+		const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+		// Merging needs the same attributes everywhere: position and normal (and uv) only.
+		for (const name of Object.keys(g.attributes))
+			if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+		g.applyMatrix4(m.matrix);
+		const list = byMaterial.get(m.material) ?? [];
+		list.push(g);
+		byMaterial.set(m.material, list);
+		group.remove(m);
+		m.geometry.dispose();
+	}
+	for (const [material, list] of byMaterial) {
+		const merged = mergeGeometries(list, false);
+		for (const g of list) g.dispose();
+		if (merged) group.add(new Mesh(merged, material));
+	}
 }

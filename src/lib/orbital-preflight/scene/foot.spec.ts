@@ -60,7 +60,8 @@ describe('the wrist and forearm', () => {
 	it('rolls the forearm about 40° inward mid-reload and back at the end', () => {
 		expect(reloadPose(0).roll).toBeCloseTo(0);
 		const mid = reloadPose(0.5);
-		expect(mid.roll).toBeCloseTo((-40 * Math.PI) / 180);
+		expect(mid.roll).toBeCloseTo((40 * Math.PI) / 180);
+		expect(mid.flex).toBeGreaterThan(0);
 		expect(mid.lift.some((v) => v !== 0)).toBe(true);
 		expect(reloadPose(1).roll).toBeCloseTo(0);
 	});
