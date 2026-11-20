@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STOPS } from './pad.ts';
+import { rampHinge, SOLIDS, STOPS } from './pad.ts';
 import {
 	IDLE_INPUT,
 	spawnWalker,
@@ -53,9 +53,9 @@ describe('the on-foot walker', () => {
 	});
 
 	it('walks up the ship ramp but not into the ship', () => {
-		const w = run(spawnWalker(-11.3, 0, -Math.PI / 2), { forward: 1 }, 3);
-		expect(w.y).toBeGreaterThan(1);
-		expect(w.x).toBeLessThan(-7.4);
+		const w = run(spawnWalker(-11.3, 0, -Math.PI / 2), { forward: 1 }, 4);
+		expect(w.y).toBeGreaterThan(0.75);
+		expect(w.x).toBeLessThan(rampHinge().x);
 	});
 
 	it('vaults the 1 m cargo barrier with a jump, and not without', () => {
@@ -67,6 +67,16 @@ describe('the on-foot walker', () => {
 		w = run(w, { forward: 1 }, 2, { jump: true });
 		expect(w.x).toBeGreaterThan(21);
 		expect(w.y).toBeCloseTo(0, 3);
+	});
+
+	it('bumps into a ring duct standing, and passes under it crouched', () => {
+		const ring = SOLIDS.find((s) => s.id === 'shipRingR')!;
+		// Walk east along the hull's side, under the starboard ring.
+		const from = spawnWalker(ring.cx - ring.hx - 2, ring.cz + 0.4, -Math.PI / 2);
+		const standing = run(from, { forward: 1 }, 2);
+		expect(standing.x).toBeLessThan(ring.cx - ring.hx);
+		const crouched = run(from, { forward: 1, crouch: true }, 4);
+		expect(crouched.x).toBeGreaterThan(ring.cx + ring.hx);
 	});
 
 	it('crouches and leans smoothly', () => {

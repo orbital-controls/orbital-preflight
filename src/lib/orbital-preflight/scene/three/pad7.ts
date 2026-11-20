@@ -2,6 +2,7 @@ import {
 	AdditiveBlending,
 	BoxGeometry,
 	CanvasTexture,
+	CatmullRomCurve3,
 	CircleGeometry,
 	Color,
 	DoubleSide,
@@ -20,6 +21,7 @@ import {
 	RingGeometry,
 	Shape,
 	SRGBColorSpace,
+	Vector3,
 	type BufferGeometry,
 	type Material
 } from 'three';
@@ -30,6 +32,7 @@ import {
 	DOOR,
 	LOCKER,
 	PAD,
+	ROUTE,
 	SEVEN,
 	SOLIDS,
 	STOPS,
@@ -165,10 +168,8 @@ export function buildPad7(p: Palette): Pad7 {
 	const ribMat = lambert(p.wall.clone().lerp(p.steel, 0.12));
 	const ceilMat = lambert(p.ground.clone().lerp(p.wall, 0.5));
 	const beamMat = lambert(p.wall.clone().multiplyScalar(0.8));
-	const metalMat = lambert(p.metal);
 	const darkMat = lambert(p.glassDark);
 	const gold = new MeshBasicMaterial({ color: p.gold });
-	const goldDim = new MeshBasicMaterial({ color: p.gold.clone().multiplyScalar(0.75) });
 	const violet = new MeshBasicMaterial({ color: p.violetBright });
 	const routeMat = new MeshBasicMaterial({
 		color: p.gold,
@@ -221,11 +222,17 @@ export function buildPad7(p: Palette): Pad7 {
 			group.add(rib);
 		}
 	}
+	// The light strip is a dash in each bay between ribs, as Pad3D draws it.
 	const y = WALLS.stripY;
-	group.add(boxAt(W, 0.1, 0.06, 0, y, BAY.z[0] + 0.33, gold));
-	group.add(boxAt(W, 0.1, 0.06, 0, y, BAY.z[1] - 0.33, gold));
-	group.add(boxAt(0.06, 0.1, D, BAY.x[0] + 0.33, y, 0, gold));
-	group.add(boxAt(0.06, 0.1, D, BAY.x[1] - 0.33, y, 0, gold));
+	const dashLen = WALLS.ribEvery * 0.6;
+	for (let x = BAY.x[0] + 1.5 + WALLS.ribEvery / 2; x < BAY.x[1] - 1; x += WALLS.ribEvery) {
+		group.add(boxAt(dashLen, 0.1, 0.06, x, y, BAY.z[0] + 0.05, gold));
+		group.add(boxAt(dashLen, 0.1, 0.06, x, y, BAY.z[1] - 0.05, gold));
+	}
+	for (let z = BAY.z[0] + 2.5 + WALLS.ribEvery / 2; z < BAY.z[1] - 1; z += WALLS.ribEvery) {
+		group.add(boxAt(0.06, 0.1, dashLen, BAY.x[0] + 0.05, y, z, gold));
+		group.add(boxAt(0.06, 0.1, dashLen, BAY.x[1] - 0.05, y, z, gold));
+	}
 
 	// Ceiling: dark, with beams across the bay and lamp panels between them (not on the
 	// block-out, which had no ceiling).
@@ -240,25 +247,26 @@ export function buildPad7(p: Palette): Pad7 {
 		for (const z of [-6, 0, 6]) group.add(boxAt(2.2, 0.05, 0.5, x, BAY.ceiling - 0.03, z, lamp));
 	}
 
-	// The pad: a darker inner disc, the violet ring, 24 gold dashes just outside.
+	// The pad: a darker inner disc, a thin violet ring, 24 radial gold ticks just outside.
 	const disc = mesh(
-		new CircleGeometry(PAD.radius - 0.35, 64),
+		new CircleGeometry(PAD.radius - 0.15, 64),
 		lambert(p.ground.clone().lerp(p.deck, 0.4))
 	);
 	disc.rotation.x = -Math.PI / 2;
 	disc.position.y = 0.004;
 	group.add(disc);
-	const ring = mesh(new RingGeometry(PAD.radius - 0.35, PAD.radius, 96), violet, 'padRing');
+	const ring = mesh(new RingGeometry(PAD.radius - 0.15, PAD.radius, 96), violet, 'padRing');
 	ring.rotation.x = -Math.PI / 2;
 	ring.position.y = 0.008;
 	group.add(ring);
-	const dashGeo = new BoxGeometry(0.95, 0.02, 0.2);
+	const dashGeo = new BoxGeometry(0.75, 0.02, 0.1);
 	for (let i = 0; i < PAD.dashes; i++) {
 		const a = (i / PAD.dashes) * Math.PI * 2;
-		const r = PAD.radius + 0.55;
+		const r = PAD.radius + 0.6;
 		const dash = mesh(dashGeo, gold);
 		dash.position.set(Math.cos(a) * r, 0.01, Math.sin(a) * r);
-		dash.rotation.y = -a + Math.PI / 2;
+		// Long side pointing out from the pad centre.
+		dash.rotation.y = -a;
 		group.add(dash);
 	}
 
@@ -276,7 +284,7 @@ export function buildPad7(p: Palette): Pad7 {
 		const g = new Group();
 		g.name = `stop${s.n}`;
 		g.position.set(s.at[0], 0, s.at[1]);
-		const d = mesh(new CircleGeometry(0.5, 32), goldDim);
+		const d = mesh(new CircleGeometry(0.5, 32), gold);
 		d.rotation.x = -Math.PI / 2;
 		d.position.y = 0.014;
 		g.add(d);
@@ -287,10 +295,6 @@ export function buildPad7(p: Palette): Pad7 {
 			t.rotation.y = -a + Math.PI / 2;
 			g.add(t);
 		}
-		const outline = mesh(new RingGeometry(1.08, 1.14, 48), routeMat);
-		outline.rotation.x = -Math.PI / 2;
-		outline.position.y = 0.012;
-		g.add(outline);
 		const glow = mesh(new PlaneGeometry(6, 6), poolMat);
 		glow.rotation.x = -Math.PI / 2;
 		glow.position.y = 0.02;
@@ -298,25 +302,35 @@ export function buildPad7(p: Palette): Pad7 {
 		group.add(g);
 	}
 
-	// The dashed gold route, clockwise, closing back at the ramp.
-	const dash = new BoxGeometry(0.6, 0.01, 0.07);
-	for (let i = 0; i < STOPS.length; i++) {
-		const a = STOPS[i].at;
-		const b = STOPS[(i + 1) % STOPS.length].at;
-		const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-		const yaw = Math.atan2(-(b[1] - a[1]), b[0] - a[0]);
-		for (let d = 1.4; d < len - 1.4; d += 1.15) {
-			const m = mesh(dash, routeMat);
-			const k = d / len;
-			m.position.set(a[0] + (b[0] - a[0]) * k, 0.011, a[1] + (b[1] - a[1]) * k);
-			m.rotation.y = yaw;
-			group.add(m);
-		}
+	// The dashed gold route: a smooth open path from the ramp foot to the bay door, round
+	// the outside of the pad, clear of the stop discs.
+	const dash = new BoxGeometry(0.5, 0.01, 0.07);
+	const curve = new CatmullRomCurve3(
+		ROUTE.map(([x, z]) => new Vector3(x, 0.011, z)),
+		false,
+		'centripetal'
+	);
+	const steps = Math.round(curve.getLength() / 0.55);
+	const points = curve.getSpacedPoints(steps);
+	for (let i = 0; i < points.length - 1; i += 2) {
+		const a = points[i];
+		const b = points[i + 1];
+		const mid = a.clone().add(b).multiplyScalar(0.5);
+		if (STOPS.some((st) => Math.hypot(mid.x - st.at[0], mid.z - st.at[1]) < 1.05)) continue;
+		const m = mesh(dash, routeMat);
+		m.position.copy(mid);
+		m.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+		group.add(m);
 	}
 
 	// Props from the layout.
+	// Crates and the barrier: light deck-grey, a gold stripe on top (Pad3D).
+	const propMat = lambert(p.wall.clone().lerp(p.steel, 0.3));
 	for (const s of SOLIDS) {
-		if (s.id.startsWith('crate')) group.add(solidMesh(s, metalMat, edges));
+		if (!s.id.startsWith('crate')) continue;
+		const crate = solidMesh(s, propMat, edges);
+		crate.add(boxAt(s.hx * 1.3, 0.02, 0.09, 0, (s.y1 - s.y0) / 2 + 0.011, 0, gold));
+		group.add(crate);
 	}
 	const locker = SOLIDS.find((s) => s.id === 'locker')!;
 	const lockerG = solidMesh(locker, lambert(p.wall.clone().lerp(p.steel, 0.25)), edges);
@@ -328,7 +342,7 @@ export function buildPad7(p: Palette): Pad7 {
 	group.add(lockerG);
 
 	const barrier = SOLIDS.find((s) => s.id === 'barrier')!;
-	const barrierG = solidMesh(barrier, metalMat, edges);
+	const barrierG = solidMesh(barrier, lambert(p.wall.clone().lerp(p.steel, 0.45)), edges);
 	barrierG.add(
 		boxAt(barrier.hx * 2, 0.05, barrier.hz * 2 + 0.02, 0, BARRIER.height / 2 + 0.025, 0, gold)
 	);
@@ -342,21 +356,17 @@ export function buildPad7(p: Palette): Pad7 {
 	const edgeT = 0.07;
 	group.add(boxAt(TARGETS.width + edgeT * 2, edgeT, 0.16, TARGETS.cx, TARGETS.y[1], panelZ, gold));
 	group.add(boxAt(TARGETS.width + edgeT * 2, edgeT, 0.16, TARGETS.cx, TARGETS.y[0], panelZ, gold));
-	for (const sx of [-1, 1])
-		group.add(
-			boxAt(edgeT, panelH, 0.16, TARGETS.cx + (sx * TARGETS.width) / 2, panelY, panelZ, gold)
-		);
 	const ringColor = p.violetBright.clone();
 	const coreColor = p.gold.clone();
 	const rings: TargetRing[] = TARGETS.rings.map((rg, i) => {
 		const ringMat = new MeshBasicMaterial({ color: ringColor.clone(), side: DoubleSide });
 		const coreMat = new MeshBasicMaterial({ color: coreColor.clone() });
-		const outer = mesh(new RingGeometry(TARGETS.radius - 0.12, TARGETS.radius, 48), ringMat);
-		const inner = mesh(new RingGeometry(TARGETS.radius * 0.45, TARGETS.radius * 0.52, 40), ringMat);
+		// One thin violet ring and a small gold dot (Pad3D).
+		const outer = mesh(new RingGeometry(TARGETS.radius - 0.08, TARGETS.radius, 48), ringMat);
 		const core = mesh(new CircleGeometry(TARGETS.core, 24), coreMat);
 		const g = new Group();
 		g.name = `target${i}`;
-		g.add(outer, inner, core);
+		g.add(outer, core);
 		g.position.set(rg.x, rg.y, TARGETS.z + 0.005);
 		group.add(g);
 		return { ring: ringMat, core: coreMat, flash: 0 };

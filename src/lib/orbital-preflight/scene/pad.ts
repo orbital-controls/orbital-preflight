@@ -73,8 +73,10 @@ export const WALLS = { ribEvery: 4, stripY: 6.4, tile: 2 };
  * origin at `at`, nose +x. Gear down; the ramp drops aft to the deck.
  */
 export const SHIP = {
-	at: [1.4, 0] as XZ,
-	scale: 0.36,
+	// Fitted to Pad3D's plan: hull from x ≈ −6.4 to the nose at ≈ 6.7, ring ducts at the
+	// tail about 3.4 m either side, the ramp a long gentle slope down to x −9.6.
+	at: [0.25, 0] as XZ,
+	scale: 0.27,
 	/** Model units from the origin down to the gear pads (lantern.ts: hinge −2.8, leg 3.4). */
 	groundZ: -6.2,
 	/** The ramp's hinge, model units (lantern.ts `tailBlock`), and its panel length. */
@@ -83,6 +85,8 @@ export const SHIP = {
 	rampHalfWidth: 3,
 	/** The hull's footprint, model units: tail to nose, and half its width. */
 	hull: { x: [-24.6, 22] as XZ, halfWidth: 8.6, top: 4.4 },
+	/** The ring ducts (lantern.ts `RING`): centre, outer radius, length along the hull. */
+	ring: { x: -22.2, y: 12.6, z: 3.2, outer: 3.3, length: 8.4 },
 	/** Where the ramp meets the deck. */
 	rampFootX: -9.6
 };
@@ -140,8 +144,9 @@ export const TARGETS = {
 		{ x: 18.6, y: 2.0 },
 		{ x: 21.3, y: 2.0 }
 	],
-	radius: 0.8,
-	core: 0.2,
+	/** A ring's outer radius (a hit counts inside it) and its gold centre dot (Pad3D). */
+	radius: 0.72,
+	core: 0.12,
 	/** The gold firing line on the deck. */
 	line: { z: -8.1, length: 6.5 }
 };
@@ -205,6 +210,19 @@ export const SOLIDS: readonly Solid[] = [
 		(SHIP.hull.x[1] - SHIP.hull.x[0]) * SHIP.scale,
 		SHIP.hull.halfWidth * 2 * SHIP.scale,
 		(SHIP.hull.top - SHIP.groundZ) * SHIP.scale
+	),
+	// The ring ducts hang low enough to bump a head; crouch to pass under them.
+	...[1, -1].map((side) =>
+		box(
+			side > 0 ? 'shipRingL' : 'shipRingR',
+			shipX(SHIP.ring.x),
+			SHIP.at[1] - side * SHIP.ring.y * SHIP.scale,
+			SHIP.ring.length * SHIP.scale,
+			SHIP.ring.outer * 2 * SHIP.scale,
+			SHIP.ring.outer * 2 * SHIP.scale,
+			0,
+			(SHIP.ring.z - SHIP.ring.outer - SHIP.groundZ) * SHIP.scale
+		)
 	)
 ];
 
@@ -428,7 +446,40 @@ function rayRamp(o: XYZ, d: XYZ, r: Ramp): number {
 	return rampHeight(r, x, z) === null ? Infinity : t;
 }
 
-/** The dashed gold route between stops, clockwise from the ramp, as a closed loop of points. */
-export function route(stops: readonly Stop[] = STOPS): XZ[] {
-	return stops.map((s) => s.at);
-}
+/**
+ * The dashed gold route, clockwise from the ramp foot to the bay door, as Pad3D's plan
+ * draws it: a smooth open path that swings round the outside of the pad (and over the
+ * barrier, which stop 4 vaults). Waypoints are read off the plan (27.2 plan px per metre,
+ * centre (640, 360)); the stops are on it. Smoothed by the bay's builder.
+ */
+export const ROUTE: readonly XZ[] = [
+	STOPS[0].at,
+	[-11.95, 1.5],
+	[-13.4, 2.95],
+	STOPS[1].at,
+	[-12.9, 9.0],
+	[-11.4, 10.0],
+	[-7.7, 10.5],
+	[0, 10.95],
+	[7.7, 10.3],
+	[11.4, 9.85],
+	STOPS[2].at,
+	[16.5, 6.8],
+	[17.8, 3.6],
+	STOPS[3].at,
+	[20.0, -1.1],
+	[19.3, -3.3],
+	[18.75, -5.3],
+	STOPS[4].at,
+	[14.9, -7.7],
+	[10.65, -9.25],
+	[3.7, -9.45],
+	[-2.9, -9.5],
+	STOPS[5].at,
+	[-7.0, -8.5],
+	[-10.65, -7.7],
+	[-14.35, -6.55],
+	[-17.3, -4.4],
+	[-20.0, -1.85],
+	STOPS[6].at
+];

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	castRay,
+	PAD,
+	ROUTE,
 	RAMPS,
 	rampHeight,
 	rampHinge,
@@ -60,6 +62,14 @@ describe('Pad 7 Compact', () => {
 		// Past horizontal, aft and down; stretched to reach.
 		expect(pose.angle).toBeGreaterThan(Math.PI / 2);
 		expect(pose.stretch).toBeGreaterThan(1);
+	});
+
+	it('runs the route through every stop in order, round the outside of the pad', () => {
+		const at = STOPS.map((st) => ROUTE.findIndex((p) => p === st.at));
+		expect(at.every((i, k) => i >= 0 && (k === 0 || i > at[k - 1]))).toBe(true);
+		// Between stops 2 and 3 it passes south of the pad, not across it.
+		const south = ROUTE.slice(at[1] + 1, at[2]);
+		for (const [x, z] of south) expect(Math.hypot(x, z)).toBeGreaterThan(PAD.radius);
 	});
 
 	it('casts a round from the firing line into the middle ring', () => {
