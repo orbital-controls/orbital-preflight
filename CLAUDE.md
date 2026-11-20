@@ -21,7 +21,7 @@ On Phil's instance the feature is "Preflight"; the framework is "Orbital Preflig
 ## Stack and rules
 
 - SvelteKit + Svelte 5 runes (shared state in `.svelte.ts`), TypeScript strict, Tailwind v4, pnpm, Vitest, Playwright, Prettier, ESLint. This repo uses pnpm and Svelte by design, whatever a global default says.
-- **Static only.** `adapter-static`, everything prerendered, everything interactive on the client. No server code, no runtime network calls, no analytics. Files are read with FileReader; nothing is uploaded.
+- **Static only.** `adapter-static`, everything prerendered, everything interactive on the client. No runtime server code (`src/hooks.server.ts` only runs while prerendering) and no runtime network calls, except opt-in analytics: Google Analytics (behind consent) and Umami, off unless the config sets their IDs, and never sent anything about a visitor's binds. Files are read with FileReader; nothing is uploaded.
 - **Base path.** `BASE_PATH` feeds `paths.base`. Every link and asset goes through `resolve()` / `asset()` from `$app/paths` (SvelteKit 3 has no `base` export).
 - **Config.** `orbital-preflight.config.ts` is the only file a fork edits. `ORBITAL_PREFLIGHT_CONFIG` swaps in another (Phil's instance lives in `instances/orbitalcontrols/`; the Pages workflow reads it from a repository variable of the same name). Document every new field in the README.
 - **Logic stays pure.** Parsers, writers, bind resolution and the mock flight are plain TS modules under `src/lib/orbital-preflight/` with Vitest specs beside them. The writer splices into the original file text; never rebuild a binds file from the model.
@@ -41,7 +41,7 @@ Follow the Orbital Controls voice where it applies (see ../orbital-controls/docs
 
 ## Checks
 
-Run before every commit: `pnpm check`, `pnpm check:svelte`, `pnpm lint`, `pnpm test:unit --run`, `pnpm build`. `pnpm test:e2e` builds three variants (root, non-root base, theme override) and runs the Playwright smoke tests against them.
+Run before every commit: `pnpm check`, `pnpm check:svelte`, `pnpm lint`, `pnpm test:unit --run`, `pnpm build`. `pnpm test:e2e` builds four variants (root, non-root base, theme override, analytics on) and runs the Playwright smoke tests against them.
 
 ## Git
 

@@ -4,6 +4,7 @@
  * - root:  the shipped config at a domain root
  * - base:  the same under /orbital-preflight, as a GitHub Pages project site serves it
  * - theme: tests/fixtures/theme.config.ts, a theme override with no presets
+ * - analytics: tests/fixtures/analytics.config.ts, the shipped config with both providers on
  */
 import { execFileSync } from 'node:child_process';
 
@@ -14,6 +15,11 @@ export const VARIANTS = {
 		port: 4175,
 		base: '',
 		env: { ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/theme.config.ts' }
+	},
+	analytics: {
+		port: 4176,
+		base: '',
+		env: { ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/analytics.config.ts' }
 	}
 } as const;
 
