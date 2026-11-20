@@ -33,7 +33,7 @@ export const FOOT_ANIM = {
 		/** The forearm rolls inward (the gun's top toward the screen centre). */
 		roll: -40 * DEG,
 		/** And lifts the gun toward the centre, in gun-frame cm. Eased back from the block-out. */
-		lift: [2.5, 2.4, -3.6] as V3,
+		lift: [1.2, 0.4, -2.2] as V3,
 		/** Phases, as fractions of the reload. */
 		rollIn: [0, 0.18],
 		out: [0.12, 0.45],

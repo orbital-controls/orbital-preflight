@@ -9,11 +9,11 @@
 	import Scene3D from './Scene3D.svelte';
 
 	/**
-	 * The flight view. The ship flies and the SRV drives in the 3D scene (`Scene3D`): it
-	 * gets the mock flight, the mode and the bound axes, renders, and reports nothing back
-	 * but whether WebGL came up. Where it can't (no WebGL, a lost context) and on foot,
-	 * which has no 3D scene yet, the boards' 2D placeholder draws. A `scene` snippet still
-	 * replaces both. The HUD is DOM on top and doesn't depend on either.
+	 * The flight view. The ship flies, the SRV drives and the pilot walks Pad 7 in the 3D
+	 * scene (`Scene3D`): it gets the mock flight, the mode, the bound axes and the held
+	 * binds, renders, and reports back only whether WebGL came up and, on foot, the stop
+	 * zone the pilot is in. Where it can't (no WebGL, a lost context) the boards' 2D
+	 * placeholder draws. A `scene` snippet still replaces both. The HUD is DOM on top.
 	 */
 	interface Props {
 		scene?: Snippet<[SceneProps]>;
@@ -25,8 +25,8 @@
 
 	/** WebGL came up. A failure is kept in `app.sceneFailed`, for the rest of the visit. */
 	let ready = $state(false);
-	/** Modes with a 3D scene so far. */
-	const IN_3D = new Set(['ship', 'srv']);
+	/** Modes with a 3D scene. */
+	const IN_3D = new Set(['ship', 'srv', 'foot']);
 	const live = $derived(!scene && ready && !app.sceneFailed && IN_3D.has(app.mode));
 	// The full editor replaces the page, so the viewport unmounts (and the engine is
 	// disposed) rather than being covered.
@@ -73,8 +73,16 @@
 			return `Placeholder for the 3D SRV driving view. Speed ${h.spd} metres per second, ${h.assist}.`;
 		}
 		const h = footHud(s);
+		if (live) {
+			const at = app.footStop ? `, at stop ${app.footStop} of 7` : '';
+			return `3D first-person view on Pad 7${at}. Health ${h.health} percent, ${h.ammo} rounds loaded.`;
+		}
 		return `Placeholder for the 3D first-person view. Health ${h.health} percent, ${h.ammo} rounds loaded.`;
 	});
+
+	// The crosshair, as the on-foot placeholder draws it.
+	const gap = $derived(app.flight.aim ? 6 : app.flight.walkT > 0 ? 18 : 12);
+	const tick = $derived(app.flight.aim ? 8 : 12);
 </script>
 
 <!-- The camera button sits outside the mouse zone, so clicking it isn't a mouse bind, and a
@@ -101,10 +109,12 @@
 								analog={app.analog}
 								covered={covered || !live}
 								frozen={app.cap !== null}
+								held={app.held}
 								onstatus={(status) => {
 									if (status === 'ready') ready = true;
 									else app.sceneFailed = true;
 								}}
+								onstop={(n) => app.enterStop(n)}
 							/>
 						</div>
 					{/if}
@@ -119,6 +129,29 @@
 							<g stroke="var(--color-trail)" stroke-width="1.5" fill="none"
 								><circle cx="450" cy="250" r="24" /><path
 									d="M450 214 V234 M450 266 V286 M414 250 H434 M466 250 H486"
+								/></g
+							>
+						</svg>
+					{/if}
+					{#if live && app.mode === 'foot' && !app.flight.holster}
+						<!-- The crosshair, as the on-foot placeholder draws it: rounds go here. -->
+						<svg
+							class="pointer-events-none absolute inset-0"
+							viewBox="0 0 900 560"
+							aria-hidden="true"
+							data-op-crosshair
+						>
+							<g stroke="var(--color-ink-200)" stroke-width="1.6"
+								><line x1="450" y1={280 - gap - tick} x2="450" y2={280 - gap} /><line
+									x1="450"
+									y1={280 + gap}
+									x2="450"
+									y2={280 + gap + tick}
+								/><line x1={450 - gap - tick} y1="280" x2={450 - gap} y2="280" /><line
+									x1={450 + gap}
+									y1="280"
+									x2={450 + gap + tick}
+									y2="280"
 								/></g
 							>
 						</svg>
@@ -149,7 +182,7 @@
 			<FirstVisit {onwhere} />
 		{/if}
 	</div>
-	{#if live}
+	{#if live && app.mode !== 'foot'}
 		<button
 			type="button"
 			aria-pressed={app.flight.cam === 'cockpit'}

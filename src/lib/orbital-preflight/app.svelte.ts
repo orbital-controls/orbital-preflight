@@ -243,6 +243,7 @@ export class OrbitalPreflight {
 		this.last = null;
 		this.lastActs = [];
 		this.flight = enterMode(this.flight);
+		this.footStop = null;
 		this.ed = { ...this.ed, sel: null, cat: 'All', pend: null };
 	}
 
@@ -448,6 +449,19 @@ export class OrbitalPreflight {
 			this.hub.held.has(inputKey(input))
 		);
 	});
+
+	/**
+	 * On foot, the 3D scene's stop zone the pilot stands in (1–7), and the stops visited
+	 * this visit. The scene reports them; the HUD shows the stop's prompts.
+	 */
+	footStop = $state<number | null>(null);
+	footDone = $state.raw<readonly number[]>([]);
+
+	/** The 3D on-foot scene says the pilot entered (or left) a stop zone. */
+	enterStop(n: number | null) {
+		this.footStop = n;
+		if (n !== null && !this.footDone.includes(n)) this.footDone = [...this.footDone, n];
+	}
 
 	/**
 	 * The viewport's camera button: the same as pressing a bound Toggle camera, so it's
