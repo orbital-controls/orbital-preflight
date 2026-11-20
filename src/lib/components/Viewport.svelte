@@ -177,7 +177,7 @@
 					>
 				</div>
 			{/if}
-			<Hud />
+			<Hud live3d={live} />
 		{:else}
 			<FirstVisit {onwhere} />
 		{/if}

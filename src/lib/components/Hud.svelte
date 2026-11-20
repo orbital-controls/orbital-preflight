@@ -2,11 +2,20 @@
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { footHud, pips, shipHud, srvHud, statusChips } from '#lib/orbital-preflight/flight.ts';
 	import { bindLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
+	import { STOPS } from '#lib/orbital-preflight/scene/pad.ts';
+	import { stopPrompts } from '#lib/orbital-preflight/scene/prompts.ts';
 
 	/**
 	 * The HUD, as DOM over the scene. It reads the mock flight and the binds, never the
-	 * scene, so swapping in the 3D view leaves it as it is.
+	 * scene, so swapping in the 3D view leaves it as it is. On foot, the 3D scene reports
+	 * the stop zone the pilot is in; the stop's prompts show here with the current binds.
 	 */
+	interface Props {
+		/** The 3D scene is up for this mode (on foot: Pad 7, with stop prompts). */
+		live3d?: boolean;
+	}
+
+	let { live3d = false }: Props = $props();
 	const app = useOrbitalPreflight();
 	const s = $derived(app.flight);
 	const mode = $derived(app.mode);
@@ -21,6 +30,19 @@
 		const slot = action ? app.store.bindings[action.id]?.[0] : null;
 		return slot ? bindLabel(slot, app.roles) : null;
 	});
+
+	const stop = $derived(
+		live3d && mode === 'foot' && app.footStop
+			? (STOPS.find((st) => st.n === app.footStop) ?? null)
+			: null
+	);
+	const prompts = $derived(
+		stop
+			? stopPrompts(stop, app.store.actionsIn('foot'), app.store.bindings, (b) =>
+					bindLabel(b, app.roles)
+				)
+			: []
+	);
 
 	const toast = $derived.by(() => {
 		if (!app.last) return { head: 'Waiting on you', lines: [] as string[], clash: false };
@@ -108,8 +130,43 @@
 				{@render bar('Health', foot.health, 'bg-alert', 'bg-alert/20')}
 				{@render bar('Shield', foot.shield, 'bg-course', 'bg-course/18')}
 				{@render bar('Suit battery', foot.battery, 'bg-trail', 'bg-trail/18')}
+				{#if live3d}
+					<span class="op-hud" data-op-stops-done={app.footDone.length}
+						>Pad 7 · {app.footDone.length} of {STOPS.length} stops</span
+					>
+				{/if}
 			</div>
-			{#if interact}
+			{#if live3d}
+				{#if stop}
+					<div
+						class="absolute top-[318px] right-0 left-0 flex justify-center"
+						data-op-stop-prompt={stop.n}
+					>
+						<div class="flex flex-col items-center gap-[6px] bg-abyss/70 px-4 py-[8px]">
+							<span class="op-hud text-trail">Stop {stop.n} · {stop.name}</span>
+							{#each prompts as row (row.label)}
+								<span class="flex items-center gap-[10px] font-mono text-[14px]">
+									{#if row.bound}
+										{#if row.hold}<span class="text-ink-900">Hold</span>{/if}
+										{#each row.keys as key (key)}
+											<span
+												class="bg-ink-200 px-[9px] py-[3px] font-bold text-void notch op-notch-xs"
+												>{key}</span
+											>
+										{/each}
+									{:else}
+										<span
+											class="border border-ink-900/50 px-[9px] py-[2px] text-[12px] text-ink-900 notch op-notch-xs"
+											>Not bound</span
+										>
+									{/if}
+									{row.label}
+								</span>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			{:else if interact}
 				<div class="absolute top-[330px] right-0 left-0 flex justify-center">
 					<span
 						class="flex items-center gap-[10px] bg-abyss/70 px-3 py-[6px] font-mono text-[14px]"
