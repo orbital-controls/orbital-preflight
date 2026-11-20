@@ -46,6 +46,20 @@ describe('mock flight', () => {
 		expect(run(s, 'heatsink').heat).toBe(0);
 	});
 
+	it('a tick at rest hands back the same state, so nothing downstream recomputes', () => {
+		const rest = { ...initialFlight(), thr: 0, heat: 0, sThr: 0 };
+		for (const mode of ['ship', 'srv', 'foot'] as const) expect(tick(rest, mode)).toBe(rest);
+		// Coasting to a stop gets there, rather than creeping on for minutes.
+		let coast: FlightState = { ...rest, vy: -20 };
+		for (let i = 0; i < 100; i++) coast = tick(coast, 'ship');
+		expect(Math.abs(coast.vy)).toBe(0);
+		expect(tick(coast, 'ship')).toBe(coast);
+		const moving = { ...initialFlight(), thr: 0.6 };
+		expect(tick(moving, 'ship')).not.toBe(moving);
+		const firing = run(initialFlight(), 'hp', 'fire');
+		expect(tick(firing, 'ship').fireT).toBe(firing.fireT - 1);
+	});
+
 	it('timers count down each tick, and mode switches clear shared effects', () => {
 		let s = run(initialFlight(), 'hp', 'fire', 'tgt');
 		s = tick(s, 'ship');

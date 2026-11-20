@@ -164,14 +164,14 @@ export function tick(s: FlightState, mode: Mode): FlightState {
 		const rad = (s.a * Math.PI) / 180;
 		const sp = s.thr * (s.boostT > 0 ? 2.2 : 1) * (s.sc ? 3 : 1) * 4;
 		const k = s.faOff ? 0.03 : 0.22;
-		p.vx = s.vx + (Math.sin(rad) * sp - s.vx) * k;
-		p.vy = s.vy + (-Math.cos(rad) * sp - s.vy) * k;
+		p.vx = approach(s.vx, Math.sin(rad) * sp, k);
+		p.vy = approach(s.vy, -Math.cos(rad) * sp, k);
 		p.heat = clamp01(
 			s.heat + (s.boostT > 0 ? 0.006 : 0) + (s.fireT > 0 ? 0.01 : 0) + (s.silent ? 0.004 : -0.0015)
 		);
 	}
 	if (mode === 'srv') {
-		p.sSpd = s.sSpd + (s.sThr * 28 - s.sSpd) * 0.08;
+		p.sSpd = approach(s.sSpd, s.sThr * 28, 0.08);
 		p.fuel = Math.max(0, s.fuel - Math.abs(s.sThr) * 0.0002);
 	}
 	if (mode === 'foot') {
@@ -182,7 +182,16 @@ export function tick(s: FlightState, mode: Mode): FlightState {
 		}
 		p.battery = Math.max(0, s.battery - (s.flash ? 0.0004 : 0));
 	}
-	return { ...s, ...p };
+	// At rest nothing moves: hand back the same state, so nothing that reads it recomputes.
+	for (const key of Object.keys(p) as (keyof FlightState)[])
+		if (p[key] !== s[key]) return { ...s, ...p };
+	return s;
+}
+
+/** `k` of the way from `from` to `to`, landing on `to` once it's too close to see. */
+function approach(from: number, to: number, k: number): number {
+	const next = from + (to - from) * k;
+	return Math.abs(to - next) < 1e-4 ? to : next;
 }
 
 function clamp01(n: number): number {
