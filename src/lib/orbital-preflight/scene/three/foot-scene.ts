@@ -83,6 +83,35 @@ const _w = new Vector3();
 const _up = new Vector3(0, 1, 0);
 const _right = new Vector3();
 
+const _muzzle = new Vector3();
+const _start = new Vector3();
+const _eye = new Vector3();
+
+/**
+ * Where a holo round's streak starts in the world: the point `distance` metres from the
+ * world camera along the ray through the screen spot where the viewmodel's emitter is
+ * drawn. The two layers have their own cameras (and units), so the emitter's screen
+ * position is what ties them together. Writes to and returns `out`.
+ */
+export function beamStart(
+	world: PerspectiveCamera,
+	overlay: PerspectiveCamera,
+	muzzleInOverlay: Vector3,
+	distance: number,
+	out: Vector3
+): Vector3 {
+	const eye = world.getWorldPosition(_eye);
+	return out
+		.copy(muzzleInOverlay)
+		.project(overlay)
+		.setZ(0.5)
+		.unproject(world)
+		.sub(eye)
+		.normalize()
+		.multiplyScalar(distance)
+		.add(eye);
+}
+
 /** Where a spawn spec from the URL lands: a stop number, or "x,z,yawDegrees". */
 export function parseSpawn(spec: string | null | undefined): Spawn | null {
 	if (!spec) return null;
@@ -380,14 +409,8 @@ export class FootScene implements ModeScene {
 		// The streak starts where the emitter is on screen, half a metre out.
 		this.overlay.scene.updateMatrixWorld();
 		this.overlay.camera.updateMatrixWorld();
-		const ndc = this.#rig.muzzle.getWorldPosition(_v).project(this.overlay.camera);
-		const start = ndc
-			.setZ(0.5)
-			.unproject(this.camera)
-			.sub(origin)
-			.normalize()
-			.multiplyScalar(0.5)
-			.add(origin);
+		const muzzle = this.#rig.muzzle.getWorldPosition(_muzzle);
+		const start = beamStart(this.camera, this.overlay.camera, muzzle, 0.5, _start);
 		const end = _w.set(...hit.point);
 		const along = end.clone().sub(start);
 		const length = along.length();
