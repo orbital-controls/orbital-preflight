@@ -1,6 +1,6 @@
 # Orbital Preflight
 
-Load the keybinds file from your space sim, connect your controllers, test every bind against a mock flight, rebind anything and export a new preset. It runs entirely in the browser tab: files are read with `FileReader`, nothing is uploaded, and there is no account and no analytics.
+Load the keybinds file from your space sim, connect your controllers, test every bind against a mock flight, rebind anything and export a new preset. It runs entirely in the browser tab: files are read with `FileReader`, nothing is uploaded, and there is no account. Analytics are off unless the config turns them on (see [Analytics](#analytics)), and never see your binds.
 
 It's also a framework. Fork this repo onto GitHub Pages to show off your own binds: visitors test them with their own stick and keyboard, and download them as they are or after changing them.
 
@@ -53,6 +53,30 @@ export default defineConfig({
 | `brand`       | no       | The top bar's `wordmark` (default "Preflight") and `mark`, an inline SVG string drawn at 28 px (default: the Orbital Controls mark; `false` for the wordmark alone). Also an optional heavier `markSmall` for the favicon, and an accessible `label`.                                                                          |
 | `theme`       | no       | CSS variable overrides, applied after the theme package. Use the package's own names (`--color-trail`, `--color-course`, `--font-display`…); its README lists them.                                                                                                                                                            |
 | `poweredBy`   | no       | A small "Powered by Orbital Preflight" link in the drawers and the desktop-only notice. On unless set to `false`.                                                                                                                                                                                                              |
+| `analytics`   | no       | Off unless set. `googleMeasurementId` (`G-XXXXXXXXXX`) adds Google Analytics behind a consent banner; `umamiWebsiteId` adds cookieless [Umami](https://umami.is), with `umamiHost` for a self-hosted instance. See [Analytics](#analytics).                                                                                    |
+
+### Analytics
+
+None by default: a config with no `analytics` writes no tag, sets no cookie, shows no banner and makes no third-party request. Set either or both:
+
+```ts
+analytics: {
+	googleMeasurementId: 'G-XXXXXXXXXX',
+	umamiWebsiteId: '00000000-0000-0000-0000-000000000000',
+	umamiHost: 'https://umami.example.com' // optional, default https://cloud.umami.is
+}
+```
+
+- **Google Analytics 4** sets a cookie, so a banner asks first. Until a visitor allows it, the page contacts no Google endpoint: only an inline bootstrap with Consent Mode defaults (everything `denied`) is in the HTML, and the `gtag/js` script is added on Allow. The answer is kept per base path, so two forks on one github.io origin ask separately.
+- **Umami** sets no cookie and stores no identifier, so it needs no consent and runs either way; the banner says so when it is on. Ad blockers drop the Google tag for much of this audience, and Umami counts some of those visits. `cloud.umami.is` is on the same blocklists, so a self-hosted `umamiHost` on your own domain counts more.
+
+The tags are written into the prerendered HTML at build time (`src/hooks.server.ts` fills a placeholder in `src/app.html`; nothing runs on a server). Events are sent from `src/lib/orbital-preflight/analytics/events.ts`, the only file the app calls; nothing about a visitor's binds or file names is sent:
+
+| Event          | When                                 | Data                                   |
+| -------------- | ------------------------------------ | -------------------------------------- |
+| page view      | each navigation                      | URL and title                          |
+| `binds_load`   | a preset or the visitor's file opens | `source` (`preset` or `upload`), `sim` |
+| `binds_export` | a rebound preset is downloaded       | `sim`, `changes` (binds changed)       |
 
 The look comes from [`@orbital-controls/theme`](https://www.npmjs.com/package/@orbital-controls/theme), installed from npm: Tailwind v4 tokens, the motif utilities and three self-hosted font families. Re-theme through `theme`, not by copying its values.
 
@@ -71,6 +95,7 @@ and deploys with the same GitHub Pages workflow as a fork, served at `preflight.
 3. At the DNS host for orbitalcontrols.com, add a `CNAME` record from `preflight` to `orbital-controls.github.io`. Verifying the domain for the `orbital-controls` organisation (Settings → Pages → Verified domains) stops anyone else claiming it.
 4. Push to `main`. With a custom domain the base path is empty, so the app is served at the root.
 5. Uncomment `siteUrl` in `instances/orbitalcontrols/orbital-preflight.config.ts`, so the page gets its canonical and Open Graph tags.
+6. For analytics, fill in and uncomment `analytics` in the same file: a GA4 web data stream for `preflight.orbitalcontrols.com` and an Umami website for it.
 
 The build output is plain static files, so any static host works too.
 
@@ -103,6 +128,7 @@ pnpm build          # static output in build/
 | `src/lib/orbital-preflight/flight.ts`       | The mock flight state machine and the HUD values. Pure.                         |
 | `src/lib/orbital-preflight/inputs/`         | Keyboard, mouse and Gamepad API input, and controller pairing.                  |
 | `src/lib/orbital-preflight/scene/`          | The 3D viewport: pure flight → part mappings, and the three.js engine.          |
+| `src/lib/orbital-preflight/analytics/`      | Optional Google Analytics and Umami: head tags, consent, events.                |
 | `src/lib/components/`                       | One component per UI piece.                                                     |
 
 ### The 3D scene

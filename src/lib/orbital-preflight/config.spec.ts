@@ -53,6 +53,30 @@ describe('config', () => {
 		expect(() => resolveConfig({ ...base, theme: { '--color-trail': 'red}</style>' } })).toThrow();
 	});
 
+	it('turns analytics on only for the IDs that are set, and checks their shapes', () => {
+		expect(resolveConfig(base).analytics).toEqual({ google: null, umami: null });
+		const uuid = '0b9c2a1e-1234-4abc-9def-0123456789ab';
+		expect(
+			resolveConfig({
+				...base,
+				analytics: { googleMeasurementId: ' G-ABC123 ', umamiWebsiteId: uuid }
+			}).analytics
+		).toEqual({ google: 'G-ABC123', umami: { websiteId: uuid, host: 'https://cloud.umami.is' } });
+		expect(
+			resolveConfig({
+				...base,
+				analytics: { umamiWebsiteId: uuid, umamiHost: 'https://umami.example.com/' }
+			}).analytics.umami?.host
+		).toBe('https://umami.example.com');
+		expect(() =>
+			resolveConfig({ ...base, analytics: { googleMeasurementId: "G-1');alert(1)//" } })
+		).toThrow();
+		expect(() => resolveConfig({ ...base, analytics: { umamiWebsiteId: 'nope' } })).toThrow();
+		expect(() =>
+			resolveConfig({ ...base, analytics: { umamiWebsiteId: uuid, umamiHost: 'http://x.com' } })
+		).toThrow();
+	});
+
 	it('the shipped config resolves', () => {
 		const config = resolveConfig(shipped);
 		expect(config.presets[0]).toMatchObject({ file: 'demo.binds' });

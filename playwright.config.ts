@@ -5,7 +5,8 @@ import { defineConfig, devices } from '@playwright/test';
 const VARIANTS = [
 	{ name: 'root', port: 4173, base: '', tests: ['root', 'scene'] },
 	{ name: 'base', port: 4174, base: '/orbital-preflight', tests: ['base'] },
-	{ name: 'theme', port: 4175, base: '', tests: ['theme'] }
+	{ name: 'theme', port: 4175, base: '', tests: ['theme'] },
+	{ name: 'analytics', port: 4176, base: '', tests: ['analytics'] }
 ];
 
 export default defineConfig({
