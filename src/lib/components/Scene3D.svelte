@@ -29,6 +29,13 @@
 
 	let { flight, mode, analog, covered, frozen, held, onstatus, onstop }: Props = $props();
 
+	/**
+	 * How long the viewport can sit unseen (a hidden tab, scrolled away) before its scene is
+	 * disposed. Coming back builds it again, as a mode switch does, so the on-foot pilot
+	 * starts over at the spawn. A drawer over the viewport doesn't count: it only pauses.
+	 */
+	const RELEASE_AFTER_MS = 30_000;
+
 	// A plain ref rather than an attachment: the engine is created once, after an async
 	// import, and disposed with the component.
 	let canvas: HTMLCanvasElement;
@@ -37,6 +44,8 @@
 	let onScreen = $state(true);
 	let frameMs = $state(0);
 	let pixelRatio = $state(1);
+	/** GPU resources alive, as `geometries/textures/programs`. */
+	let gpu = $state('');
 	/** The mode whose 3D scene is built, if any. */
 	let shown = $state<string | null>(null);
 	/** On foot: target hits so far, and whether the mouse is captured for looking. */
@@ -122,8 +131,13 @@
 			const stats = local.stats();
 			frameMs = Math.round(stats.frameMs * 100) / 100;
 			pixelRatio = stats.pixelRatio;
+			gpu = `${stats.gpu.geometries}/${stats.gpu.textures}/${stats.gpu.programs}`;
 		}, 1000);
 		const footInfo = setInterval(() => {
+			if (mode !== 'foot') {
+				hits = 0;
+				return;
+			}
 			const info = local?.info();
 			hits = typeof info?.hits === 'number' ? info.hits : 0;
 		}, 200);
@@ -180,6 +194,15 @@
 		engine?.setRunning(tabVisible && onScreen && !covered && engine.supports(mode));
 	});
 
+	// Frees the scene's GPU memory once nobody has seen it for a while; it assigns no Svelte
+	// state (`onscene` sets `shown`, a data attribute only).
+	$effect(() => {
+		if (!engine || (tabVisible && onScreen)) return;
+		const idle = engine;
+		const timer = setTimeout(() => idle.release(), RELEASE_AFTER_MS);
+		return () => clearTimeout(timer);
+	});
+
 	// Lets go of the mouse when the pilot freezes (a rebind), something covers the
 	// viewport, or the mode changes. It only calls the DOM: `locked` is assigned by the
 	// `pointerlockchange` listener, not here.
@@ -206,6 +229,7 @@
 	data-op-pointer-lock={locked}
 	data-op-frame-ms={frameMs}
 	data-op-pixel-ratio={pixelRatio}
+	data-op-gpu={gpu}
 	class="absolute inset-0 size-full {(mode === 'foot' ? flight.fNv : flight.nv) ? 'op-nv' : ''}"
 ></canvas>
 

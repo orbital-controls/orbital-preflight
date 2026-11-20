@@ -265,3 +265,28 @@ test('without WebGL on foot keeps its 2D placeholder', async ({ page }) => {
 	await page.keyboard.press('KeyR');
 	await expect(page.locator('[aria-live="polite"]')).toContainText('Reload');
 });
+
+test('leaving a mode frees its scene: GPU resources come back to the same numbers', async ({
+	page
+}) => {
+	// Three scene builds on software WebGL: give it room.
+	test.slow();
+	await page.goto('./');
+	const canvas = page.locator(scene);
+	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
+	// `geometries/textures/programs`, sampled once a second.
+	await expect(canvas).toHaveAttribute('data-op-gpu', /^\d+\/\d+\/\d+$/);
+	const ship = await canvas.getAttribute('data-op-gpu');
+
+	for (const [tab, mode] of [
+		[/SRV/, 'srv'],
+		[/On foot/, 'foot']
+	] as const) {
+		await page.getByRole('tab', { name: tab }).click();
+		await expect(canvas).toHaveAttribute('data-op-scene-mode', mode);
+		await expect(canvas).not.toHaveAttribute('data-op-gpu', ship!);
+	}
+	await page.getByRole('tab', { name: /Ship/ }).click();
+	await expect(canvas).toHaveAttribute('data-op-scene-mode', 'ship');
+	await expect(canvas).toHaveAttribute('data-op-gpu', ship!);
+});
