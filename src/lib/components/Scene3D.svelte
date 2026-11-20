@@ -36,6 +36,7 @@
 	let tabVisible = $state(true);
 	let onScreen = $state(true);
 	let frameMs = $state(0);
+	let pixelRatio = $state(1);
 	/** The mode whose 3D scene is built, if any. */
 	let shown = $state<string | null>(null);
 	/** On foot: target hits so far, and whether the mouse is captured for looking. */
@@ -117,7 +118,10 @@
 		const io = new IntersectionObserver(([entry]) => (onScreen = entry.isIntersecting));
 		io.observe(canvas);
 		const stats = setInterval(() => {
-			if (local) frameMs = Math.round(local.stats().frameMs * 100) / 100;
+			if (!local) return;
+			const stats = local.stats();
+			frameMs = Math.round(stats.frameMs * 100) / 100;
+			pixelRatio = stats.pixelRatio;
 		}, 1000);
 		const footInfo = setInterval(() => {
 			const info = local?.info();
@@ -201,6 +205,7 @@
 	data-op-hits={hits}
 	data-op-pointer-lock={locked}
 	data-op-frame-ms={frameMs}
+	data-op-pixel-ratio={pixelRatio}
 	class="absolute inset-0 size-full {(mode === 'foot' ? flight.fNv : flight.nv) ? 'op-nv' : ''}"
 ></canvas>
 

@@ -9,7 +9,6 @@ import {
 	MeshBasicMaterial,
 	Object3D,
 	PerspectiveCamera,
-	PointLight,
 	Scene,
 	SpotLight,
 	Sprite,
@@ -153,7 +152,7 @@ export class FootScene implements ModeScene {
 	#impact: Sprite;
 	#beamT = 0;
 	#flashlight: SpotLight;
-	#vmFill: PointLight;
+	#vmFill: HemisphereLight;
 
 	constructor(
 		readonly scene: Scene,
@@ -233,15 +232,15 @@ export class FootScene implements ModeScene {
 		const vm = new Scene();
 		vm.add(this.#rig.root);
 		// Near-neutral fill, as Pistol3D lights it: the glove reads slate, not navy.
-		vm.add(new HemisphereLight(new Color('#ecebf6'), palette.steel, 1.9));
 		const key = new DirectionalLight(new Color('#fff6e8'), 2.4);
 		key.position.set(-30, 60, -45);
 		vm.add(key);
 		const rim = new DirectionalLight(palette.violetBright, 0.6);
 		rim.position.set(40, 10, 50);
 		vm.add(rim);
-		this.#vmFill = new PointLight(new Color('#f4f1ff'), 0, 200, 1);
-		this.#vmFill.position.set(...VIEW.eye);
+		// The flashlight brightens this fill rather than adding a light (a light that comes
+		// and goes recompiles every material; one that is always there costs every frame).
+		this.#vmFill = new HemisphereLight(new Color('#ecebf6'), palette.steel, 1.9);
 		vm.add(this.#vmFill);
 		const vmCam = new PerspectiveCamera(VIEW.fov, 900 / 560, 1, 600);
 		this.overlay = { scene: vm, camera: vmCam };
@@ -356,7 +355,7 @@ export class FootScene implements ModeScene {
 
 		// Lights: the flashlight from the eye; the viewmodel catches some of it.
 		this.#flashlight.intensity = s.flash ? 38 : 0;
-		this.#vmFill.intensity = s.flash ? 4500 : 0;
+		this.#vmFill.intensity = s.flash ? 2.8 : 1.9;
 
 		// Fades: the round, its impact, the rings.
 		this.#beamT = Math.max(0, this.#beamT - dt);

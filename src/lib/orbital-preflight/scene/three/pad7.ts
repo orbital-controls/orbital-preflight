@@ -9,6 +9,7 @@ import {
 	EdgesGeometry,
 	ExtrudeGeometry,
 	Group,
+	DirectionalLight,
 	HemisphereLight,
 	LineBasicMaterial,
 	LineSegments,
@@ -16,7 +17,6 @@ import {
 	MeshBasicMaterial,
 	MeshLambertMaterial,
 	PlaneGeometry,
-	PointLight,
 	RepeatWrapping,
 	RingGeometry,
 	Shape,
@@ -433,20 +433,13 @@ export function buildPad7(p: Palette): Pad7 {
 		);
 	group.add(doorG);
 
-	// Light: dark overall, a pool at each stop. A few real lights for the ship and props.
-	group.add(new HemisphereLight(new Color('#8c8fd6'), p.ground, 0.55));
-	const warm = new Color('#ffe2b0');
-	for (const [x, yy, z, power] of [
-		[-11.3, 6.5, 0, 26],
-		[12.6, 6, 8.5, 18],
-		[18.2, 6, -6.5, 22],
-		[-4.05, 6, -8.4, 18],
-		[1.4, 8.4, 0, 30]
-	] as const) {
-		const light = new PointLight(warm, power, 16, 1.4);
-		light.position.set(x, yy, z);
-		group.add(light);
-	}
+	// Light: dark overall, a pool at each stop (the deck decals above). Two lights only:
+	// every light is paid per pixel, and with software WebGL (CI, machines without a GPU)
+	// five point lights over the whole bay starved the page's own timers.
+	group.add(new HemisphereLight(new Color('#8c8fd6'), p.ground, 0.7));
+	const key = new DirectionalLight(new Color('#ffe2b0'), 1.1);
+	key.position.set(-6, 9, 5);
+	group.add(key);
 
 	bake(group);
 	return { group, rings, setHits, ringColor, coreColor };
