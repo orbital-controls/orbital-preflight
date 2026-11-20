@@ -203,8 +203,9 @@ export class FootScene implements ModeScene {
 		this.root = this.#rig.root;
 		const vm = new Scene();
 		vm.add(this.#rig.root);
-		vm.add(new HemisphereLight(new Color('#c9c7ff'), palette.deck, 1.05));
-		const key = new DirectionalLight(new Color('#fff4de'), 1.9);
+		// Near-neutral fill, as Pistol3D lights it: the glove reads slate, not navy.
+		vm.add(new HemisphereLight(new Color('#ecebf6'), palette.steel, 1.9));
+		const key = new DirectionalLight(new Color('#fff6e8'), 2.4);
 		key.position.set(-30, 60, -45);
 		vm.add(key);
 		const rim = new DirectionalLight(palette.violetBright, 0.6);

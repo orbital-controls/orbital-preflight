@@ -22,6 +22,7 @@ import {
 	Vector3,
 	type Material
 } from 'three';
+import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { TracerPose } from '../foot.ts';
 import { TRACER_ROOT } from '../parts.ts';
@@ -240,6 +241,44 @@ function frustumStrip(
 	return g;
 }
 
+/**
+ * The points the glove's hull wraps, in the gun frame: a ring at the wrist and one inside
+ * the cuff (along `fwd`, the forearm's direction), the web under the slide's rear, the
+ * backstrap, the right side down to the knuckles, the heel low on the left, the thenar.
+ */
+function handHull(fwd: Vector3): Vector3[] {
+	const pts: Vector3[] = [];
+	const wrist = v3(WRIST);
+	const side = new Vector3().crossVectors(fwd, new Vector3(0, 1, 0)).normalize();
+	const up = new Vector3().crossVectors(side, fwd).normalize();
+	for (const [back, r] of [
+		[0, 2.6],
+		[3.2, 2.45]
+	] as const) {
+		const c = wrist.clone().addScaledVector(fwd, -back);
+		for (let i = 0; i < 10; i++) {
+			const a = (i / 10) * Math.PI * 2;
+			pts.push(
+				c
+					.clone()
+					.addScaledVector(up, Math.cos(a) * r)
+					.addScaledVector(side, Math.sin(a) * r)
+			);
+		}
+	}
+	// The web of thumb and index, high on the backstrap under the slide's rear.
+	pts.push(v3([-6.7, -0.45, 0.95]), v3([-6.7, -0.45, -0.85]), v3([-4.6, -0.35, 1.55]));
+	// Round the backstrap and the right side, top to bottom; knuckles on the front-right.
+	for (const s of [0.6, 2.4, 4.3, 6.1, 7.4]) {
+		pts.push(v3(aroundGrip(s, 180, 1.0)), v3(aroundGrip(s, 135, 1.25)));
+		pts.push(v3(aroundGrip(s, 95, 1.55)), v3(aroundGrip(s, 62, 1.05)));
+	}
+	// The heel of the hand, low on the left behind the fingertips, and the thenar.
+	pts.push(v3(aroundGrip(6.4, -150, 0.95)), v3(aroundGrip(4.2, -165, 0.95)));
+	pts.push(v3([-5.7, -2.7, -1.95]), v3([-5.2, -1.0, -1.7]));
+	return pts;
+}
+
 export function buildTracer(p: Palette, mat: TracerMaterials = makeTracerMaterials(p)): TracerRig {
 	const nodes: Record<string, Object3D> = {};
 	const keep = (o: Object3D) => {
@@ -435,35 +474,12 @@ export function buildTracer(p: Palette, mat: TracerMaterials = makeTracerMateria
 	flex.add(thumbBones[0]);
 	for (const b of thumbBones) keep(b);
 
-	// The back of the hand, from the wrist to the knuckle line on the grip's right side.
-	const knuckles = v3(aroundGrip(3.6, 88, 1.35));
-	const wristIn = v3(WRIST).lerp(knuckles, 0.08);
-	const backLen = knuckles.distanceTo(wristIn);
-	const backGeo = new CapsuleGeometry(1.15, backLen, 4, 12);
-	backGeo.rotateZ(-Math.PI / 2);
-	backGeo.translate(backLen / 2, 0, 0);
-	backGeo.scale(1, 1.75, 0.95);
-	const glove = keep(named(mesh(backGeo, mat.glove), 'glove'));
-	glove.position.copy(wristIn).sub(at);
-	{
-		const dir = knuckles.clone().sub(wristIn).normalize();
-		// Width runs down the grip; the flat faces out to the right.
-		const across = new Vector3(0, -1, 0).addScaledVector(dir, dir.y).normalize();
-		const out = new Vector3().crossVectors(dir, across).normalize();
-		glove.quaternion.setFromRotationMatrix(_m.makeBasis(dir, across, out));
-	}
-	// The wrist inside the cuff, so the open sleeve end shows glove, not a hole.
-	const wristGeo = new CylinderGeometry(2.45, 2.6, 4.2, 18);
-	wristGeo.rotateZ(-Math.PI / 2);
-	const wristPiece = mesh(wristGeo, mat.glove);
-	wristPiece.position.set(-1.2, 0, 0);
-	// In the glove's frame: back along the forearm from the wrist.
-	glove.add(wristPiece);
-	wristPiece.quaternion.copy(glove.quaternion).invert().multiply(_q.copy(forearmQ));
-	wristPiece.position.copy(
-		_v.copy(fwd).multiplyScalar(-1.6).applyQuaternion(_q.copy(glove.quaternion).invert())
-	);
-	flex.add(glove);
+	// The hand's mass, as Pistol3D blocks it: one faceted hull from the wrist (running on
+	// into the cuff) over the backstrap and the grip's right side to the knuckle line, the
+	// web high under the slide's rear, and the thenar at the rear-left where the thumb starts.
+	const hull = new ConvexGeometry(handHull(fwd));
+	hull.translate(-at.x, -at.y, -at.z);
+	flex.add(keep(named(mesh(hull, mat.glove), 'glove')));
 
 	// The sleeve, the cuff seam and the violet stripe, in the forearm's frame (+X to the wrist).
 	const cuffX = forearmLength - SLEEVE.cuffBack;

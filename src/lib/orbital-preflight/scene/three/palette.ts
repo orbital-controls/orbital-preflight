@@ -67,7 +67,8 @@ export function readPalette(el?: Element | null): Palette {
 		metal: new Color('#3A3D66'),
 		sleeve: read('--color-ink-200', '#E6E8F6'),
 		steel,
-		glove: mix(0.2, 0.1),
+		// Tuned to how Pistol3D renders the glove (a slate grey), not the raw #2A2D55.
+		glove: mix(0.06, 0.3),
 		deck: mix(0.08, 0.06),
 		wall: mix(0.12, 0.1),
 		glassDark: mix(0.03, 0)
