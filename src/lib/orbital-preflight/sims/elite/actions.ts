@@ -131,13 +131,18 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 	},
 	foot: {
 		Moving: [
-			['HumanoidForwardButton', 'Move forward', 'walk'],
-			['HumanoidBackwardButton', 'Move back', 'walk'],
-			['HumanoidStrafeLeftButton', 'Strafe left', 'walk'],
-			['HumanoidStrafeRightButton', 'Strafe right', 'walk'],
+			['HumanoidForwardButton', 'Move forward', 'walkF'],
+			['HumanoidBackwardButton', 'Move back', 'walkB'],
+			['HumanoidStrafeLeftButton', 'Strafe left', 'walkL'],
+			['HumanoidStrafeRightButton', 'Strafe right', 'walkR'],
 			['HumanoidSprintButton', 'Sprint', 'sprint'],
 			['HumanoidJumpButton', 'Jump', 'jump'],
-			['HumanoidCrouchButton', 'Crouch', 'crouch']
+			['HumanoidCrouchButton', 'Crouch', 'crouch'],
+			// UNVERIFIED ids: Odyssey's on-foot axes, as remembered.
+			['HumanoidForwardAxis', 'Move forward / back', undefined, true],
+			['HumanoidStrafeAxis', 'Strafe', undefined, true],
+			['HumanoidRotateAxis', 'Look left / right', undefined, true],
+			['HumanoidPitchAxis', 'Look up / down', undefined, true]
 		],
 		Combat: [
 			['HumanoidPrimaryFireButton', 'Fire weapon', 'primary'],
@@ -174,7 +179,11 @@ const ANALOG: Record<string, AnalogRole> = {
 	RollAxisRaw: 'roll',
 	YawAxisRaw: 'yaw',
 	SteeringAxis: 'steer',
-	DriveSpeedAxis: 'drive'
+	DriveSpeedAxis: 'drive',
+	HumanoidForwardAxis: 'moveY',
+	HumanoidStrafeAxis: 'moveX',
+	HumanoidRotateAxis: 'lookX',
+	HumanoidPitchAxis: 'lookY'
 };
 
 interface Known {

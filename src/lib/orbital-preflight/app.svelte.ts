@@ -2,6 +2,7 @@ import { getContext, setContext } from 'svelte';
 import { BindStore, download, type FileOrigin } from './binds.svelte.ts';
 import {
 	findHolders,
+	inputKey,
 	sameInput,
 	type Resolution,
 	type ShowFilter,
@@ -13,6 +14,7 @@ import { InputHub, type InputEvent } from './inputs/hub.svelte.ts';
 import { deviceRoles } from './labels.ts';
 import { withLocalActions } from './local-actions.ts';
 import { analogAxes, type Analog } from './scene/analog.ts';
+import { heldEffects, NO_HELD } from './scene/held.ts';
 import { clearLayout, loadLayout, saveLayout } from './persist.ts';
 import { BindsFormatError, simById } from './sims/index.ts';
 import type { Action, Bind, InputId, Mode, SimId } from './types.ts';
@@ -421,16 +423,29 @@ export class OrbitalPreflight {
 
 	/**
 	 * Bound axes in this mode as they are now, for the 3D scene to fly or drive by: pitch,
-	 * roll and yaw for the ship, steering and drive speed for the SRV. Nothing while
-	 * listening for a rebind or with a drawer open: the vehicle freezes, as the mock flight
-	 * does.
+	 * roll and yaw for the ship, steering and drive speed for the SRV, move and look on
+	 * foot. Nothing while listening for a rebind or with a drawer open: the vehicle (or
+	 * the pilot) freezes, as the mock flight does.
 	 */
 	analog = $derived.by((): Analog => {
-		const idle = this.cap !== null || this.drawer !== null || this.leaving || this.mode === 'foot';
+		const idle = this.cap !== null || this.drawer !== null || this.leaving;
 		return analogAxes(
 			this.store.actionsIn(this.mode),
 			this.store.bindings,
 			idle ? null : this.hub.axes
+		);
+	});
+
+	/**
+	 * Effects whose binds are held down right now in this mode (walk directions, sprint),
+	 * for the on-foot walker: presses still fire through `onInput` as before; this only
+	 * says what is still down. Empty while listening for a rebind or with a drawer open.
+	 */
+	held = $derived.by((): ReadonlySet<string> => {
+		if (this.cap !== null || this.drawer !== null || this.leaving || this.mode !== 'foot')
+			return NO_HELD;
+		return heldEffects(this.store.actionsIn(this.mode), this.store.bindings, (input) =>
+			this.hub.held.has(inputKey(input))
 		);
 	});
 

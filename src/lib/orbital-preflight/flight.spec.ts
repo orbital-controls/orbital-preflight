@@ -66,6 +66,11 @@ describe('mock flight', () => {
 		expect(run(s, 'holster', 'primary')).toMatchObject({ ammo: 30, msg: 'Weapon holstered' });
 	});
 
+	it('on foot: every walk direction is the board walk', () => {
+		for (const e of ['walk', 'walkF', 'walkB', 'walkL', 'walkR'])
+			expect(run(initialFlight(), e).walkT).toBe(8);
+	});
+
 	it('panels say they would open; unknown effects change nothing', () => {
 		expect(act(initialFlight(), 'panel', 'Galaxy map').msg).toBe('Galaxy map would open');
 		expect(act(initialFlight(), 'nothing', 'x')).toEqual(initialFlight());

@@ -366,7 +366,13 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 			msg(s.shipCalled ? 'Ship dismissed to orbit' : 'Ship recalled · touching down soon', 50);
 			break;
 		// on foot
+		// One effect per direction, so the 3D walker knows which way; the mock flight
+		// treats them all as the board's walk.
 		case 'walk':
+		case 'walkF':
+		case 'walkB':
+		case 'walkL':
+		case 'walkR':
 			p.walkT = 8;
 			break;
 		case 'sprint':
