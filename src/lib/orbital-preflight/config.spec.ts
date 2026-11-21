@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pageName, resolveConfig, themeCss } from './config.ts';
+import { firstVisit, pageName, presetFor, resolveConfig, themeCss } from './config.ts';
 import shipped from '#orbital-preflight-config';
 
 const base = {
@@ -63,5 +63,40 @@ describe('page name', () => {
 	it('adds Preflight once', () => {
 		expect(pageName('CMDR Vex')).toBe('CMDR Vex Preflight');
 		expect(pageName('Orbital Preflight')).toBe('Orbital Preflight');
+	});
+
+	it('gives each preset a sim, the config’s unless it names its own', () => {
+		const config = resolveConfig({
+			...base,
+			presets: [
+				{ file: 'a.binds', label: 'A' },
+				{ file: 'b.xml', label: 'B', sim: 'star-citizen' }
+			]
+		});
+		expect(config.presets.map((p) => p.sim)).toEqual(['elite-dangerous', 'star-citizen']);
+		expect(presetFor(config.presets, 'star-citizen')).toBe(1);
+		expect(presetFor(config.presets, 'x4')).toBe(-1);
+	});
+
+	it('routes a first visit: remembered games, then one sim’s presets, else the bay', () => {
+		const one = resolveConfig({
+			...base,
+			presets: [
+				{ file: 'a.binds', label: 'A' },
+				{ file: 'b.binds', label: 'B' }
+			]
+		}).presets;
+		const several = resolveConfig({
+			...base,
+			presets: [
+				{ file: 'a.binds', label: 'A' },
+				{ file: 'b.xml', label: 'B', sim: 'star-citizen' }
+			]
+		}).presets;
+		expect(firstVisit([], 0)).toEqual({ kind: 'bay' });
+		expect(firstVisit(one, 0)).toEqual({ kind: 'preset', index: 0 });
+		expect(firstVisit(several, 0)).toEqual({ kind: 'bay' });
+		expect(firstVisit(several, 2)).toEqual({ kind: 'restore' });
+		expect(firstVisit([], 1)).toEqual({ kind: 'restore' });
 	});
 });

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { fakeGamepads, hold, press, unplug } from './controllers.ts';
-import { exportAndParse, ready, rebind } from './helpers.ts';
+import { exportAndParse, openLoad, ready, rebind } from './helpers.ts';
 
 test('the pilot’s default preset loads on first visit', async ({ page }) => {
 	await page.goto('./');
@@ -21,7 +21,7 @@ test('rebind one action, export, and parse the export', async ({ page }) => {
 	await page.goto('./');
 	await ready(page);
 	await rebind(page, 'Flight', 'Throttle to 50%', 'KeyP');
-	await expect(page.getByText('1 unsaved change')).toBeVisible();
+	await expect(page.getByText('1 unsaved in ED')).toBeVisible();
 
 	const { fileName, parsed } = await exportAndParse(page);
 	expect(fileName).toBe('Demo HOTAS rebound.4.0.binds');
@@ -42,14 +42,15 @@ test('a taken input offers Move, Swap and Keep both', async ({ page }) => {
 	await expect(card).toContainText('already does');
 	await expect(card.getByRole('button', { name: 'Keep both' })).toBeVisible();
 	await card.getByRole('button', { name: 'Swap' }).click();
-	await expect(page.getByText('2 unsaved changes')).toBeVisible();
+	await expect(page.getByText('2 unsaved in ED')).toBeVisible();
 });
 
 test('drawers are dialogs: focus moves in, Esc closes, focus returns', async ({ page }) => {
 	await page.goto('./');
-	const opener = page.getByRole('button', { name: /^Binding for/ });
+	await ready(page);
+	const opener = page.getByRole('button', { name: 'No controllers connected' });
 	await opener.click();
-	const dialog = page.getByRole('dialog', { name: 'Game & binds' });
+	const dialog = page.getByRole('dialog', { name: 'Controllers' });
 	await expect(dialog).toBeVisible();
 	await page.keyboard.press('Escape');
 	await expect(dialog).toBeHidden();
@@ -75,6 +76,19 @@ test('the full editor shares the store and has mode tabs', async ({ page }) => {
 	await expect(page.getByRole('table')).toContainText('Accelerate');
 	await page.getByRole('button', { name: 'Done · fly with these' }).click();
 	await expect(page.getByRole('tab', { name: /SRV/ })).toHaveAttribute('aria-selected', 'true');
+});
+
+test('with presets for one game, the bay is skipped and Load binds offers them', async ({
+	page
+}) => {
+	await page.goto('./');
+	await ready(page);
+	await expect(page.getByRole('heading', { name: /Bring your binds/ })).toHaveCount(0);
+	await openLoad(page);
+	const drawer = page.getByRole('dialog', { name: 'Load binds' });
+	await expect(drawer).toContainText('A new file for Elite Dangerous');
+	await expect(drawer.getByText('Loaded', { exact: true })).toBeVisible();
+	await expect(drawer.getByRole('group', { name: 'Sim' })).toHaveCount(0);
 });
 
 test('below 1280 px the desktop notice shows instead of the tool', async ({ page }) => {
@@ -130,7 +144,7 @@ test('a rebind can be finished from the keyboard alone', async ({ page }) => {
 	await card.getByRole('button', { name: 'Apply' }).focus();
 	await page.keyboard.press('Enter');
 	await expect(card).toBeHidden();
-	await expect(page.getByText('1 unsaved change')).toBeVisible();
+	await expect(page.getByText('1 unsaved in ED')).toBeVisible();
 });
 
 test('Esc leaves a rebind without binding Esc', async ({ page }) => {
@@ -143,7 +157,7 @@ test('Esc leaves a rebind without binding Esc', async ({ page }) => {
 	await page.getByRole('button', { name: /^Change primary bind for Throttle to 50%,/ }).click();
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('group', { name: 'Rebinding Throttle to 50%' })).toBeHidden();
-	await expect(page.getByText('0 unsaved changes')).toBeVisible();
+	await expect(page.getByText('0 unsaved in ED')).toBeVisible();
 });
 
 test('holding Shift with a key captures Shift+key', async ({ page }) => {
