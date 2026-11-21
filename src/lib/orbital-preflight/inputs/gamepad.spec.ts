@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { hatDirections, matchDevice, parseGamepadId } from './gamepad.ts';
+import { decodeInput, encodeInput } from '../sims/elite/inputs.ts';
+import {
+	hatDirections,
+	matchDevice,
+	parseGamepadId,
+	STANDARD_AXES,
+	STANDARD_BUTTONS
+} from './gamepad.ts';
 
 describe('Gamepad.id', () => {
 	it('reads Chrome and Firefox ids', () => {
@@ -38,5 +45,16 @@ describe('Gamepad.id', () => {
 		expect(hatDirections(-3 / 7)).toEqual(['right']);
 		expect(hatDirections(5 / 7)).toEqual(['left']);
 		expect(hatDirections(1.2857)).toEqual([]);
+	});
+});
+
+describe('standard layout', () => {
+	it('names every standard button and stick axis as Elite writes it', () => {
+		expect(STANDARD_BUTTONS).toHaveLength(16);
+		for (const control of [...STANDARD_BUTTONS, ...STANDARD_AXES]) {
+			const input = decodeInput('046D0000', `GamePad_${control}`);
+			expect(input).toEqual({ kind: 'pad', deviceId: '046D0000', control });
+			expect(encodeInput(input).key).toBe(`GamePad_${control}`);
+		}
 	});
 });

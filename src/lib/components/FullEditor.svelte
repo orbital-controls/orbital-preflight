@@ -8,7 +8,7 @@
 		type ShowFilter
 	} from '#lib/orbital-preflight/bindings.ts';
 	import { controllerDecks, keyboardRows } from '#lib/orbital-preflight/deck.ts';
-	import { bindLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
+	import { bindLabel, deckLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import type { Action, InputId } from '#lib/orbital-preflight/types.ts';
 	import DeckKey from './DeckKey.svelte';
@@ -120,7 +120,7 @@
 
 {#snippet mapKey(input: InputId, width?: number, device?: string)}
 	{@const names = owners.get(inputKey(input))?.names}
-	{@const short = inputLabel(input, app.roles).replace(/^\S+ (?=H|TRG|B\d)/, '')}
+	{@const short = deckLabel(input, app.roles)}
 	<DeckKey
 		compact
 		label={short}

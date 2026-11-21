@@ -77,3 +77,32 @@ export function hatDirections(value: number): HatDirection[] {
 export function looksLikeHat(value: number): boolean {
 	return value > 1.1;
 }
+
+/**
+ * A controller the browser maps to the W3C "standard" layout (Xbox-style pads) reports
+ * buttons and axes in this order. Elite names the same controls `GamePad_FaceDown`…
+ * UNVERIFIED: that Elite's names line up with the standard layout this way.
+ */
+export const STANDARD_BUTTONS = [
+	'FaceDown',
+	'FaceRight',
+	'FaceLeft',
+	'FaceUp',
+	'LBumper',
+	'RBumper',
+	'LTrigger',
+	'RTrigger',
+	'Back',
+	'Start',
+	'LThumb',
+	'RThumb',
+	'DPadUp',
+	'DPadDown',
+	'DPadLeft',
+	'DPadRight'
+] as const;
+
+export const STANDARD_AXES = ['LStickX', 'LStickY', 'RStickX', 'RStickY'] as const;
+
+/** Standard-layout buttons that are analogue triggers, read as axes too. */
+export const STANDARD_TRIGGERS: ReadonlySet<string> = new Set(['LTrigger', 'RTrigger']);

@@ -199,3 +199,53 @@ test('with the Controllers drawer open, pressing a button pairs an unknown contr
 	await expect(drawer.getByText('Mystery Stick', { exact: true })).toBeVisible();
 	await expect(drawer.getByText(/Thrustmaster T\.16000M in your file/)).toBeVisible();
 });
+
+test('a gamepad pairs with the file’s gamepad and fires its binds by control name', async ({
+	page
+}) => {
+	await fakeGamepads(page, [
+		{ id: 'Xbox Controller (STANDARD GAMEPAD)', buttons: 16, mapping: 'standard' }
+	]);
+	await page.goto('./');
+	await ready(page);
+	await page.getByRole('button', { name: /^Binding for/ }).click();
+	// A stick and a gamepad (Elite names unknown devices by USB id, here product 0000).
+	const file = [
+		'<Root PresetName="Pad" MajorVersion="4" MinorVersion="1">',
+		'\t<UI_Select>',
+		'\t\t<Primary Device="046D0000" Key="GamePad_FaceDown" />',
+		'\t\t<Secondary Device="{NoDevice}" Key="" />',
+		'\t</UI_Select>',
+		'\t<PrimaryFire>',
+		'\t\t<Primary Device="T16000M" Key="Joy_1" />',
+		'\t\t<Secondary Device="{NoDevice}" Key="" />',
+		'\t</PrimaryFire>',
+		'</Root>',
+		''
+	].join('\n');
+	await page
+		.locator('#drawer-file')
+		.setInputFiles({ name: 'pad.binds', mimeType: 'text/plain', buffer: Buffer.from(file) });
+	await expect(page.getByText('pad.binds')).toBeVisible();
+
+	await page.getByRole('button', { name: '1 controller connected' }).click();
+	const drawer = page.getByRole('dialog', { name: 'Controllers' });
+	await press(page, 0, 0);
+	await expect(drawer.getByText('Paired', { exact: true })).toBeVisible();
+	await expect(drawer.getByText(/Logitech gamepad in your file/)).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(drawer).toBeHidden();
+	// Let the pairing press go up, and the hub see it, before pressing again.
+	await page.waitForFunction(
+		() =>
+			!(window as unknown as { __pads: { buttons: { pressed: boolean }[] }[] }).__pads[0].buttons[0]
+				.pressed
+	);
+	await page.evaluate(
+		() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+	);
+
+	// A (GamePad_FaceDown) is Menu select.
+	await press(page, 0, 0);
+	await expect(page.locator('[aria-live="polite"]')).toContainText('Menu select');
+});

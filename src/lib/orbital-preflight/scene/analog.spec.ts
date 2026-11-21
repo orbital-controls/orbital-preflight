@@ -101,3 +101,21 @@ describe('on-foot axes', () => {
 		expect(a.has.moveX).toBe(false);
 	});
 });
+
+describe('gamepad sticks', () => {
+	it('drive the scene like a stick axis; a half does not', () => {
+		const axes = new Map([['046D0000:LStickY', 0.8]]);
+		const pad: BindingMap = {
+			PitchAxisRaw: [{ input: { kind: 'pad', deviceId: '046D0000', control: 'LStickY' } }, null],
+			RollAxisRaw: [
+				{ input: { kind: 'pad', deviceId: '046D0000', control: 'LStickY', half: 'pos' } },
+				null
+			],
+			YawAxisRaw: [null, null]
+		};
+		const out = analogAxes(actions, pad, axes);
+		expect(out.has.pitch).toBe(true);
+		expect(out.pitch).toBeGreaterThan(0.7);
+		expect(out.has.roll).toBe(false);
+	});
+});

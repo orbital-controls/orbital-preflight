@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { controllerDecks, deviceDecks } from './deck.ts';
-import { bindLabel, deviceRoles, inputLabel } from './labels.ts';
+import { bindLabel, deckLabel, deviceRoles, inputLabel } from './labels.ts';
 
 const roles = deviceRoles([
 	{ id: 'T16000M', name: 'Thrustmaster T.16000M' },
@@ -34,6 +34,31 @@ describe('labels', () => {
 		expect(bindLabel(null, roles)).toBe('—');
 	});
 
+	it('names a gamepad and prints its controls by their Xbox names', () => {
+		const withPad = deviceRoles([
+			{ id: 'T16000M', name: 'Thrustmaster T.16000M' },
+			{ id: '046D0000', name: 'Logitech gamepad', gamepad: true }
+		]);
+		expect(withPad.map((r) => [r.long, r.kind])).toEqual([
+			['Stick', 'stick'],
+			['Gamepad', 'pad']
+		]);
+		const a = { kind: 'pad', deviceId: '046D0000', control: 'FaceDown' } as const;
+		expect(inputLabel(a, withPad)).toBe('Pad A');
+		expect(inputLabel(a, withPad, true)).toBe('Gamepad A');
+		expect(deckLabel(a, withPad)).toBe('A');
+		expect(
+			inputLabel({ kind: 'pad', deviceId: '046D0000', control: 'RTrigger', half: 'pos' }, withPad)
+		).toBe('Pad RT+');
+		expect(inputLabel({ kind: 'pad', deviceId: '046D0000', control: 'LStickX' }, withPad)).toBe(
+			'Pad LS X'
+		);
+		expect(deckLabel({ kind: 'button', deviceId: 'T16000M', button: 5 }, withPad)).toBe('B5');
+		const [deck] = deviceDecks([withPad[1]], {});
+		expect(deck.inputs).toHaveLength(16);
+		expect(deck.inputs[0]).toEqual(a);
+	});
+
 	it('lays out a deck per device with hats and buttons', () => {
 		const decks = deviceDecks(roles.slice(0, 2), {
 			A: [{ input: { kind: 'button', deviceId: 'T16000MTHROTTLE', button: 12 } }, null]
@@ -55,6 +80,7 @@ describe('controller decks', () => {
 		name,
 		buttons,
 		axes: 4,
+		standard: false,
 		deviceId,
 		pairedBy: deviceId ? ('usb' as const) : null
 	});

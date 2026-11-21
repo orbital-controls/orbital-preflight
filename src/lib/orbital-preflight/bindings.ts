@@ -15,9 +15,30 @@ export function inputKey(input: InputId): string {
 			return `hat:${input.deviceId}:${input.hat}:${input.dir}`;
 		case 'axis':
 			return `axis:${input.deviceId}:${input.axis}${input.half ? `:${input.half}` : ''}`;
+		case 'pad':
+			return `pad:${input.deviceId}:${input.control}${input.half ? `:${input.half}` : ''}`;
 		case 'raw':
 			return `raw:${input.device}:${input.key}`;
 	}
+}
+
+/**
+ * Where the hub keeps a whole axis's value (`deviceId:axis`), for a controller axis or a
+ * gamepad stick or trigger. Null for a half axis or anything that isn't an axis.
+ */
+export function axisValueKey(input: InputId | null | undefined): string | null {
+	if (input?.kind === 'axis' && !input.half) return `${input.deviceId}:${input.axis}`;
+	if (input?.kind === 'pad' && !input.half) return `${input.deviceId}:${input.control}`;
+	return null;
+}
+
+/** The whole axis a half-axis input is one side of; anything else as it is. */
+export function wholeAxis(input: InputId): InputId {
+	if (input.kind === 'axis' && input.half)
+		return { kind: 'axis', deviceId: input.deviceId, axis: input.axis };
+	if (input.kind === 'pad' && input.half)
+		return { kind: 'pad', deviceId: input.deviceId, control: input.control };
+	return input;
 }
 
 export function bindKey(bind: Bind): string {

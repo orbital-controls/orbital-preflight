@@ -179,6 +179,9 @@ describe('inputs', () => {
 		['T16000M', 'Joy_RZAxis'],
 		['T16000MTHROTTLE', 'Neg_Joy_ZAxis'],
 		['GamePad', 'GamePad_FaceA'],
+		['046D0000', 'GamePad_FaceDown'],
+		['046D0000', 'Pos_GamePad_RTrigger'],
+		['046D0000', 'GamePad_LStickX'],
 		['Keyboard', 'Key_SomethingOdd']
 	])('%s %s round-trips', (device, key) => {
 		expect(encodeInput(decodeInput(device, key))).toEqual({ device, key });
@@ -317,5 +320,34 @@ describe('the 4.1 catalogue', () => {
 			'SystemMapOpen'
 		]);
 		expect(clashingActions(parsed.actions, parsed.bindings, 'foot').size).toBe(0);
+	});
+});
+
+describe('gamepads', () => {
+	it('reads a device bound by gamepad control names as a gamepad', () => {
+		const parsed = parseEliteBinds(
+			binds([
+				['UI_Select', '046D0000', 'GamePad_FaceDown'],
+				['PrimaryFire', 'T16000M', 'Joy_1'],
+				['SecondaryFire', '046D0000', 'Pos_GamePad_RTrigger']
+			])
+		);
+		expect(parsed.devices).toEqual([
+			{
+				id: '046D0000',
+				name: 'Logitech gamepad',
+				vendor: '046d',
+				product: '0000',
+				gamepad: true
+			},
+			{ id: 'T16000M', name: 'Thrustmaster T.16000M', vendor: '044f', product: 'b10a' }
+		]);
+		expect(parsed.bindings.SecondaryFire[0]).toEqual({
+			input: { kind: 'pad', deviceId: '046D0000', control: 'RTrigger', half: 'pos' }
+		});
+		const raw = Object.values(parsed.bindings)
+			.flat()
+			.filter((slot) => slot?.input.kind === 'raw');
+		expect(raw).toEqual([]);
 	});
 });
