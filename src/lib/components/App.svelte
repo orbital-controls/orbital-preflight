@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { OrbitalPreflight, setOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { firstVisit } from '#lib/orbital-preflight/config.ts';
 	import { TICK_MS } from '#lib/orbital-preflight/flight.ts';
 	import { presetSources } from '#lib/orbital-preflight/presets.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
@@ -29,6 +30,12 @@
 	let opener: HTMLElement | null = $state(null);
 	let editorButton: HTMLElement | null = null;
 	let ready = $state(false);
+	/**
+	 * The prerendered page shows the bay only when a first visit lands there. A fork whose
+	 * presets open straight away shows nothing under the bar until the preset is in, rather
+	 * than flashing the bay (or offering keys and tiles that do nothing yet).
+	 */
+	const bayFirst = firstVisit(site.presets, 0).kind === 'bay';
 
 	const MODE_NOTES = {
 		ship: 'Ship binds. In game, boarding, deploying the SRV or disembarking switches the set for you. Here, pick it.',
@@ -117,7 +124,7 @@
 		/>
 		<main>
 			{#if !app.chosen}
-				<Bay />
+				{#if ready || bayFirst}<Bay />{/if}
 			{:else}
 				<section aria-label="Mode" class="op-wrap flex items-center gap-[18px] pt-4">
 					<ModeTabs />

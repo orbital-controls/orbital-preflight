@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { exportAndParse, openLoad, rebind } from './helpers.ts';
+import { exportAndParse, openLoad, ready, rebind } from './helpers.ts';
 
 const BASE = '/orbital-preflight';
 
@@ -9,7 +9,7 @@ test('works under a non-root base path', async ({ page }) => {
 		if (r.status() >= 400) failed.push(r.url());
 	});
 	await page.goto('./');
-	await expect(page.getByText("Pilot's binds · Demo HOTAS setup")).toBeVisible();
+	await ready(page);
 	expect(failed).toEqual([]);
 
 	await openLoad(page);
@@ -27,7 +27,7 @@ test('works under a non-root base path', async ({ page }) => {
 
 test('remembered layouts are kept per base path', async ({ page }) => {
 	await page.goto('./');
-	await expect(page.getByText("Pilot's binds · Demo HOTAS setup")).toBeVisible();
+	await ready(page);
 	await openLoad(page);
 	await page.getByRole('checkbox', { name: 'Remember this layout on this browser' }).check();
 	const keys = await page.evaluate(() => Object.keys(localStorage));

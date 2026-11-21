@@ -6,7 +6,7 @@ test('the pilot’s default preset loads on first visit', async ({ page }) => {
 	await page.goto('./');
 	await expect(page).toHaveTitle('Orbital Preflight: test my space sim binds');
 	await expect(page.locator('h1')).toHaveText('Orbital Preflight');
-	await expect(page.getByText("Pilot's binds · Demo HOTAS setup")).toBeVisible();
+	await ready(page);
 	await expect(page.getByRole('tab', { name: /Ship/ })).toHaveAttribute('aria-selected', 'true');
 });
 
