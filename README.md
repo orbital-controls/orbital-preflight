@@ -4,7 +4,9 @@ Load the keybinds file from your space sim, connect your controllers, test every
 
 It's also a framework. Fork this repo onto GitHub Pages to show off your own binds: visitors test them with their own stick and keyboard, and download them as they are or after changing them.
 
-Elite Dangerous `.binds` files work today. Star Citizen and X4 are listed as coming soon; DCS comes later.
+Elite Dangerous `.binds` files work today. Star Citizen, X4 and DCS are listed as coming later.
+
+A visitor can load binds for more than one game in the same tab and switch between them from "Binding for" in the top bar: each game keeps its own file, edits, mode and controller pairing while the tab is open. Export is per game; Leave counts unsaved changes across all of them.
 
 Desktop only: below 1280 px wide the page shows a short notice, with your presets still downloadable from it.
 
@@ -12,7 +14,7 @@ Desktop only: below 1280 px wide the page shows a short notice, with your preset
 
 1. **Fork** this repository on GitHub.
 2. **Edit `orbital-preflight.config.ts`** at the repo root: your title, description, name, where Leave goes, and your presets. It's the only file you need to change.
-3. **Drop your `.binds` files into `static/binds/`** and list them under `presets`. In Elite Dangerous they live in `%LOCALAPPDATA%\Frontier Developments\Elite Dangerous\Options\Bindings\`.
+3. **Drop your `.binds` files into `static/binds/`** and list them under `presets`. In Elite Dangerous they live in `%LOCALAPPDATA%\Frontier Developments\Elite Dangerous\Options\Bindings\`. Presets can be for more than one game: give each the `sim` it's for (see below).
 4. **Enable Pages**: Settings → Pages → Source: _GitHub Actions_.
 5. **Done.** Every push to `main` deploys to `https://<you>.github.io/<repo>/`. The workflow sets the base path from the repo name.
 
@@ -41,18 +43,33 @@ export default defineConfig({
 });
 ```
 
-| Field         | Required | What it does                                                                                                                                                                                                                                                                                                                   |
-| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `title`       | yes      | The page title, in the head and on the share card. Name what people search for.                                                                                                                                                                                                                                                |
-| `description` | yes      | One plain sentence for the meta description and the share card.                                                                                                                                                                                                                                                                |
-| `siteName`    | yes      | You or your site. Used in the hidden page heading ("‹siteName› Preflight"), the share card and "Back to ‹siteName›".                                                                                                                                                                                                           |
-| `siteUrl`     | no       | The absolute URL the app is served from. With it, the head gets a canonical link and Open Graph `og:url` and `og:image` tags.                                                                                                                                                                                                  |
-| `homeUrl`     | yes      | Where Leave goes: your page or your GitHub profile. Leave asks first if there are unsaved changes.                                                                                                                                                                                                                             |
-| `sim`         | no       | The sim your presets are for. Default `'elite-dangerous'`, the only one that loads today.                                                                                                                                                                                                                                      |
-| `presets`     | no       | Binds files in `static/binds/`, each with a `label`. With one or more, a first visit opens with the first one loaded and the top bar reads "Pilot's binds · ‹label›". Visitors can still load their own file, and download each preset as it is from the Game & binds drawer. With none, a first visit shows the upload state. |
-| `brand`       | no       | The top bar's `wordmark` (default "Preflight") and `mark`, an inline SVG string drawn at 28 px (default: the Orbital Controls mark; `false` for the wordmark alone). Also an optional heavier `markSmall` for the favicon, and an accessible `label`.                                                                          |
-| `theme`       | no       | CSS variable overrides, applied after the theme package. Use the package's own names (`--color-trail`, `--color-course`, `--font-display`…); its README lists them.                                                                                                                                                            |
-| `poweredBy`   | no       | A small "Powered by Orbital Preflight" link in the drawers and the desktop-only notice. On unless set to `false`.                                                                                                                                                                                                              |
+| Field         | Required | What it does                                                                                                                                                                                                                                                        |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`       | yes      | The page title, in the head and on the share card. Name what people search for.                                                                                                                                                                                     |
+| `description` | yes      | One plain sentence for the meta description and the share card.                                                                                                                                                                                                     |
+| `siteName`    | yes      | You or your site. Used in the hidden page heading ("‹siteName› Preflight"), the share card and "Back to ‹siteName›".                                                                                                                                                |
+| `siteUrl`     | no       | The absolute URL the app is served from. With it, the head gets a canonical link and Open Graph `og:url` and `og:image` tags.                                                                                                                                       |
+| `homeUrl`     | yes      | Where Leave goes: your page or your GitHub profile. Leave asks first if there are unsaved changes.                                                                                                                                                                  |
+| `sim`         | no       | The sim your presets are for, unless a preset names its own. Default `'elite-dangerous'`, the only one that loads today.                                                                                                                                            |
+| `presets`     | no       | Binds files in `static/binds/`, each with a `label` and optionally the `sim` it's for. What a first visit shows depends on them (below). Visitors can still load their own file, and download each preset for the current game as it is from the Load binds drawer. |
+| `brand`       | no       | The top bar's `wordmark` (default "Preflight") and `mark`, an inline SVG string drawn at 28 px (default: the Orbital Controls mark; `false` for the wordmark alone). Also an optional heavier `markSmall` for the favicon, and an accessible `label`.               |
+| `theme`       | no       | CSS variable overrides, applied after the theme package. Use the package's own names (`--color-trail`, `--color-course`, `--font-display`…); its README lists them.                                                                                                 |
+| `poweredBy`   | no       | A small "Powered by Orbital Preflight" link in the drawers and the desktop-only notice. On unless set to `false`.                                                                                                                                                   |
+
+#### Presets and the first visit
+
+- **Presets for one sim** (the usual fork, and the old single-sim shape: `sim` plus `presets` with no `sim` of their own): a first visit skips the game picker and opens with the first preset loaded; the top bar reads "Pilot's binds · ‹label›".
+- **Presets for several sims**: a first visit shows the bay, one tile per game, and the games you have presets for read "Pilot's binds · ‹label›". Picking one loads its first preset. A sim that isn't supported yet shows as "Coming later" and can't be picked, preset or not.
+- **No presets**: the bay, and each game asks for the visitor's own file.
+- **"Remember this layout on this browser"** is kept per game. Remembered games come back on the next visit, the one used last is current, and the bay is skipped.
+
+```ts
+presets: [
+	{ file: 'hotas.binds', label: 'My HOTAS setup' }, // the config's `sim`
+	// Listed, but "Coming later" until Star Citizen files are supported:
+	{ file: 'layout_vex_exported.xml', label: 'My SC layout', sim: 'star-citizen' }
+];
+```
 
 The look comes from [`@orbital-controls/theme`](https://www.npmjs.com/package/@orbital-controls/theme), installed from npm: Tailwind v4 tokens, the motif utilities and three self-hosted font families. Re-theme through `theme`, not by copying its values.
 
@@ -86,25 +103,28 @@ pnpm check:svelte   # the Svelte team's autofixer over every component
 pnpm lint           # Prettier and ESLint
 pnpm check:fallow   # fallow: unused files, exports, class members and dependencies
 pnpm test:unit      # Vitest
-pnpm test:e2e       # builds root, base-path and theme variants, then Playwright
+pnpm test:e2e       # builds root, base-path, theme and multi-game variants, then Playwright
 pnpm build          # static output in build/
 ```
 
 `pnpm test:e2e` uses Playwright's Chromium (`pnpm exec playwright install chromium`). To use a Chromium you already have, set `PW_CHROMIUM_PATH`.
 
+The multi-game variant (`tests/fixtures/multi.config.ts`) needs two loadable games while only Elite is ready, so it is built with `ORBITAL_PREFLIGHT_MOCK_SIMS=star-citizen`: Star Citizen stands in, reading and writing Elite files under its own name, as the design boards' mocks do. That variable is for test builds only.
+
 ### Where things are
 
-| Path                                        | What                                                                            |
-| ------------------------------------------- | ------------------------------------------------------------------------------- |
-| `orbital-preflight.config.ts`               | The fork's config.                                                              |
-| `src/lib/orbital-preflight/sims/`           | Sim adapters: parse and write. `elite/` is the Elite Dangerous one.             |
-| `src/lib/orbital-preflight/xml.ts`          | An XML scanner that keeps offsets, so the writer splices instead of rebuilding. |
-| `src/lib/orbital-preflight/bindings.ts`     | Clashes, Move / Swap / Keep both, filter counts. Pure.                          |
-| `src/lib/orbital-preflight/binds.svelte.ts` | The bind store: the file, the edits, undo per action, reset per mode, export.   |
-| `src/lib/orbital-preflight/flight.ts`       | The mock flight state machine and the HUD values. Pure.                         |
-| `src/lib/orbital-preflight/inputs/`         | Keyboard, mouse and Gamepad API input, and controller pairing.                  |
-| `src/lib/orbital-preflight/scene/`          | The 3D viewport: pure flight → part mappings, and the three.js engine.          |
-| `src/lib/components/`                       | One component per UI piece.                                                     |
+| Path                                           | What                                                                            |
+| ---------------------------------------------- | ------------------------------------------------------------------------------- |
+| `orbital-preflight.config.ts`                  | The fork's config.                                                              |
+| `src/lib/orbital-preflight/sims/`              | The sim registry and adapters: parse and write. `elite/` is the Elite one.      |
+| `src/lib/orbital-preflight/sessions.svelte.ts` | One session per game loaded this visit, and which is current.                   |
+| `src/lib/orbital-preflight/xml.ts`             | An XML scanner that keeps offsets, so the writer splices instead of rebuilding. |
+| `src/lib/orbital-preflight/bindings.ts`        | Clashes, Move / Swap / Keep both, filter counts. Pure.                          |
+| `src/lib/orbital-preflight/binds.svelte.ts`    | The bind store: the file, the edits, undo per action, reset per mode, export.   |
+| `src/lib/orbital-preflight/flight.ts`          | The mock flight state machine and the HUD values. Pure.                         |
+| `src/lib/orbital-preflight/inputs/`            | Keyboard, mouse and Gamepad API input, and controller pairing.                  |
+| `src/lib/orbital-preflight/scene/`             | The 3D viewport: pure flight → part mappings, and the three.js engine.          |
+| `src/lib/components/`                          | One component per UI piece.                                                     |
 
 ### The 3D scene
 
@@ -122,7 +142,7 @@ All three views are real-time three.js scenes: the Lantern II flying in space, t
 
 ### Exports
 
-Export new preset writes a new file: the original text with the changed slots and the `PresetName` replaced, and every other byte left as it was. The file you loaded is never modified. The new preset is named "‹original name› rebound", and the file "‹name›.‹major›.‹minor›.binds".
+Export ‹ABBR› preset (Export ED preset) writes a new file for the current game, covering all its modes: the original text with the changed slots and the `PresetName` replaced, and every other byte left as it was. The file you loaded is never modified. The new preset is named "‹original name› rebound", and the file "‹name›.‹major›.‹minor›.binds". Leave's "Export all N games, then leave" writes one such file per game with changes, a moment apart; browsers may ask before allowing several downloads from one page.
 
 ## Unverified
 

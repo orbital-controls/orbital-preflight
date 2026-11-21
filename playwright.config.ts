@@ -1,11 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// `pnpm test:e2e` builds three variants first (scripts/build-e2e.ts); each is served as
+// `pnpm test:e2e` builds four variants first (scripts/build-e2e.ts); each is served as
 // plain static files, the way GitHub Pages would serve it.
 const VARIANTS = [
 	{ name: 'root', port: 4173, base: '', tests: ['root', 'scene'] },
 	{ name: 'base', port: 4174, base: '/orbital-preflight', tests: ['base'] },
-	{ name: 'theme', port: 4175, base: '', tests: ['theme'] }
+	{ name: 'theme', port: 4175, base: '', tests: ['theme'] },
+	{ name: 'multi', port: 4176, base: '', tests: ['multi'] }
 ];
 
 export default defineConfig({

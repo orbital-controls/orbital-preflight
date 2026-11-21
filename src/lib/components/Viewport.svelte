@@ -27,7 +27,7 @@
 	let ready = $state(false);
 	/** Modes with a 3D scene. */
 	const IN_3D = new Set(['ship', 'srv', 'foot']);
-	const live = $derived(!scene && ready && !app.sceneFailed && IN_3D.has(app.mode));
+	const live = $derived(app.loaded && !scene && ready && !app.sceneFailed && IN_3D.has(app.mode));
 	// The full editor replaces the page, so the viewport unmounts (and the engine is
 	// disposed) rather than being covered.
 	const covered = $derived(app.drawer !== null || app.leaving);

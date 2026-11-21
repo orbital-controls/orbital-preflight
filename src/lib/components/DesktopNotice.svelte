@@ -2,11 +2,14 @@
 	import { asset } from '$app/paths';
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { presetHref } from '#lib/orbital-preflight/presets.ts';
+	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import Brand from './Brand.svelte';
 	import PoweredBy from './PoweredBy.svelte';
 
 	/** Below 1280 px: what the tool needs, and the pilot's presets to take away. */
 	const app = useOrbitalPreflight();
+	/** Presets for several games say which game each is for. */
+	const several = app.config.presets.some((p) => p.sim !== app.config.presets[0].sim);
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -- preset downloads are resolved by asset(); homeUrl is external -->
@@ -24,13 +27,15 @@
 			<section aria-labelledby="notice-presets" class="flex flex-col gap-2">
 				<h3 id="notice-presets" class="op-lbl">Pilot's binds</h3>
 				<ul class="flex flex-col gap-[6px]">
-					{#each app.config.presets as preset (preset.file)}
+					{#each app.config.presets as preset (preset.path + preset.sim)}
 						<li>
 							<a
 								href={presetHref(preset.path, asset)}
 								download={preset.file}
 								class="flex h-11 items-center justify-between border border-trail/50 px-3 font-mono text-[14px] font-semibold text-trail no-underline notch op-notch-xs"
-								>{preset.label}<span>Download</span></a
+								>{several ? `${simById(preset.sim).short} · ` : ''}{preset.label}<span
+									>Download</span
+								></a
 							>
 						</li>
 					{/each}

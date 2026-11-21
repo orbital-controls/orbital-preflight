@@ -1,10 +1,11 @@
-import type { BindingMap, SimId } from './types.ts';
+import type { BindingMap, Mode, SimId } from './types.ts';
 
 /**
- * "Remember this layout on this browser". The key carries the base path, so two forks
- * served from one github.io origin (`/alice-binds/`, `/bob-binds/`) keep separate copies.
- * Every call is wrapped: storage can be full, blocked or missing, and none of that should
- * stop the app.
+ * "Remember this layout on this browser", one entry per sim. The key carries the base
+ * path, so two forks served from one github.io origin (`/alice-binds/`, `/bob-binds/`)
+ * keep separate copies, and the sim id, so each game is remembered (and forgotten) on
+ * its own. Every call is wrapped: storage can be full, blocked or missing, and none of
+ * that should stop the app.
  */
 
 export interface RememberedLayout {
@@ -16,10 +17,18 @@ export interface RememberedLayout {
 	source: string;
 	/** Only the actions that differ from `source`. */
 	edits: BindingMap;
+	/** The mode it was left in. */
+	mode?: Mode;
+	/** Updated whenever it is saved, and when the game becomes current: the newest opens first. */
 	savedAt: string;
 }
 
-export function storageKey(base: string): string {
+export function storageKey(base: string, sim: SimId): string {
+	return `orbital-preflight:${base || '/'}:${sim}`;
+}
+
+/** The single-game key used before sessions, read once and moved to its sim's key. */
+function legacyKey(base: string): string {
 	return `orbital-preflight:${base || '/'}:layout`;
 }
 
@@ -31,34 +40,65 @@ function storage(): Storage | null {
 	}
 }
 
+let lastSaved = 0;
+
 export function saveLayout(
 	base: string,
 	layout: Omit<RememberedLayout, 'version' | 'savedAt'>
 ): boolean {
 	try {
-		const value: RememberedLayout = { version: 1, savedAt: new Date().toISOString(), ...layout };
-		storage()?.setItem(storageKey(base), JSON.stringify(value));
+		// Strictly later than the last save in this tab, so two saves in one millisecond
+		// (switching games, then editing) still say which game was current last.
+		lastSaved = Math.max(Date.now(), lastSaved + 1);
+		const value: RememberedLayout = {
+			version: 1,
+			savedAt: new Date(lastSaved).toISOString(),
+			...layout
+		};
+		storage()?.setItem(storageKey(base, layout.sim), JSON.stringify(value));
 		return true;
 	} catch {
 		return false;
 	}
 }
 
-export function loadLayout(base: string): RememberedLayout | null {
+function read(raw: string | null | undefined): RememberedLayout | null {
+	if (!raw) return null;
+	const value = JSON.parse(raw) as Partial<RememberedLayout>;
+	if (value.version !== 1 || typeof value.source !== 'string' || !value.sim) return null;
+	return value as RememberedLayout;
+}
+
+export function loadLayout(base: string, sim: SimId): RememberedLayout | null {
 	try {
-		const raw = storage()?.getItem(storageKey(base));
-		if (!raw) return null;
-		const value = JSON.parse(raw) as Partial<RememberedLayout>;
-		if (value.version !== 1 || typeof value.source !== 'string' || !value.sim) return null;
-		return value as RememberedLayout;
+		return read(storage()?.getItem(storageKey(base, sim)));
 	} catch {
 		return null;
 	}
 }
 
-export function clearLayout(base: string): void {
+/** Every remembered game for these sims, newest first. Moves a pre-sessions entry over. */
+export function loadLayouts(base: string, sims: readonly SimId[]): RememberedLayout[] {
 	try {
-		storage()?.removeItem(storageKey(base));
+		const legacy = read(storage()?.getItem(legacyKey(base)));
+		if (legacy) {
+			if (!loadLayout(base, legacy.sim)) {
+				storage()?.setItem(storageKey(base, legacy.sim), JSON.stringify(legacy));
+			}
+			storage()?.removeItem(legacyKey(base));
+		}
+	} catch {
+		// A broken old entry is simply not carried over.
+	}
+	return sims
+		.map((sim) => loadLayout(base, sim))
+		.filter((l): l is RememberedLayout => l !== null && sims.includes(l.sim))
+		.sort((a, b) => (b.savedAt ?? '').localeCompare(a.savedAt ?? ''));
+}
+
+export function clearLayout(base: string, sim: SimId): void {
+	try {
+		storage()?.removeItem(storageKey(base, sim));
 	} catch {
 		// Nothing to clear, or nothing we can do about it.
 	}

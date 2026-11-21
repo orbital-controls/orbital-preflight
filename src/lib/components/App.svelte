@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { OrbitalPreflight, setOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
+	import { firstVisit } from '#lib/orbital-preflight/config.ts';
 	import { TICK_MS } from '#lib/orbital-preflight/flight.ts';
 	import { presetSources } from '#lib/orbital-preflight/presets.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import { base, site } from '#lib/orbital-preflight/site.ts';
+	import type { SimId } from '#lib/orbital-preflight/types.ts';
+	import Bay from './Bay.svelte';
 	import BindsPanel from './BindsPanel.svelte';
 	import ControllersDrawer from './ControllersDrawer.svelte';
 	import DesktopNotice from './DesktopNotice.svelte';
@@ -17,13 +20,22 @@
 	import TopBar from './TopBar.svelte';
 	import Viewport from './Viewport.svelte';
 
-	/** The one page: fly view, binds, deck, drawers and the full editor, sharing one store. */
+	/**
+	 * The one page: the bay or the fly view, binds, deck, drawers and the full editor,
+	 * all reading the current game's session.
+	 */
 	const app = new OrbitalPreflight(site, base, presetSources);
 	setOrbitalPreflight(app);
 
 	let opener: HTMLElement | null = $state(null);
 	let editorButton: HTMLElement | null = null;
 	let ready = $state(false);
+	/**
+	 * The prerendered page shows the bay only when a first visit lands there. A fork whose
+	 * presets open straight away shows nothing under the bar until the preset is in, rather
+	 * than flashing the bay (or offering keys and tiles that do nothing yet).
+	 */
+	const bayFirst = firstVisit(site.presets, 0).kind === 'bay';
 
 	const MODE_NOTES = {
 		ship: 'Ship binds. In game, boarding, deploying the SRV or disembarking switches the set for you. Here, pick it.',
@@ -54,6 +66,7 @@
 
 	function openEditor() {
 		app.cancelCapture();
+		app.toggleManifest(false);
 		editorButton = document.activeElement as HTMLElement | null;
 		app.editor = true;
 	}
@@ -65,6 +78,12 @@
 		requestAnimationFrame(() => editorButton?.focus());
 	}
 
+	/** The editor's "Add a game": back on the fly page, at that game's file drop. */
+	function addFromEditor(sim: SimId) {
+		closeEditor();
+		app.switchTo(sim);
+	}
+
 	// "Drop your file anywhere".
 	function dragover(event: DragEvent) {
 		if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
@@ -73,7 +92,8 @@
 		const file = event.dataTransfer?.files?.[0];
 		if (!file) return;
 		event.preventDefault();
-		if (simById(app.sim).status === 'ready') void app.loadFile(file);
+		// For the current game only; in the bay there is none to load it for yet.
+		if (app.chosen && simById(app.sim).status === 'ready') void app.loadFile(file);
 	}
 </script>
 
@@ -86,7 +106,11 @@
 	data-ready={ready}
 >
 	{#if app.editor}
-		<FullEditor onexit={closeEditor} />
+		<FullEditor
+			onexit={closeEditor}
+			onloadfile={(el) => openDrawer('load', el)}
+			onadd={addFromEditor}
+		/>
 	{:else}
 		<TopBar
 			onopenload={(el) => openDrawer('load', el)}
@@ -94,19 +118,24 @@
 			onopeneditor={openEditor}
 			onleave={(el) => {
 				opener = el;
+				app.toggleManifest(false);
 				app.leaving = true;
 			}}
 		/>
 		<main>
-			<section aria-label="Mode" class="op-wrap flex items-center gap-[18px] pt-4">
-				<ModeTabs />
-				<p class="max-w-[560px] text-[14px] text-ink-900">{MODE_NOTES[app.mode]}</p>
-			</section>
-			<section class="op-wrap grid grid-cols-[900px_minmax(0,1fr)] items-start gap-5 pt-3">
-				<Viewport onwhere={(el) => openDrawer('load', el)} />
-				<BindsPanel />
-			</section>
-			<InputDeck />
+			{#if !app.chosen}
+				{#if ready || bayFirst}<Bay />{/if}
+			{:else}
+				<section aria-label="Mode" class="op-wrap flex items-center gap-[18px] pt-4">
+					<ModeTabs />
+					<p class="max-w-[560px] text-[14px] text-ink-900">{MODE_NOTES[app.mode]}</p>
+				</section>
+				<section class="op-wrap grid grid-cols-[900px_minmax(0,1fr)] items-start gap-5 pt-3">
+					<Viewport onwhere={(el) => openDrawer('load', el)} />
+					<BindsPanel />
+				</section>
+				<InputDeck />
+			{/if}
 		</main>
 	{/if}
 </div>
