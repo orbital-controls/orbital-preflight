@@ -105,10 +105,22 @@ test('controllers show up on the deck under their own names as they’re detecte
 		{ id: 'T.16000M (Vendor: 044f Product: b10a)', buttons: 16 },
 		{ id: 'VKBsim Gladiator EVO (Vendor: 1234 Product: 5678)', buttons: 32 }
 	]);
+	const logs: string[] = [];
+	page.on('console', (m) => logs.push(`${m.type()}: ${m.text()}`));
+	page.on('pageerror', (e) => logs.push(`pageerror: ${e.message}`));
 	await page.goto('./');
 	await ready(page);
 	const deck = page.getByRole('region', { name: 'Input deck' });
-	await expect(deck.getByRole('heading', { name: 'T.16000M' })).toBeVisible();
+	try {
+		await expect(deck.getByRole('heading', { name: 'T.16000M' })).toBeVisible();
+	} catch (e) {
+		console.log('DIAG logs', JSON.stringify(logs));
+		console.log('DIAG ready', await page.locator('[data-ready]').getAttribute('data-ready'));
+		console.log('DIAG pads', await page.evaluate(() => navigator.getGamepads().map((p) => p?.id)));
+		console.log('DIAG header', await page.locator('header').innerText());
+		console.log('DIAG deck', await deck.ariaSnapshot().catch((x) => String(x)));
+		throw e;
+	}
 	await expect(deck.getByRole('heading', { name: 'VKBsim Gladiator EVO' })).toBeVisible();
 	await expect(deck.getByText('Stick 1')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: '2 controllers connected' })).toBeVisible();
