@@ -245,20 +245,16 @@ export const STOPS: readonly Stop[] = [
 		name: 'Crates',
 		at: [-12.8, 5.3],
 		face: Math.PI * 0.75,
-		tests: 'Crouch and lean',
-		prompts: [
-			{ label: 'Crouch', effects: ['crouch'] },
-			{ label: 'Lean', effects: ['leanL', 'leanR'] }
-		]
+		tests: 'Crouch',
+		prompts: [{ label: 'Crouch', effects: ['crouch'] }]
 	},
 	{
 		n: 3,
 		name: 'Suit locker',
 		at: [12.6, 9.4],
 		face: Math.PI,
-		tests: 'Helmet, swap tool or weapon, flashlight',
+		tests: 'Swap tool or weapon, flashlight',
 		prompts: [
-			{ label: 'Helmet', effects: ['helmet'] },
 			{ label: 'Swap tool or weapon', effects: ['wNext', 'wPrev'] },
 			{ label: 'Flashlight', effects: ['flash'] }
 		]
@@ -281,12 +277,11 @@ export const STOPS: readonly Stop[] = [
 		at: [17.8, -6.8],
 		// Square on to the middle ring.
 		face: -Math.atan2(18.6 - 17.8, -6.8 - (-13 + 0.14)),
-		tests: 'Aim, fire, reload, fire mode',
+		tests: 'Aim, fire, reload',
 		prompts: [
 			{ label: 'Aim', effects: ['aim'] },
 			{ label: 'Fire', effects: ['primary'] },
-			{ label: 'Reload', effects: ['reload'] },
-			{ label: 'Fire mode', effects: ['fireMode'] }
+			{ label: 'Reload', effects: ['reload'] }
 		]
 	},
 	{
@@ -307,12 +302,8 @@ export const STOPS: readonly Stop[] = [
 		name: 'Bay door',
 		at: [-21.7, 0],
 		face: Math.PI / 2,
-		tests: 'Wrist menu, emote, recall ship',
-		prompts: [
-			{ label: 'Wrist menu', effects: ['wrist'] },
-			{ label: 'Emote', names: ['Emote wheel'] },
-			{ label: 'Recall ship', effects: ['recall'] }
-		]
+		tests: 'Emote',
+		prompts: [{ label: 'Emote', names: ['Emote wheel'] }]
 	}
 ];
 

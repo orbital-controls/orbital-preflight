@@ -1,3 +1,4 @@
+import { axisValueKey } from '../bindings.ts';
 import type { Action, AnalogRole, BindingMap } from '../types.ts';
 
 /** Bound stick axes as the 3D scene reads them, with whether each one is bound. */
@@ -79,9 +80,9 @@ export function analogAxes(
 	for (const action of actions) {
 		const role = action.analog;
 		if (!role || role === 'throttle') continue;
-		const input = bindings[action.id]?.[0]?.input;
-		if (input?.kind !== 'axis' || input.half) continue;
-		const value = axes.get(`${input.deviceId}:${input.axis}`);
+		const key = axisValueKey(bindings[action.id]?.[0]?.input);
+		if (!key) continue;
+		const value = axes.get(key);
 		if (value === undefined) continue;
 		out.has[role] = true;
 		out[role] = role === 'drive' ? lever(value) : shape(value);

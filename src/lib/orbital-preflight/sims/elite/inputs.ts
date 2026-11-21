@@ -111,7 +111,12 @@ export function decodeInput(device: string, key: string): InputId | null {
 		return { kind: 'raw', device, key };
 	}
 
-	let m = /^Joy_(\d+)$/.exec(key);
+	let m = /^(?:(Pos|Neg)_)?GamePad_(\w+)$/.exec(key);
+	if (m) {
+		const half = m[1] === 'Pos' ? 'pos' : m[1] === 'Neg' ? 'neg' : undefined;
+		return { kind: 'pad', deviceId: device, control: m[2], ...(half && { half }) };
+	}
+	m = /^Joy_(\d+)$/.exec(key);
 	if (m) return { kind: 'button', deviceId: device, button: Number(m[1]) };
 	m = /^Joy_POV(\d)(Up|Down|Left|Right)$/.exec(key);
 	if (m) return { kind: 'hat', deviceId: device, hat: Number(m[1]), dir: HATS[m[2]] };
@@ -142,6 +147,10 @@ export function encodeInput(input: InputId | null): { device: string; key: strin
 		case 'axis': {
 			const prefix = input.half ? `${input.half === 'pos' ? 'Pos' : 'Neg'}_` : '';
 			return { device: input.deviceId, key: `${prefix}Joy_${input.axis}Axis` };
+		}
+		case 'pad': {
+			const prefix = input.half ? `${input.half === 'pos' ? 'Pos' : 'Neg'}_` : '';
+			return { device: input.deviceId, key: `${prefix}GamePad_${input.control}` };
 		}
 		case 'raw':
 			return { device: input.device, key: input.key };
@@ -195,6 +204,13 @@ export function newDeviceId(vendor: string, product: string): string {
 /** Keyboard, mouse and gamepad aren't devices to pair. */
 export function isPairableDevice(id: string): boolean {
 	return !['Keyboard', 'Mouse', 'GamePad', NO_DEVICE, ''].includes(id);
+}
+
+/** A device the file binds by gamepad control names: "Logitech gamepad". */
+export function describeGamepad(id: string): FileDevice {
+	const device = describeDevice(id);
+	const vendor = device.vendor && VENDORS[device.vendor];
+	return { ...device, name: vendor ? `${vendor} gamepad` : 'Gamepad', gamepad: true };
 }
 
 export function describeDevice(id: string): FileDevice {

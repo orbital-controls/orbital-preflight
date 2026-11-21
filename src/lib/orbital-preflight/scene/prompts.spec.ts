@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { KNOWN } from '../sims/elite/actions.ts';
 import type { Action, Bind, BindingMap } from '../types.ts';
 import { STOPS } from './pad.ts';
 import { stopPrompts } from './prompts.ts';
@@ -50,6 +51,23 @@ describe('stop prompts', () => {
 	});
 
 	it('matches panel actions by name', () => {
-		expect(at(7)[1]).toMatchObject({ label: 'Emote', keys: ['B'] });
+		expect(at(7)[0]).toMatchObject({ label: 'Emote', keys: ['B'] });
+	});
+});
+
+describe('every prompt is a bind', () => {
+	// A prompt no Elite action can answer would only ever read "Not bound": leave it out.
+	const foot = [...KNOWN.values()].filter((k) => k.mode === 'foot');
+	// Mouse look is the file's mouse setting (MouseHumanoidXMode), not an action.
+	const prompts = STOPS.flatMap((stop) =>
+		stop.prompts.filter((p) => !p.fixed).map((p) => [stop.n, p.label, p] as const)
+	);
+	it.each(prompts)('stop %i: %s', (_n, _label, prompt) => {
+		const effects = new Set(foot.flatMap((k) => k.effect?.split('|') ?? []));
+		const names = new Set(foot.map((k) => k.name));
+		const answered =
+			(prompt.effects ?? []).some((e) => effects.has(e)) ||
+			(prompt.names ?? []).some((n) => names.has(n));
+		expect(answered).toBe(true);
 	});
 });

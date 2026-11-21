@@ -382,7 +382,6 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 		// on foot
 		// One effect per direction, so the 3D walker knows which way; the mock flight
 		// treats them all as the board's walk.
-		case 'walk':
 		case 'walkF':
 		case 'walkB':
 		case 'walkL':
@@ -447,6 +446,12 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 			break;
 		case 'fNv':
 			p.fNv = !s.fNv;
+			break;
+		case 'scan':
+			msg('Profile analyser out', 24);
+			break;
+		case 'ping':
+			msg('Ping sent', 16);
 			break;
 		case 'panel':
 			msg(`${name} would open`);

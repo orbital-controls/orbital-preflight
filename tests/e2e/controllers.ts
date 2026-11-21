@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test';
 export interface FakePad {
 	id: string;
 	buttons: number;
+	/** `standard` for an Xbox-style pad; sticks and throttles report ''. */
+	mapping?: string;
 }
 
 /**
@@ -15,7 +17,7 @@ export async function fakeGamepads(page: Page, pads: FakePad[]) {
 			index,
 			id: p.id,
 			connected: true,
-			mapping: '',
+			mapping: p.mapping ?? '',
 			timestamp: 0,
 			axes: [0, 0, 0, 0],
 			buttons: Array.from({ length: p.buttons }, () => ({

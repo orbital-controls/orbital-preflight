@@ -79,9 +79,8 @@ describe('the on-foot walker', () => {
 		expect(crouched.x).toBeGreaterThan(ring.cx + ring.hx);
 	});
 
-	it('crouches and leans smoothly', () => {
-		const w = run(spawnWalker(0, 10, 0), { crouch: true, lean: 1 }, 1);
+	it('crouches smoothly', () => {
+		const w = run(spawnWalker(0, 10, 0), { crouch: true }, 1);
 		expect(w.crouch).toBeGreaterThan(0.99);
-		expect(w.lean).toBeGreaterThan(0.99);
 	});
 });

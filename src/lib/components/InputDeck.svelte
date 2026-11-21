@@ -2,7 +2,7 @@
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { inputKey, sameInput } from '#lib/orbital-preflight/bindings.ts';
 	import { controllerDecks, keyboardRows, MOUSE_DECK } from '#lib/orbital-preflight/deck.ts';
-	import { inputLabel } from '#lib/orbital-preflight/labels.ts';
+	import { deckLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
 	import type { InputId } from '#lib/orbital-preflight/types.ts';
 	import DeckKey from './DeckKey.svelte';
 	import { ownersByInput, tap } from './deck.ts';
@@ -29,7 +29,7 @@
 
 	/** The deck's own short label: "B5", "H↑", "TRG", without the device prefix. */
 	function short(input: InputId): string {
-		return inputLabel(input, app.roles).replace(/^\S+ (?=H|TRG|B\d)/, '');
+		return deckLabel(input, app.roles);
 	}
 
 	function aria(input: InputId, device?: string): string {

@@ -168,6 +168,7 @@ describe('multi-game sessions', () => {
 				name: 'Mystery Stick',
 				buttons: 12,
 				axes: 4,
+				standard: false,
 				deviceId: null,
 				pairedBy: null
 			}

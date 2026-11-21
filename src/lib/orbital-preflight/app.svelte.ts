@@ -1,16 +1,18 @@
 import { getContext, setContext } from 'svelte';
 import { BindStore, download, type FileOrigin } from './binds.svelte.ts';
 import {
+	axisValueKey,
 	findHolders,
 	inputKey,
 	sameInput,
+	wholeAxis,
 	type Resolution,
 	type ShowFilter,
 	type SlotRef
 } from './bindings.ts';
 import { firstVisit, presetFor, type ResolvedConfig } from './config.ts';
 import { act, enterMode, initialFlight, setThrottle, tick, type FlightState } from './flight.ts';
-import { InputHub, type InputEvent } from './inputs/hub.svelte.ts';
+import { InputHub, type BrowserPad, type InputEvent } from './inputs/hub.svelte.ts';
 import { deviceRoles } from './labels.ts';
 import { withLocalActions } from './local-actions.ts';
 import { analogAxes, type Analog } from './scene/analog.ts';
@@ -135,7 +137,11 @@ export class OrbitalPreflight {
 			...this.hub.pads
 				.filter((p) => p.pairedBy === 'new' && p.deviceId)
 				.filter((p) => !this.store.file?.parsed.devices.some((d) => d.id === p.deviceId))
-				.map((p) => ({ id: p.deviceId!, name: p.name }))
+				.map((p) => ({
+					id: p.deviceId!,
+					name: p.name,
+					...(p.standard && { gamepad: true as const })
+				}))
 		])
 	);
 	/** Why the last input pressed while listening can't be used, if it can't. */
@@ -173,10 +179,16 @@ export class OrbitalPreflight {
 		this.hub.pairNext(null);
 	}
 
-	/** The first device in the file with no controller paired to it. */
-	unpairedDevice(): string | null {
-		const devices = this.store.file?.parsed.devices ?? [];
-		return devices.find((d) => !this.hub.pads.some((p) => p.deviceId === d.id))?.id ?? null;
+	/**
+	 * The first device in the file with no controller paired to it. For a controller,
+	 * one of its own sort first: a gamepad pairs with the file's gamepad, a stick with a stick.
+	 */
+	unpairedDevice(pad?: BrowserPad): string | null {
+		const devices = (this.store.file?.parsed.devices ?? []).filter(
+			(d) => !this.hub.pads.some((p) => p.deviceId === d.id)
+		);
+		const sameSort = pad && devices.find((d) => Boolean(d.gamepad) === pad.standard);
+		return (sameSort ?? devices[0])?.id ?? null;
 	}
 
 	/**
@@ -189,7 +201,7 @@ export class OrbitalPreflight {
 			return;
 		}
 		this.hub.pairNext((pad) => {
-			const target = this.unpairedDevice();
+			const target = this.unpairedDevice(pad);
 			if (target) this.hub.pair(pad.index, target, 'press');
 			this.armPairing();
 		});
@@ -493,10 +505,7 @@ export class OrbitalPreflight {
 		this.capNotice = null;
 		const action = this.actionById(cap.target.actionId);
 		// An axis action takes the whole axis; a button action keeps the half it was pushed to.
-		const cand =
-			action?.axis && bind.input.kind === 'axis'
-				? { input: { ...bind.input, half: undefined } }
-				: bind;
+		const cand = action?.axis ? { input: wholeAxis(bind.input) } : bind;
 		if (this.editor) {
 			const holder = this.holderOf(cap.target, cand);
 			this.cap = null;
@@ -563,12 +572,10 @@ export class OrbitalPreflight {
 							? undefined
 							: action.effect;
 				} else if (
-					input.kind === 'axis' &&
+					(input.kind === 'axis' || input.kind === 'pad') &&
 					input.half &&
-					slot.input.kind === 'axis' &&
-					!slot.input.half &&
-					slot.input.deviceId === input.deviceId &&
-					slot.input.axis === input.axis
+					axisValueKey(slot.input) !== null &&
+					sameInput(slot.input, wholeAxis(input))
 				) {
 					const [neg, pos] = (action.effect ?? '').split('|');
 					effect = input.half === 'neg' ? neg : pos;
@@ -597,10 +604,10 @@ export class OrbitalPreflight {
 		}
 		const hits = this.matching(input);
 		let flight = this.flight;
-		// As on the board, an action with no effect of its own says it "would open".
+		// Panels say they "would open" (their effect is `panel`). An action with no effect
+		// of its own only shows in the last-input toast: nothing would open for Thrust left.
 		for (const { action, effect } of hits) {
 			if (effect) flight = act(flight, effect, action.name);
-			else if (!action.axis) flight = act(flight, 'panel', action.name);
 		}
 		this.flight = flight;
 		this.last = input;
@@ -612,9 +619,10 @@ export class OrbitalPreflight {
 		if (this.mode !== 'ship') return;
 		const action = this.store.actionsIn('ship').find((a) => a.effect === 'throttle');
 		const input = action && this.store.bindings[action.id]?.[0]?.input;
-		if (input?.kind !== 'axis') return;
+		const key = input && axisValueKey(wholeAxis(input));
+		if (!key) return;
 		// The hub names a paired controller's axes by the file device it stands for.
-		const value = this.hub.axes.get(`${input.deviceId}:${input.axis}`);
+		const value = this.hub.axes.get(key);
 		if (value !== undefined) this.flight = setThrottle(this.flight, value);
 	}
 

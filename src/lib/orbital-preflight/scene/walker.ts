@@ -27,11 +27,8 @@ export const WALK = {
 	jump: 5.6,
 	/** Look limit up and down, radians. */
 	pitchLimit: 1.45,
-	/** Crouch and lean ease (1/s). */
-	ease: 10,
-	/** Lean: sideways eye shift (m) and roll (rad) at full lean. */
-	leanShift: 0.32,
-	leanRoll: 0.12
+	/** Crouch ease (1/s). */
+	ease: 10
 } as const;
 
 export interface Walker {
@@ -47,8 +44,6 @@ export interface Walker {
 	grounded: boolean;
 	/** 0 standing … 1 crouched, eased. */
 	crouch: number;
-	/** −1 left … 1 right, eased. */
-	lean: number;
 }
 
 export interface WalkInput {
@@ -60,7 +55,6 @@ export interface WalkInput {
 	crouch: boolean;
 	/** True on the frame a jump starts. */
 	jump: boolean;
-	lean: number;
 	/** Look deltas this frame, radians: yaw (left positive) and pitch (up positive). */
 	yaw: number;
 	pitch: number;
@@ -72,13 +66,12 @@ export const IDLE_INPUT: WalkInput = {
 	sprint: false,
 	crouch: false,
 	jump: false,
-	lean: 0,
 	yaw: 0,
 	pitch: 0
 };
 
 export function spawnWalker(x: number, z: number, yaw: number): Walker {
-	return { x, z, y: 0, vx: 0, vz: 0, vy: 0, yaw, pitch: 0, grounded: true, crouch: 0, lean: 0 };
+	return { x, z, y: 0, vx: 0, vz: 0, vy: 0, yaw, pitch: 0, grounded: true, crouch: 0 };
 }
 
 export interface World {
@@ -161,7 +154,6 @@ export function stepWalker(
 	const pitch = Math.max(-WALK.pitchLimit, Math.min(WALK.pitchLimit, w.pitch + input.pitch));
 	const ease = 1 - Math.exp(-WALK.ease * dt);
 	const crouch = w.crouch + ((input.crouch ? 1 : 0) - w.crouch) * ease;
-	const lean = w.lean + (Math.max(-1, Math.min(1, input.lean)) - w.lean) * ease;
 
 	// Wanted velocity on the ground plane, from the input in the look frame.
 	let f = Math.max(-1, Math.min(1, input.forward));
@@ -238,7 +230,6 @@ export function stepWalker(
 		yaw,
 		pitch,
 		grounded,
-		crouch,
-		lean
+		crouch
 	};
 }

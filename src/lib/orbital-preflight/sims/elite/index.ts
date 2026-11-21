@@ -17,6 +17,7 @@ import {
 	cannotBind,
 	decodeInput,
 	describeDevice,
+	describeGamepad,
 	encodeInput,
 	isPairableDevice,
 	newDeviceId
@@ -87,6 +88,7 @@ export function parseEliteBinds(source: string): ParsedBinds {
 	const actions: Action[] = [];
 	const bindings: BindingMap = {};
 	const deviceIds = new Set<string>();
+	const gamepads = new Set<string>();
 
 	for (const element of root.children) {
 		if (!isAction(element) || bindings[element.name]) continue;
@@ -101,8 +103,11 @@ export function parseEliteBinds(source: string): ParsedBinds {
 			const slot = child(element, tag);
 			if (!slot) continue;
 			for (const el of [slot, child(slot, 'Modifier')]) {
-				const device = el && attribute(el, 'Device')?.value;
-				if (device && isPairableDevice(device)) deviceIds.add(device);
+				if (!el) continue;
+				const device = attribute(el, 'Device')?.value;
+				if (!device || !isPairableDevice(device)) continue;
+				deviceIds.add(device);
+				if (attribute(el, 'Key')?.value.includes('GamePad_')) gamepads.add(device);
 			}
 		}
 	}
@@ -110,7 +115,9 @@ export function parseEliteBinds(source: string): ParsedBinds {
 	if (!actions.length) throw new BindsFormatError('No binds found in this file');
 
 	// In the order the file first uses them: usually stick, then throttle.
-	const devices: FileDevice[] = [...deviceIds].map(describeDevice);
+	const devices: FileDevice[] = [...deviceIds].map((id) =>
+		gamepads.has(id) ? describeGamepad(id) : describeDevice(id)
+	);
 	return {
 		sim: 'elite-dangerous',
 		presetName: attribute(root, 'PresetName')?.value ?? '',

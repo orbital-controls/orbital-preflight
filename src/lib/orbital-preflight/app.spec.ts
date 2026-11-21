@@ -13,11 +13,19 @@ function loaded() {
 }
 
 describe('OrbitalPreflight', () => {
-	it('an action with no effect of its own says it would open, as on the board', () => {
+	it('a panel says it would open', () => {
+		const app = loaded();
+		app.hub.press({ kind: 'key', code: 'ShiftLeft' });
+		app.onInput({ input: { kind: 'key', code: 'KeyM' }, pressed: true });
+		expect(app.lastActs).toEqual(['GalaxyMapOpen']);
+		expect(app.flight.msg).toBe('Galaxy map would open');
+	});
+
+	it('an action with no effect of its own only shows in the toast', () => {
 		const app = loaded();
 		app.onInput({ input: { kind: 'key', code: 'KeyY' }, pressed: true });
 		expect(app.lastActs).toEqual(['CycleNextSubsystem']);
-		expect(app.flight.msg).toBe('Next subsystem would open');
+		expect(app.flight.msgT).toBe(0);
 	});
 
 	it('refuses an input the export could not write, and says why', () => {

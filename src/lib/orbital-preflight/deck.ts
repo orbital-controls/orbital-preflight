@@ -1,5 +1,6 @@
 import type { BrowserPad } from './inputs/hub.svelte.ts';
 import type { DeviceRole } from './labels.ts';
+import { STANDARD_BUTTONS } from './inputs/gamepad.ts';
 import type { BindingMap, InputId } from './types.ts';
 
 /** The input deck under the viewport, laid out as on the boards. */
@@ -55,6 +56,15 @@ const HAT_ORDER = ['up', 'left', 'right', 'down'] as const;
  */
 export function deviceDecks(roles: DeviceRole[], bindings: BindingMap): DeviceDeck[] {
 	return roles.map((role) => {
+		// A gamepad has the same buttons whatever the file binds: show them all.
+		if (role.kind === 'pad') {
+			const inputs: InputId[] = STANDARD_BUTTONS.map((control) => ({
+				kind: 'pad',
+				deviceId: role.id,
+				control
+			}));
+			return { role, inputs };
+		}
 		const hats = new Set<number>(role.kind === 'stick' ? [1] : []);
 		const buttons = new Set<number>();
 		for (const binding of Object.values(bindings)) {
