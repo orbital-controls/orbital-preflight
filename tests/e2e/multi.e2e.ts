@@ -6,9 +6,27 @@ import { rebind } from './helpers.ts';
  * Citizen, with Star Citizen standing in on Elite files (only Elite is `ready`).
  */
 
-// Each test loads two games and mounts the 3D ship scene for both: on a two-core runner
-// with software WebGL that runs past the default 30 s, as the scene tests do.
-test.beforeEach(() => test.slow());
+// Session behaviour, not the 3D view: these run on the 2D placeholder. With software
+// WebGL, two games' ship scenes starve the other tests' main threads on a two-core
+// runner (scene.e2e.ts covers the 3D view). Still more steps than most tests, so slow.
+test.beforeEach(async ({ page }) => {
+	test.slow();
+	await page.addInitScript(() => {
+		const original = HTMLCanvasElement.prototype.getContext;
+		HTMLCanvasElement.prototype.getContext = function (
+			this: HTMLCanvasElement,
+			type: string,
+			...rest: unknown[]
+		) {
+			if (/webgl/.test(type)) return null;
+			return (original as (...args: unknown[]) => RenderingContext | null).call(
+				this,
+				type,
+				...rest
+			);
+		} as typeof original;
+	});
+});
 
 const bindingFor = (page: Page) => page.getByRole('button', { name: /^Binding for/ });
 const manifest = (page: Page) => page.getByRole('dialog', { name: 'Switch game' });
