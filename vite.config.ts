@@ -34,7 +34,13 @@ export default defineConfig({
 			prerender: { entries: ['*'] }
 		})
 	],
-	define: { __OP_BASE__: JSON.stringify(base) },
+	define: {
+		__OP_BASE__: JSON.stringify(base),
+		// Test builds only (scripts/build-e2e.ts): see `mock` in sims/index.ts.
+		__OP_MOCK_SIMS__: JSON.stringify(
+			(process.env.ORBITAL_PREFLIGHT_MOCK_SIMS ?? '').split(',').filter(Boolean)
+		)
+	},
 	// three.js is one lazy chunk (~620 kB, ~160 kB gzipped), fetched only when the 3D
 	// viewport mounts. Above this, a chunk has grown and is worth a look.
 	build: { chunkSizeWarningLimit: 700 },

@@ -312,6 +312,7 @@ export const elite: SimAdapter = {
 	status: 'ready',
 	extensions: ['.binds'],
 	fileLabel: '.binds file',
+	modes: ['ship', 'srv', 'foot'],
 	// UNVERIFIED: flagged for Phil to confirm.
 	help: {
 		path: '%LOCALAPPDATA%\\Frontier Developments\\Elite Dangerous\\Options\\Bindings\\',

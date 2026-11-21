@@ -11,6 +11,8 @@ export type Mode = 'ship' | 'srv' | 'foot';
 
 export const MODES: readonly Mode[] = ['ship', 'srv', 'foot'];
 
+export const MODE_NAMES: Record<Mode, string> = { ship: 'Ship', srv: 'SRV', foot: 'On foot' };
+
 export interface Action {
 	/** The sim's own id for the action, e.g. `ToggleFlightAssist`. */
 	id: string;
