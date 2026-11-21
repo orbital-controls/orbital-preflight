@@ -88,7 +88,7 @@ describe('mock flight', () => {
 	});
 
 	it('on foot: every walk direction is the board walk', () => {
-		for (const e of ['walk', 'walkF', 'walkB', 'walkL', 'walkR'])
+		for (const e of ['walkF', 'walkB', 'walkL', 'walkR'])
 			expect(run(initialFlight(), e).walkT).toBe(8);
 	});
 

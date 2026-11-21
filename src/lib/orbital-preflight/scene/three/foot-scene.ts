@@ -80,7 +80,6 @@ const LOOK_RATE = { yaw: 2.4, pitch: 1.8 };
 const _v = new Vector3();
 const _w = new Vector3();
 const _up = new Vector3(0, 1, 0);
-const _right = new Vector3();
 
 const _muzzle = new Vector3();
 const _start = new Vector3();
@@ -389,7 +388,6 @@ export class FootScene implements ModeScene {
 			sprint: on('sprint') === 1 || input.flight.sprintT > 0,
 			crouch: input.flight.crouch,
 			jump,
-			lean: on('leanR') - on('leanL'),
 			yaw: -look.dx * sens - (a.has.lookX ? a.lookX * LOOK_RATE.yaw * dt : 0),
 			pitch: -look.dy * sens - (a.has.lookY ? a.lookY * LOOK_RATE.pitch * dt : 0)
 		};
@@ -421,15 +419,12 @@ export class FootScene implements ModeScene {
 		this.#beamT = FOOT_ANIM.fire.round;
 	}
 
-	/** The eye: feet + eye height, a head bob, the lean; pitch, yaw, then lean roll. */
+	/** The eye: feet + eye height and a head bob; pitch, then yaw. */
 	#placeCamera(dt: number) {
 		const w = this.#walker;
 		const bob = Math.sin(this.#bobPhase * 2) * this.#headAmp;
-		_right.set(Math.cos(w.yaw), 0, -Math.sin(w.yaw));
-		this.camera.position
-			.set(w.x, w.y + eyeHeight(w) + bob, w.z)
-			.addScaledVector(_right, w.lean * WALK.leanShift);
-		this.camera.rotation.set(w.pitch, w.yaw, -w.lean * WALK.leanRoll);
+		this.camera.position.set(w.x, w.y + eyeHeight(w) + bob, w.z);
+		this.camera.rotation.set(w.pitch, w.yaw, 0);
 		const fov =
 			FOOT_ANIM.aim.worldFov + (FOOT_ANIM.aim.adsFov - FOOT_ANIM.aim.worldFov) * this.#aim;
 		if (Math.abs(fov - this.camera.fov) > 1e-3 || dt === 0) {

@@ -491,7 +491,8 @@ interface Known {
 	order: number;
 }
 
-const KNOWN = new Map<string, Known>();
+/** Catalogued actions by id. Exported for the specs that check nothing goes unbound. */
+export const KNOWN = new Map<string, Known>();
 let order = 0;
 for (const [mode, categories] of Object.entries(CATALOGUE) as [Mode, Record<string, Entry[]>][]) {
 	for (const [category, entries] of Object.entries(categories)) {

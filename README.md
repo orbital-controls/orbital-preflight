@@ -141,7 +141,7 @@ These were written from memory, not checked against real files or devices, and a
 - **Stick axis signs** for the 3D scene: stick forward reads negative (nose down), right is positive for roll, yaw and SRV steering, and the file's `Inverted` flag isn't applied.
 - **SRV drive speed axis**: read as a forward-only lever like the ship's throttle (full forward −1 is full speed, pulled back is stopped). Elite can also run it full range, with the back half as reverse; that setting isn't in the binds file.
 - **K for Toggle camera**, in Ship and in SRV: free in the shipped presets; not checked against Elite's own default binds.
-- **On-foot axis signs**: `HumanoidForwardAxis`, `HumanoidStrafeAxis`, `HumanoidRotateAxis` and `HumanoidPitchAxis` are taken as the browser reports them (stick forward negative walks forward and looks up). The exported file has no lean, helmet, fire mode or wrist menu bind, so those Pad 7 prompts read "Not bound"; the walker leans if a sim maps `leanL` / `leanR`. Scan is the profile analyser (`HumanoidSwitchToCompAnalyser`) and Ping is `HumanoidPing`.
+- **On-foot axis signs**: `HumanoidForwardAxis`, `HumanoidStrafeAxis`, `HumanoidRotateAxis` and `HumanoidPitchAxis` are taken as the browser reports them (stick forward negative walks forward and looks up). Pad 7 only prompts for binds an Elite action can answer on foot (a spec checks it): the exported file has no lean, helmet, fire mode, wrist menu or on-foot recall bind, so those prompts and the walker's lean are gone. Scan is the profile analyser (`HumanoidSwitchToCompAnalyser`) and Ping is `HumanoidPing`; Look is the mouse, as the file's `MouseHumanoidXMode` setting has it.
 
 ## Licence
 
