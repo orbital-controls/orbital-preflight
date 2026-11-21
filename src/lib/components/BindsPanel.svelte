@@ -23,12 +23,23 @@
 			'Flight',
 			'Driving',
 			'Moving',
+			'Landing',
 			'Navigation',
 			'Turret',
 			'Combat',
+			'Wing',
 			'Systems',
 			'Tools',
-			'Panels'
+			'Panels',
+			'Head look',
+			'Menus',
+			'Galaxy map',
+			'Scanners',
+			'Multicrew',
+			'Fighter orders',
+			'Camera',
+			'Emotes',
+			'Store and Holo-Me'
 		].indexOf(category);
 		return i === -1 ? 99 : i;
 	}

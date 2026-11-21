@@ -448,6 +448,12 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 		case 'fNv':
 			p.fNv = !s.fNv;
 			break;
+		case 'scan':
+			msg('Profile analyser out', 24);
+			break;
+		case 'ping':
+			msg('Ping sent', 16);
+			break;
 		case 'panel':
 			msg(`${name} would open`);
 			break;

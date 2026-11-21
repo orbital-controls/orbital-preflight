@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { clashingActions } from '../../bindings.ts';
 import type { BindingMap } from '../../types.ts';
 import { parseXml } from '../../xml.ts';
 import { classifyMode, prettify } from './actions.ts';
@@ -54,9 +55,10 @@ describe('Elite Dangerous .binds', () => {
 		};
 		const out = writeEliteBinds(parsed, bindings, parsed.presetName);
 		const diff = changedLines(source, out);
+		const was = encodeInput(parsed.bindings.SetSpeedZero[0]?.input ?? null);
 		expect(diff).toEqual([
 			[
-				'\t\t<Primary Device="Keyboard" Key="Key_X" />',
+				`\t\t<Primary Device="${was.device}" Key="${was.key}" />`,
 				'\t\t<Primary Device="Keyboard" Key="Key_P" />'
 			].map((line) => (source.includes('\r\n') ? `${line}\r` : line))
 		]);
@@ -110,8 +112,8 @@ describe('Elite Dangerous .binds', () => {
 		expect(byId.ThrottleAxis).toMatchObject({ mode: 'ship', axis: true, name: 'Throttle' });
 		expect(byId.SteeringAxis).toMatchObject({ mode: 'srv', axis: true });
 		expect(byId.HumanoidJumpButton).toMatchObject({ mode: 'foot', name: 'Jump' });
-		expect(byId.EjectAllCargo_Buggy).toMatchObject({ mode: 'srv', category: 'Other' });
-		expect(byId.UI_Up).toMatchObject({ mode: 'ship', category: 'Other' });
+		expect(byId.EjectAllCargo_Buggy).toMatchObject({ mode: 'srv', category: 'Systems' });
+		expect(byId.UI_Up).toMatchObject({ mode: 'ship', category: 'Menus', context: 'menus' });
 		expect(parsed.bindings.ToggleFlightAssist).toEqual([
 			{ input: { kind: 'key', code: 'KeyZ' }, modifiers: [{ kind: 'key', code: 'ShiftLeft' }] },
 			{ input: { kind: 'button', deviceId: 'T16000M', button: 7 } }
@@ -145,6 +147,7 @@ describe('Elite Dangerous .binds', () => {
 describe('mode classification', () => {
 	it.each([
 		['HumanoidSomethingNewButton', 'foot'],
+		['SomethingNew_Humanoid', 'foot'],
 		['SomethingNew_Buggy', 'srv'],
 		['BuggyNewThing', 'srv'],
 		['SteerLeftButton', 'srv'],
@@ -158,6 +161,7 @@ describe('mode classification', () => {
 		expect(prettify('HumanoidToggleShieldsButton')).toBe('Toggle shields');
 		expect(prettify('IncreaseEnginesPower_Buggy')).toBe('Increase engines power');
 		expect(prettify('UI_Up')).toBe('Ui up');
+		expect(prettify('SomethingNew_Humanoid')).toBe('Something new');
 	});
 });
 
@@ -250,5 +254,68 @@ describe('writer edge cases', () => {
 		expect(elite.cannotBind?.({ kind: 'mouse', button: 7 })).toMatch(/five mouse buttons/);
 		expect(elite.newDeviceId?.('044f', 'b10a')).toBe('T16000M');
 		expect(elite.newDeviceId?.('231d', '0200')).toBe('231D0200');
+	});
+});
+
+/** A binds file holding just these actions, each with one Primary. */
+function binds(actions: [id: string, device: string, key: string][]): string {
+	const body = actions
+		.map(
+			([id, device, key]) =>
+				`\t<${id}>\n\t\t<Primary Device="${device}" Key="${key}" />\n\t\t<Secondary Device="{NoDevice}" Key="" />\n\t</${id}>`
+		)
+		.join('\n');
+	return `<?xml version="1.0" encoding="UTF-8" ?>\n<Root PresetName="Test" MajorVersion="4" MinorVersion="1">\n${body}\n</Root>\n`;
+}
+
+describe('the 4.1 catalogue', () => {
+	it('files actions the game lists outside their name’s mode', () => {
+		const parsed = parseEliteBinds(
+			`<Root PresetName="T">\n\t<IncreaseSpeedButtonPartial>\n\t\t<Binding Device="T16000MTHROTTLE" Key="Joy_ZAxis" />\n\t</IncreaseSpeedButtonPartial>\n</Root>\n`
+		);
+		expect(parsed.actions[0]).toMatchObject({ mode: 'srv', axis: true, name: 'Speed up' });
+		expect(classifyMode('PhotoCameraToggle_Humanoid')).toBe('foot');
+		expect(classifyMode('SystemMapOpen_Humanoid')).toBe('foot');
+	});
+
+	it('names and files known actions instead of leaving them in Other', () => {
+		const parsed = parseEliteBinds(
+			binds([
+				['SetSpeedMinus100', 'Keyboard', 'Key_1'],
+				['TargetWingman0', 'Keyboard', 'Key_2'],
+				['HumanoidHideWeaponButton', 'Keyboard', 'Key_3'],
+				['HumanoidPing', 'Keyboard', 'Key_4']
+			])
+		);
+		expect(parsed.actions.map((a) => [a.id, a.category, a.name])).toEqual([
+			['SetSpeedMinus100', 'Flight', 'Throttle to −100%'],
+			['TargetWingman0', 'Wing', 'Target wingman 1'],
+			['HumanoidHideWeaponButton', 'Combat', 'Holster weapon'],
+			['HumanoidPing', 'Tools', 'Ping']
+		]);
+	});
+
+	it('does not count one input in two screens the game reads apart as a clash', () => {
+		const parsed = parseEliteBinds(
+			binds([
+				['ExplorationFSSEnter', 'Keyboard', 'Key_Apostrophe'],
+				['ExplorationFSSQuit', 'Keyboard', 'Key_Apostrophe'],
+				['ExplorationSAAExitThirdPerson', 'T16000M', 'Joy_5'],
+				['UI_Up', 'Keyboard', 'Key_W'],
+				['CamTranslateForward', 'Keyboard', 'Key_W'],
+				['PitchDownButton', 'Keyboard', 'Key_W'],
+				['VanityCameraScrollLeft', 'Keyboard', 'Key_LeftArrow'],
+				['FStopDec', 'Keyboard', 'Key_LeftArrow'],
+				['HumanoidForwardButton', 'Keyboard', 'Key_W'],
+				['HumanoidItemWheelButton_YUp', 'Keyboard', 'Key_W'],
+				['SystemMapOpen', 'T16000M', 'Joy_16'],
+				['DeployHeatSink', 'T16000M', 'Joy_16']
+			])
+		);
+		expect([...clashingActions(parsed.actions, parsed.bindings, 'ship')].sort()).toEqual([
+			'DeployHeatSink',
+			'SystemMapOpen'
+		]);
+		expect(clashingActions(parsed.actions, parsed.bindings, 'foot').size).toBe(0);
 	});
 });

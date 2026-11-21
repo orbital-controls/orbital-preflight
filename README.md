@@ -126,9 +126,11 @@ Export new preset writes a new file: the original text with the changed slots an
 
 ## Unverified
 
-These were written from memory, not checked against real files or devices, and are marked `UNVERIFIED` in the code:
+These were written from memory, not checked against real files or devices, and are marked `UNVERIFIED` in the code. A preset exported by the game (format 4.1, checked by hand and not committed) has since confirmed every action id it holds, which mode each sits in, the `_Buggy` / `Humanoid` / `_Humanoid` naming, the key names it uses (`Key_LeftShift`, `Key_Numpad_7`, `Key_Apostrophe`…), `Joy_POV1Up`, `Pos_`/`Neg_` axis halves, and the `T16000M` / `T16000MTHROTTLE` device names. Still open:
 
-- **The `.binds` format details**: action ids, the `_Buggy` and `Humanoid` naming, key names (`Key_LeftShift`, `Key_Numpad_7`…), `Joy_POV1Up`, `Pos_`/`Neg_` axis halves, mouse wheel keys, and DirectInput mouse numbering. The test fixtures in `tests/fixtures/` and the demo preset are **synthetic**.
+- **The `.binds` format details** the real file doesn't show: action ids from other game versions, mouse wheel keys, and DirectInput mouse numbering. `hotas.binds`, `keyboard-only.binds` and the demo preset are **synthetic**.
+- **Bind contexts**: which screens Elite reads apart from flight, so the same key there isn't a clash (menus, galaxy map, ship cameras, free camera, FSS, DSS, head look, multicrew, landing overrides, alternate flight controls, store, Holo-Me, Galnet audio, the on-foot wheels). With them, that file showed only the clashes it really has.
+- **Readable names** for the actions, and which way the FSS's Increase/Decrease buttons turn.
 - **Device names and USB ids** used to pair browser controllers with the devices in a file (`T16000M` → `044f:b10a`, and so on).
 - **The "Where's my file?" paths** for all four sims.
 - **Export file naming** (`‹name›.4.0.binds`) and whether the game accepts any `PresetName`.
@@ -137,7 +139,7 @@ These were written from memory, not checked against real files or devices, and a
 - **Stick axis signs** for the 3D scene: stick forward reads negative (nose down), right is positive for roll, yaw and SRV steering, and the file's `Inverted` flag isn't applied.
 - **SRV drive speed axis**: read as a forward-only lever like the ship's throttle (full forward −1 is full speed, pulled back is stopped). Elite can also run it full range, with the back half as reverse; that setting isn't in the binds file.
 - **K for Toggle camera**, in Ship and in SRV: free in the shipped presets; not checked against Elite's own default binds.
-- **On-foot axes**: `HumanoidForwardAxis`, `HumanoidStrafeAxis`, `HumanoidRotateAxis` and `HumanoidPitchAxis` are remembered ids, and their signs are taken as the browser reports them (stick forward negative walks forward and looks up). Elite isn't known to have a lean bind, so stop 2's Lean prompt reads "Not bound"; the walker leans if a sim maps `leanL` / `leanR`. Helmet, fire mode, scan, ping and the wrist menu have no catalogued Elite action either.
+- **On-foot axis signs**: `HumanoidForwardAxis`, `HumanoidStrafeAxis`, `HumanoidRotateAxis` and `HumanoidPitchAxis` are taken as the browser reports them (stick forward negative walks forward and looks up). The real file has no lean, helmet, fire mode or wrist menu bind, so those Pad 7 prompts read "Not bound"; the walker leans if a sim maps `leanL` / `leanR`. Scan is the profile analyser (`HumanoidSwitchToCompAnalyser`) and Ping is `HumanoidPing`.
 
 ## Licence
 
