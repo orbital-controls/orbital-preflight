@@ -1,4 +1,4 @@
-import type { BindingMap, InputId, ParsedBinds, SimId } from '../types.ts';
+import type { BindingMap, InputId, Mode, ParsedBinds, SimId } from '../types.ts';
 
 /** "Where's my file?" in the Load drawer. UNVERIFIED: flagged for Phil to confirm. */
 export interface FileHelp {
@@ -9,20 +9,27 @@ export interface FileHelp {
 }
 
 /**
- * What a sim has to provide. `ready` sims parse and write; `soon` and `later` ones are
- * listed in the sim picker but can't be loaded yet.
+ * What a sim has to provide. `ready` sims parse and write, and their parser and writer
+ * have been checked against real files; `later` ones are listed in the bay and the game
+ * manifest as "Coming later" and can't be picked.
  */
 export interface SimAdapter {
 	id: SimId;
 	name: string;
-	/** Short name for tags, e.g. "ED". */
+	/** The letter tile and short name, e.g. "ED". */
 	short: string;
-	status: 'ready' | 'soon' | 'later';
+	status: 'ready' | 'later';
 	/** File extensions the drop zone accepts, with the dot. */
 	extensions: string[];
-	/** What the picker says under the name, e.g. ".binds file". */
+	/** The file it needs, e.g. ".binds file" ("Needs your .binds file"). */
 	fileLabel: string;
 	help: FileHelp;
+	/**
+	 * The modes its parser files actions under, in tab order, for the bay and the manifest
+	 * before a file is in. Once one is, the tabs come from the file's own actions. Empty
+	 * for a sim with no parser yet.
+	 */
+	modes: Mode[];
 	parse?(source: string): ParsedBinds;
 	/**
 	 * A new file: `parsed.source` with the changed slots and the preset name replaced and

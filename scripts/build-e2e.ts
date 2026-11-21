@@ -4,6 +4,8 @@
  * - root:  the shipped config at a domain root
  * - base:  the same under /orbital-preflight, as a GitHub Pages project site serves it
  * - theme: tests/fixtures/theme.config.ts, a theme override with no presets
+ * - multi: tests/fixtures/multi.config.ts, presets for two games, with Star Citizen
+ *          standing in on Elite files (see `mock` in src/lib/orbital-preflight/sims)
  */
 import { execFileSync } from 'node:child_process';
 
@@ -14,6 +16,14 @@ export const VARIANTS = {
 		port: 4175,
 		base: '',
 		env: { ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/theme.config.ts' }
+	},
+	multi: {
+		port: 4176,
+		base: '',
+		env: {
+			ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/multi.config.ts',
+			ORBITAL_PREFLIGHT_MOCK_SIMS: 'star-citizen'
+		}
 	}
 } as const;
 

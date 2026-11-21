@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openLoad } from './helpers.ts';
 
 /** The 3D viewport: it mounts, reacts to the flight state, and falls back without WebGL. */
 
@@ -8,7 +9,7 @@ test('the ship view mounts a WebGL canvas and the gear key moves the gear target
 	page
 }) => {
 	await page.goto('./');
-	await page.getByRole('button', { name: /^Binding for/ }).click();
+	await openLoad(page);
 	await page.locator('#drawer-file').setInputFiles('tests/fixtures/hotas.binds');
 	await expect(page.getByText('hotas.binds')).toBeVisible();
 

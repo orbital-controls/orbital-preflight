@@ -16,9 +16,16 @@ export interface OrbitalPreflightConfig {
 	siteUrl?: string;
 	/** Where Leave goes. */
 	homeUrl: string;
-	/** The sim the shipped presets are for. */
+	/**
+	 * The sim the shipped presets are for, unless a preset names its own. Default
+	 * `elite-dangerous`.
+	 */
 	sim?: SimId;
-	/** Binds files in `static/binds/`. The first is the one a first visit opens with. */
+	/**
+	 * Binds files in `static/binds/`. With presets for one sim, a first visit opens the
+	 * first of them; with presets for several, it shows the bay with the pilot's preset on
+	 * each of those games.
+	 */
 	presets?: PresetConfig[];
 	/** The mark and wordmark in the top bar. */
 	brand?: BrandConfig;
@@ -33,6 +40,8 @@ export interface PresetConfig {
 	file: string;
 	/** What visitors see, e.g. "My HOTAS setup". */
 	label: string;
+	/** The sim the file is for. Defaults to the config's `sim`. */
+	sim?: SimId;
 }
 
 export interface BrandConfig {
@@ -55,6 +64,7 @@ export function defineConfig(config: OrbitalPreflightConfig): OrbitalPreflightCo
 }
 
 export interface ResolvedPreset extends PresetConfig {
+	sim: SimId;
 	/** The path under the base, e.g. `binds/hotas.binds`. Resolve with `asset()`. */
 	path: string;
 }
@@ -79,13 +89,14 @@ const UNSAFE_VALUE = /[<>{};]/;
 
 /** Fills in defaults and checks the fields a typo would quietly break. */
 export function resolveConfig(config: OrbitalPreflightConfig): ResolvedConfig {
-	const presets = (config.presets ?? []).map((preset) => {
+	const sim = config.sim ?? 'elite-dangerous';
+	const presets = (config.presets ?? []).map((preset): ResolvedPreset => {
 		if (!preset.file || preset.file.includes('/') || preset.file.includes('..')) {
 			throw new Error(
 				`orbital-preflight.config.ts: preset file "${preset.file}" must be a file name inside static/binds/`
 			);
 		}
-		return { ...preset, path: `binds/${preset.file}` };
+		return { ...preset, sim: preset.sim ?? sim, path: `binds/${preset.file}` };
 	});
 
 	const theme = Object.entries(config.theme ?? {}).map(([name, value]): [string, string] => {
@@ -103,7 +114,7 @@ export function resolveConfig(config: OrbitalPreflightConfig): ResolvedConfig {
 		siteName: config.siteName,
 		siteUrl: config.siteUrl ? config.siteUrl.replace(/\/$/, '') : null,
 		homeUrl: config.homeUrl,
-		sim: config.sim ?? 'elite-dangerous',
+		sim,
 		presets,
 		brand: resolveBrand(config),
 		theme,
@@ -136,4 +147,24 @@ export function pageName(siteName: string): string {
 export function themeCss(theme: ResolvedConfig['theme']): string {
 	if (!theme.length) return '';
 	return `:root{${theme.map(([name, value]) => `${name}:${value}`).join(';')}}`;
+}
+
+/** Where a first visit lands. */
+export type FirstVisit = { kind: 'restore' } | { kind: 'preset'; index: number } | { kind: 'bay' };
+
+/**
+ * Remembered games come back and skip the bay. Otherwise presets for one sim open the
+ * first of them straight away, as a single-game fork always has; presets for several
+ * sims, or none, show the bay.
+ */
+export function firstVisit(presets: readonly ResolvedPreset[], remembered: number): FirstVisit {
+	if (remembered > 0) return { kind: 'restore' };
+	const sims = new Set(presets.map((p) => p.sim));
+	if (sims.size === 1) return { kind: 'preset', index: 0 };
+	return { kind: 'bay' };
+}
+
+/** The first pilot's preset for a sim, or -1. */
+export function presetFor(presets: readonly ResolvedPreset[], sim: SimId): number {
+	return presets.findIndex((p) => p.sim === sim);
 }

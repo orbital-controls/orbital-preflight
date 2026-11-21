@@ -10,10 +10,11 @@
 	import { controllerDecks, keyboardRows } from '#lib/orbital-preflight/deck.ts';
 	import { bindLabel, deckLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
-	import type { Action, InputId } from '#lib/orbital-preflight/types.ts';
+	import type { Action, InputId, SimId } from '#lib/orbital-preflight/types.ts';
 	import DeckKey from './DeckKey.svelte';
 	import { ownersByInput, tap } from './deck.ts';
 	import EditorBar from './EditorBar.svelte';
+	import GameManifest from './GameManifest.svelte';
 	import ModeTabs from './ModeTabs.svelte';
 	import SlotButton from './SlotButton.svelte';
 	import { chipClass, type KeyState } from './styles.ts';
@@ -24,9 +25,13 @@
 	 */
 	interface Props {
 		onexit: () => void;
+		/** "Load a different file": the Load binds drawer, over the editor. */
+		onloadfile: (opener: HTMLElement) => void;
+		/** "Add a game": back to the fly page's file drop for it. */
+		onadd: (sim: SimId) => void;
 	}
 
-	let { onexit }: Props = $props();
+	let { onexit, onloadfile, onadd }: Props = $props();
 	const app = useOrbitalPreflight();
 	const sim = $derived(simById(app.sim));
 	const actions = $derived(app.store.actionsIn(app.mode));
@@ -152,27 +157,12 @@
 					>
 						Bind <span class="text-trail">editor</span>
 					</h2>
-					<span
-						class="flex items-center gap-[10px] border border-trail/45 bg-panel/85 py-[6px] pr-3 pl-[6px] notch op-notch-xs"
-					>
-						<span
-							class="flex size-[34px] items-center justify-center bg-trail font-display text-[16px] font-black text-void notch op-notch-xs"
-							>{sim.short}</span
-						>
-						<span class="flex flex-col leading-[1.05]"
-							><span
-								class="font-mono text-[10px] font-semibold tracking-[.14em] text-course uppercase"
-								>Binding for</span
-							><span class="font-display text-[20px] font-black uppercase">{sim.name}</span></span
-						>
-					</span>
+					<GameManifest context="editor" {onloadfile} {onadd} />
 				</div>
 			</div>
 			<div class="flex items-center gap-[10px]">
 				<span class="font-mono text-[14px] text-ink-500"
-					><span class="font-bold text-trail">{changes}</span> unsaved {changes === 1
-						? 'change'
-						: 'changes'}</span
+					><span class="font-bold text-trail">{changes}</span> unsaved in {sim.short}</span
 				>
 				<button
 					type="button"
@@ -188,7 +178,7 @@
 					onclick={() => app.exportPreset()}
 					class="h-12 border bg-transparent px-4 text-[14px] font-bold {btn} [--notch:12px] {changes
 						? 'border-trail text-trail'
-						: 'border-ink-900/35 text-ink-900'}">Export new preset</button
+						: 'border-ink-900/35 text-ink-900'}">Export {sim.short} preset</button
 				>
 				<button
 					type="button"

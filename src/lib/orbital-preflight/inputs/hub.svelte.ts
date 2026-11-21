@@ -35,6 +35,9 @@ export interface BrowserPad {
 	pairedBy: 'usb' | 'press' | 'new' | null;
 }
 
+/** How one controller was paired, kept per game while another game is current. */
+export type PadPairing = Pick<BrowserPad, 'index' | 'id' | 'deviceId' | 'pairedBy'>;
+
 export interface InputEvent {
 	input: InputId;
 	pressed: boolean;
@@ -476,6 +479,45 @@ export class InputHub {
 			// One controller per file device.
 			if (deviceId && p.deviceId === deviceId) return this.#unpaired(p);
 			return p;
+		});
+	}
+
+	/** The pairing as it is now, to keep with a game that stops being current. */
+	pairing(): PadPairing[] {
+		return this.pads.map(({ index, id, deviceId, pairedBy }) => ({
+			index,
+			id,
+			deviceId,
+			pairedBy
+		}));
+	}
+
+	/**
+	 * Another game's devices, and its pairing as it was left: a controller paired by USB
+	 * or by a press goes back to the same file device; one plugged in since (or never
+	 * paired) is matched by USB or waits, unpaired, for the Controllers drawer.
+	 */
+	restore(
+		devices: FileDevice[],
+		newDeviceId: ((vendor: string, product: string) => string | null) | null,
+		saved: readonly PadPairing[]
+	) {
+		this.releaseAll();
+		this.devices = devices;
+		this.newDeviceId = newDeviceId;
+		const kept = new Map(
+			saved
+				.filter(
+					(s) =>
+						(s.pairedBy === 'usb' || s.pairedBy === 'press') &&
+						devices.some((d) => d.id === s.deviceId)
+				)
+				.map((s) => [`${s.index}:${s.id}`, s])
+		);
+		const taken = new Set([...kept.values()].map((s) => s.deviceId!));
+		this.pads = this.pads.map((p) => {
+			const s = kept.get(`${p.index}:${p.id}`);
+			return s ? { ...p, deviceId: s.deviceId, pairedBy: s.pairedBy } : this.#assign(p, taken);
 		});
 	}
 
