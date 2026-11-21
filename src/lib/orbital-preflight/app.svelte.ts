@@ -404,10 +404,10 @@ export class OrbitalPreflight {
 		}
 		const hits = this.matching(input);
 		let flight = this.flight;
-		// As on the board, an action with no effect of its own says it "would open".
+		// Panels say they "would open" (their effect is `panel`). An action with no effect
+		// of its own only shows in the last-input toast: nothing would open for Thrust left.
 		for (const { action, effect } of hits) {
 			if (effect) flight = act(flight, effect, action.name);
-			else if (!action.axis) flight = act(flight, 'panel', action.name);
 		}
 		this.flight = flight;
 		this.last = input;
