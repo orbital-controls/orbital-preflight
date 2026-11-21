@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
+	import { InputHub } from '#lib/orbital-preflight/inputs/hub.svelte.ts';
 	import Brand from './Brand.svelte';
+	import GameManifest from './GameManifest.svelte';
 
 	/** The stand bar: the only chrome on the page (StandFly). */
 	interface Props {
@@ -17,6 +19,17 @@
 	const sim = $derived(simById(app.sim));
 	const changes = $derived(app.store.changes);
 	const connected = $derived(app.hub.pads.length);
+	/**
+	 * The unpaired state: this game's file names a device no connected controller is paired
+	 * with, and a connected controller is free to pair with it (as after switching to a game
+	 * whose devices haven't been paired yet). The drawer is never opened for the pilot.
+	 */
+	const toPair = $derived.by(() => {
+		const devices = app.store.file?.parsed.devices ?? [];
+		const free = app.hub.pads.filter((p) => InputHub.unpaired(p)).length;
+		const waiting = devices.filter((d) => !app.hub.pads.some((p) => p.deviceId === d.id)).length;
+		return Math.min(free, waiting);
+	});
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -- Leave goes to the external homeUrl -->
@@ -24,42 +37,7 @@
 	<div class="op-wrap flex h-16 items-center gap-[10px] whitespace-nowrap">
 		<span class="mr-2 flex-none"><Brand /></span>
 
-		<button
-			type="button"
-			onclick={(e) => onopenload(e.currentTarget)}
-			aria-expanded={app.drawer === 'load'}
-			aria-label={app.loaded
-				? `Binding for ${sim.name}. Switch game or load another file.`
-				: 'No game chosen. Load binds.'}
-			class="flex h-[52px] min-w-0 flex-none cursor-pointer items-center gap-3 border py-0 pr-[14px] pl-[6px] text-left text-ink-200 notch op-notch-xs {app.loaded
-				? 'border-trail/45 bg-panel/85'
-				: 'border-ink-900/45 bg-transparent'}"
-		>
-			<span
-				class="flex size-10 items-center justify-center font-display text-[18px] font-black tracking-[.02em] notch op-notch-xs {app.loaded
-					? 'bg-trail text-void'
-					: 'bg-transparent text-ink-900'}">{app.loaded ? sim.short : '?'}</span
-			>
-			<span class="flex min-w-0 flex-col gap-[2px]">
-				<span
-					class="font-mono text-[10px] leading-none font-semibold tracking-[.14em] text-course uppercase"
-					>Binding for</span
-				>
-				<span
-					class="font-display text-[22px] leading-[0.9] font-black uppercase {app.loaded
-						? 'text-ink-200'
-						: 'text-ink-900'}">{app.loaded ? sim.name : 'No game yet'}</span
-				>
-				<span
-					class="max-w-[220px] truncate font-mono text-[11px] leading-tight text-ink-900"
-					title={app.loaded ? app.fileLine : undefined}
-					>{app.loaded ? app.fileLine : 'Pick one to start'}</span
-				>
-			</span>
-			<span class="ml-[6px] font-mono text-[12px] font-semibold text-course underline"
-				>{app.loaded ? 'Switch game' : 'Load binds'}</span
-			>
-		</button>
+		<GameManifest context="fly" onloadfile={onopenload} />
 
 		<button
 			type="button"
@@ -69,24 +47,32 @@
 		>
 			<span class="flex gap-1" aria-hidden="true">
 				{#each connected ? app.hub.pads : [null] as pad, i (i)}
-					<span class="size-2 rounded-full {pad ? 'bg-trail' : 'bg-ink-950/50'}"></span>
+					<span
+						class="size-2 rounded-full {pad && !(toPair && InputHub.unpaired(pad))
+							? 'bg-trail'
+							: 'bg-ink-950/50'}"
+					></span>
 				{/each}
 			</span>
 			<span>{connected ? connected : 'No'} controller{connected === 1 ? '' : 's'} connected</span>
+			{#if toPair}<span class="text-course">· {toPair} to pair</span>{/if}
 		</button>
 
+		<!-- Per game: the count and the export cover every mode of the current one. -->
 		<span class="ml-auto flex-none font-mono text-[13px] text-ink-500">
-			<span class="font-bold text-trail">{changes}</span>
-			unsaved {changes === 1 ? 'change' : 'changes'}
+			{#if app.chosen}<span class="font-bold text-trail">{changes}</span>
+				unsaved in {sim.short}{/if}
 		</span>
-		<button
-			type="button"
-			disabled={!app.loaded}
-			onclick={() => app.exportPreset()}
-			class="flex h-10 flex-none cursor-pointer items-center border px-[14px] font-mono text-[13px] font-semibold notch op-notch-xs disabled:cursor-not-allowed {changes
-				? 'border-trail text-trail'
-				: 'border-ink-900/35 text-ink-900'}">Export new preset</button
-		>
+		{#if app.chosen}
+			<button
+				type="button"
+				disabled={!app.loaded}
+				onclick={() => app.exportPreset()}
+				class="flex h-10 flex-none cursor-pointer items-center border px-[14px] font-mono text-[13px] font-semibold notch op-notch-xs disabled:cursor-not-allowed {changes
+					? 'border-trail text-trail'
+					: 'border-ink-900/35 text-ink-900'}">Export {sim.short} preset</button
+			>
+		{/if}
 		<button
 			type="button"
 			disabled={!app.loaded}
@@ -105,7 +91,7 @@
 		<a
 			href={app.config.homeUrl}
 			onclick={(e) => {
-				if (!changes) return;
+				if (!app.games.totalChanges) return;
 				e.preventDefault();
 				onleave(e.currentTarget);
 			}}
