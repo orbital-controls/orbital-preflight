@@ -40,12 +40,21 @@ function storage(): Storage | null {
 	}
 }
 
+let lastSaved = 0;
+
 export function saveLayout(
 	base: string,
 	layout: Omit<RememberedLayout, 'version' | 'savedAt'>
 ): boolean {
 	try {
-		const value: RememberedLayout = { version: 1, savedAt: new Date().toISOString(), ...layout };
+		// Strictly later than the last save in this tab, so two saves in one millisecond
+		// (switching games, then editing) still say which game was current last.
+		lastSaved = Math.max(Date.now(), lastSaved + 1);
+		const value: RememberedLayout = {
+			version: 1,
+			savedAt: new Date(lastSaved).toISOString(),
+			...layout
+		};
 		storage()?.setItem(storageKey(base, layout.sim), JSON.stringify(value));
 		return true;
 	} catch {

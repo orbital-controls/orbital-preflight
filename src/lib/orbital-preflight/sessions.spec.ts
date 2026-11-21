@@ -71,7 +71,10 @@ function twoGames() {
 }
 
 beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+	vi.unstubAllGlobals();
+	vi.useRealTimers();
+});
 
 describe('multi-game sessions', () => {
 	it('switching keeps each game’s edits and mode', () => {
@@ -180,6 +183,8 @@ describe('multi-game sessions', () => {
 
 describe('remembered layouts, per game', () => {
 	it('stores one key per sim under the base path, and brings every game back', () => {
+		// Every save in the same millisecond, as on a fast machine: the order still holds.
+		vi.useFakeTimers({ now: Date.UTC(2026, 10, 21), toFake: ['Date'] });
 		const a = app({}, '/alice');
 		a.switchTo('elite-dangerous');
 		a.setRemember(true);
