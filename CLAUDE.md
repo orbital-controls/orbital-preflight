@@ -41,7 +41,7 @@ Follow the Orbital Controls voice where it applies (see ../orbital-controls/docs
 
 ## Checks
 
-Run before every commit: `pnpm check`, `pnpm check:svelte`, `pnpm lint`, `pnpm test:unit --run`, `pnpm build`. `pnpm test:e2e` builds three variants (root, non-root base, theme override) and runs the Playwright smoke tests against them.
+Run before every commit: `pnpm check`, `pnpm check:svelte`, `pnpm lint`, `pnpm check:fallow`, `pnpm test:unit --run`, `pnpm build`. `pnpm check:fallow` is [fallow](https://fallow.tools)'s dead-code pass (unused files, exports, members and dependencies; `.fallowrc.json` says why each exception is there). `pnpm exec fallow` adds duplication and complexity reports, which don't gate. `pnpm test:e2e` builds three variants (root, non-root base, theme override) and runs the Playwright smoke tests against them.
 
 ## Git
 

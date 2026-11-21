@@ -30,7 +30,7 @@ scene/
     tracer.ts      on foot: the procedural Tracer P1 and Crew Soft right hand
 ```
 
-The engine reads the page's state once a frame and never writes back. A mode is a `ModeScene` (`ship-scene.ts`): its own `Scene`, camera and `update()`, and optionally an `overlay` (a second scene and camera drawn after the depth buffer is cleared: the on-foot viewmodel). The engine builds a mode's scene when the mode comes up and disposes the last one (`ShipScene`, `SrvScene`, `FootScene` in `index.ts`); `Viewport.svelte` lists which modes are 3D (`IN_3D`).
+The engine reads the page's state once a frame and never writes back. A mode is a `ModeScene` (`ship-scene.ts`): its own `Scene`, camera and `update()`, and optionally an `overlay` (a second scene and camera drawn after the depth buffer is cleared: the on-foot viewmodel). The engine builds a mode's scene when the mode comes up and disposes the last one (and the shown one after 30 s unseen: `release()`) (`ShipScene`, `SrvScene`, `FootScene` in `index.ts`); `Viewport.svelte` lists which modes are 3D (`IN_3D`).
 
 ## The Lantern II part contract
 

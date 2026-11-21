@@ -170,9 +170,3 @@ export const SLEEVE = { cuffRadius: 2.9, elbowRadius: 4.4, cuffBack: 0.6 } as co
 export const VIEW = { eye: [-40, 10, -15] as V3, at: [30, -1, -2] as V3, fov: 46 };
 /** Aiming down the sights: the eye on the sight line, behind the rear posts. */
 export const VIEW_ADS = { eye: [-26, 3.63, 0] as V3, at: [30, 3.5, 0] as V3, fov: 40 };
-
-/** The muzzle point, where holo rounds leave. */
-export const MUZZLE: V3 = [EMITTER.x + 0.2, EMITTER.y, 0];
-
-/** Every part name in the Tracer's contract, for building and checking. */
-export const AMMO_SEGMENTS = Array.from({ length: ROUNDS }, (_, i) => `ammoSeg${i}`);

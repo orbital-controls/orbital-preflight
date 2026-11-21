@@ -63,13 +63,25 @@ export interface Engine {
 	 * A mode with no 3D scene just disposes the last one.
 	 */
 	select(mode: Mode): void;
+	/**
+	 * Disposes the mode's scene but keeps the renderer, for when nobody can see it (a
+	 * hidden tab). The next frame builds it again, from scratch.
+	 */
+	release(): void;
 	setRunning(running: boolean): void;
 	resize(width: number, height: number): void;
 	/**
 	 * Rolling average CPU time per frame (update + render) and the frame interval, in ms,
-	 * and the pixel ratio adaptive resolution has settled on.
+	 * the pixel ratio adaptive resolution has settled on, and the GPU resources alive
+	 * (geometries, textures, shader programs): they should come back to the same numbers
+	 * each time a mode comes up again.
 	 */
-	stats(): { frameMs: number; intervalMs: number; pixelRatio: number };
+	stats(): {
+		frameMs: number;
+		intervalMs: number;
+		pixelRatio: number;
+		gpu: { geometries: number; textures: number; programs: number };
+	};
 	targets(): PartTargets | null;
 	/** The model on show, for the part-contract check. */
 	model(): Object3D | null;
@@ -129,7 +141,21 @@ export function createEngine(options: EngineOptions): Engine {
 				overview: options.overview
 			})
 	};
-	let active: { mode: Mode; scene: ModeScene } | null = null;
+	/** `compiled`: its shaders are ready, so drawing it won't block the page. */
+	let active: { mode: Mode; scene: ModeScene; compiled: boolean } | null = null;
+	// Compile in the background where the driver can (KHR_parallel_shader_compile). Where
+	// it can't, the first frame compiles, as it would anyway.
+	const parallel = renderer.extensions.has('KHR_parallel_shader_compile');
+	const compile = (m: ModeScene): Promise<void> =>
+		Promise.all([
+			renderer.compileAsync(m.scene, m.camera),
+			m.overlay ? renderer.compileAsync(m.overlay.scene, m.overlay.camera) : undefined
+		]).then(
+			() => undefined,
+			() => undefined
+		);
+	/** Resolves once the scene last selected has compiled. */
+	let compiling: Promise<void> = Promise.resolve();
 	let size = { width: 900, height: 560 };
 
 	const drop = () => {
@@ -163,7 +189,16 @@ export function createEngine(options: EngineOptions): Engine {
 			scene.overlay.camera.aspect = scene.camera.aspect;
 			scene.overlay.camera.updateProjectionMatrix();
 		}
-		active = { mode, scene };
+		// Every mode, not just the first: a switch would otherwise stall the page while the
+		// driver compiles the new scene's shaders (a quarter of a second, or seconds with
+		// software WebGL). Until they're ready the canvas keeps its last frame.
+		const entry = { mode, scene, compiled: !parallel };
+		active = entry;
+		compiling = parallel
+			? compile(scene).then(() => {
+					entry.compiled = true;
+				})
+			: Promise.resolve();
 		options.onscene?.(mode);
 	};
 
@@ -179,21 +214,7 @@ export function createEngine(options: EngineOptions): Engine {
 		throw error;
 	}
 
-	// Compile in the background where the driver can (KHR_parallel_shader_compile). Where
-	// it can't, the first frame compiles, as it would anyway.
-	const first = active as { scene: ModeScene } | null;
-	const ready =
-		first && renderer.extensions.has('KHR_parallel_shader_compile')
-			? Promise.all([
-					renderer.compileAsync(first.scene.scene, first.scene.camera),
-					first.scene.overlay
-						? renderer.compileAsync(first.scene.overlay.scene, first.scene.overlay.camera)
-						: undefined
-				]).then(
-					() => undefined,
-					() => undefined
-				)
-			: Promise.resolve();
+	const ready = compiling;
 
 	let frame = 0;
 	let running = false;
@@ -223,8 +244,8 @@ export function createEngine(options: EngineOptions): Engine {
 		const t0 = performance.now();
 		try {
 			select(input.mode);
-			const shown = active as { scene: ModeScene } | null;
-			if (shown) {
+			const shown = active as { scene: ModeScene; compiled: boolean } | null;
+			if (shown?.compiled) {
 				shown.scene.update(input, dt);
 				draw(shown.scene);
 				frameMs += (performance.now() - t0 - frameMs) * 0.05;
@@ -260,6 +281,11 @@ export function createEngine(options: EngineOptions): Engine {
 				options.onfail();
 			}
 		},
+		release() {
+			if (!active) return;
+			drop();
+			options.onscene?.(null);
+		},
 		setRunning(on) {
 			if (on === running) return;
 			running = on;
@@ -277,7 +303,16 @@ export function createEngine(options: EngineOptions): Engine {
 				// An overlay camera follows the world camera's aspect on its next update.
 			}
 		},
-		stats: () => ({ frameMs, intervalMs, pixelRatio }),
+		stats: () => ({
+			frameMs,
+			intervalMs,
+			pixelRatio,
+			gpu: {
+				geometries: renderer.info.memory.geometries,
+				textures: renderer.info.memory.textures,
+				programs: renderer.info.programs?.length ?? 0
+			}
+		}),
 		targets: () => active?.scene.targets() ?? null,
 		model: () => active?.scene.root ?? null,
 		info: () => active?.scene.info?.() ?? null,

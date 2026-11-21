@@ -23,7 +23,7 @@ import { buildLantern, makeShipMaterials } from './lantern.ts';
 import type { Palette } from './palette.ts';
 import type { FrameInput, ModeScene } from './ship-scene.ts';
 import { contact, planet, starfield } from './space.ts';
-import { Dust, FOG, Surface } from './surface.ts';
+import { FOG, Surface, WheelDust } from './surface.ts';
 import { Tracers } from './tracers.ts';
 import {
 	buildWick,
@@ -78,11 +78,10 @@ export class SrvScene implements ModeScene {
 	#parts: Record<string, Object3D> = {};
 	#palette: Palette;
 	#surface: Surface;
-	#dust: Dust;
+	#dust: WheelDust;
 	#sky = new Group();
 	#chassis: Chassis;
 	#prev: FlightState | null = null;
-	#last: SrvTargets | null = null;
 	#t = 0;
 	#dustDebt = 0;
 	#shake = 0;
@@ -133,7 +132,7 @@ export class SrvScene implements ModeScene {
 
 		this.#surface = new Surface(palette);
 		scene.add(this.#surface.group);
-		this.#dust = new Dust(palette, glow, options.reducedMotion ? 160 : 420);
+		this.#dust = new WheelDust(palette, glow, options.reducedMotion ? 160 : 420);
 		scene.add(this.#dust.points);
 		this.#tracers = new Tracers(palette.gold, palette.warning);
 		scene.add(this.#tracers.group);
@@ -172,15 +171,9 @@ export class SrvScene implements ModeScene {
 		return null;
 	}
 
-	/** The last frame's SRV targets, for tests and the PR's numbers. */
-	srvTargets(): SrvTargets | null {
-		return this.#last;
-	}
-
 	update(input: FrameInput, dt: number) {
 		const s = input.flight;
 		const t = srvTargets(s, input.analog, { reducedMotion: input.reducedMotion });
-		this.#last = t;
 		this.#t += dt;
 		// Listening for a rebind freezes the vehicle; the scene still draws.
 		const sim = input.frozen ? 0 : dt;
@@ -466,11 +459,6 @@ export class SrvScene implements ModeScene {
 		this.#beacon.color
 			.copy(this.#palette.warning)
 			.multiplyScalar(0.5 + 0.8 * (Math.sin(this.#t * 5) > 0 ? 1 : 0));
-	}
-
-	/** Turret deploy progress, 0 stowed .. 1 up. */
-	get turretProgress(): number {
-		return this.#turret;
 	}
 
 	#screens(s: FlightState, t: SrvTargets, dt: number) {

@@ -228,7 +228,7 @@ export function rampGeometry(r: Ramp): BufferGeometry {
  * Dust kicked up behind the wheels: a pool of soft points in world space, each rising,
  * drifting and fading over about a second.
  */
-export class Dust {
+export class WheelDust {
 	readonly points: Points;
 	#pos: Float32Array;
 	#col: Float32Array;

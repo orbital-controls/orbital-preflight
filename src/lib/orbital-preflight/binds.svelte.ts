@@ -59,12 +59,6 @@ export class BindStore {
 		this.#history = {};
 	}
 
-	unload() {
-		this.file = null;
-		this.bindings = {};
-		this.#history = {};
-	}
-
 	actionsIn(mode: Mode): Action[] {
 		return this.actions.filter((a) => a.mode === mode);
 	}
@@ -87,10 +81,6 @@ export class BindStore {
 		this.#history = history;
 		this.bindings = next;
 		this.onchange?.();
-	}
-
-	canUndo(actionId: string): boolean {
-		return Boolean(this.#history[actionId]?.length) || this.isChanged(actionId);
 	}
 
 	/** One step back for this action; with no history left, back to the file. */
@@ -119,10 +109,6 @@ export class BindStore {
 		const next = { ...this.bindings };
 		for (const action of this.actionsIn(mode)) next[action.id] = this.original[action.id];
 		this.#commit(next);
-	}
-
-	resetAll() {
-		this.#commit({ ...this.original });
 	}
 
 	/** Changed actions in `mode`, for the per-mode badges. */
