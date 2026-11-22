@@ -607,8 +607,10 @@ export class OrbitalPreflight {
 		let flight = this.flight;
 		// Panels say they "would open" (their effect is `panel`). An action with no effect
 		// of its own only shows in the last-input toast: nothing would open for Thrust left.
+		// A game with no hardpoints to deploy (X4) fires whenever its guns are bound.
+		const stowable = this.has('hp');
 		for (const { action, effect } of hits) {
-			if (effect) flight = act(flight, effect, action.name);
+			if (effect) flight = act(flight, effect, action.name, stowable);
 		}
 		this.flight = flight;
 		this.last = input;
