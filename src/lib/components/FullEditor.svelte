@@ -236,9 +236,7 @@
 			<div class="flex h-[860px] flex-col glass notch-card">
 				<div class="flex-1 op-scroll overflow-y-auto">
 					<table class="w-full border-collapse">
-						<caption class="op-sr-only"
-							>{app.mode === 'ship' ? 'Ship' : app.mode === 'srv' ? 'SRV' : 'On foot'} binds</caption
-						>
+						<caption class="op-sr-only">{app.modeName(app.mode)} binds</caption>
 						<thead class="sticky top-0 z-[1] bg-panel">
 							<tr class="op-hud">
 								<th scope="col" class="px-[18px] py-[14px] text-left font-medium">Action</th>

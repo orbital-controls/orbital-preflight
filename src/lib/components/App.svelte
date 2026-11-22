@@ -128,7 +128,9 @@
 			{:else}
 				<section aria-label="Mode" class="op-wrap flex items-center gap-[18px] pt-4">
 					<ModeTabs />
-					<p class="max-w-[560px] text-[14px] text-ink-900">{MODE_NOTES[app.mode]}</p>
+					<p class="max-w-[560px] text-[14px] text-ink-900">
+						{simById(app.sim).words?.modeNotes?.[app.mode] ?? MODE_NOTES[app.mode]}
+					</p>
 				</section>
 				<section class="op-wrap grid grid-cols-[900px_minmax(0,1fr)] items-start gap-5 pt-3">
 					<Viewport onwhere={(el) => openDrawer('load', el)} />

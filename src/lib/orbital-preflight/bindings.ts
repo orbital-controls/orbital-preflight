@@ -84,13 +84,15 @@ export function findHolders(
 ): SlotRef[] {
 	const key = bindKey(bind);
 	const holders: SlotRef[] = [];
-	const context = except && actions.find((a) => a.id === except.actionId)?.context;
+	const target = except && actions.find((a) => a.id === except.actionId);
+	const context = target?.context;
 	for (const action of actions) {
 		if (action.mode !== mode) continue;
 		// The action being rebound doesn't clash with itself: its other slot can hold the
 		// same input, as on the boards (`owner()` skips the whole action).
 		if (except && action.id === except.actionId) continue;
 		if (except && action.context !== context) continue;
+		if (target?.shares && action.shares === target.shares) continue;
 		const binding = bindings[action.id];
 		if (!binding) continue;
 		([0, 1] as const).forEach((slot) => {
@@ -102,21 +104,28 @@ export function findHolders(
 	return holders;
 }
 
-/** Action ids in `mode` that share a bind with another action in the same mode. */
+/**
+ * Action ids in `mode` that share a bind with another action in the same mode and
+ * context, unless every action on that bind is in the same `shares` group.
+ */
 export function clashingActions(actions: Action[], bindings: BindingMap, mode: Mode): Set<string> {
-	const byBind = new Map<string, Set<string>>();
+	const byBind = new Map<string, Action[]>();
 	for (const action of actions) {
 		if (action.mode !== mode) continue;
 		for (const slot of bindings[action.id] ?? []) {
 			if (!slot) continue;
 			const key = `${action.context ?? ''}|${bindKey(slot)}`;
-			const set = byBind.get(key) ?? new Set();
-			set.add(action.id);
-			byBind.set(key, set);
+			const list = byBind.get(key) ?? [];
+			if (!list.includes(action)) list.push(action);
+			byBind.set(key, list);
 		}
 	}
 	const clashing = new Set<string>();
-	for (const ids of byBind.values()) if (ids.size > 1) ids.forEach((id) => clashing.add(id));
+	for (const list of byBind.values()) {
+		if (list.length < 2) continue;
+		const groups = new Set(list.map((a) => a.shares ?? a.id));
+		if (groups.size > 1) list.forEach((a) => clashing.add(a.id));
+	}
 	return clashing;
 }
 
