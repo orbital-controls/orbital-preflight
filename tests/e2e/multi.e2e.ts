@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { parseStarCitizenLayout } from '../../src/lib/orbital-preflight/sims/star-citizen/index.ts';
 import { rebind } from './helpers.ts';
 
 /**
  * Multi-game sessions, against the multi build: presets for Elite Dangerous and Star
- * Citizen, with Star Citizen standing in on Elite files (only Elite is `ready`).
+ * Citizen.
  */
 
 // Session behaviour, not the 3D view: these run on the 2D placeholder. With software
@@ -46,9 +48,9 @@ async function twoGames(page: Page) {
 		.getByRole('button', { name: /Star Citizen/ })
 		.click();
 	await expect(page.getByText('Now your')).toBeVisible();
-	await page.locator('#first-file').setInputFiles('tests/fixtures/hotas.binds');
+	await page.locator('#first-file').setInputFiles('tests/fixtures/star-citizen.xml');
 	await expect(bindingFor(page)).toContainText('Star Citizen');
-	await expect(bindingFor(page)).toContainText('hotas.binds');
+	await expect(bindingFor(page)).toContainText('star-citizen.xml');
 }
 
 test('first visit with presets for two games is the bay, with the pilot’s preset on each', async ({
@@ -59,7 +61,7 @@ test('first visit with presets for two games is the bay, with the pilot’s pres
 	await expect(bindingFor(page)).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'No game chosen. Load binds.' })).toBeVisible();
 	const bay = page.getByRole('region', { name: /Bring your binds/ });
-	await expect(bay.getByRole('button', { name: /Star Citizen.*Stand-in layout/ })).toBeVisible();
+	await expect(bay.getByRole('button', { name: /Star Citizen.*Demo SC layout/ })).toBeVisible();
 	// Coming later: listed, not offered.
 	await expect(bay.getByText('DCS World')).toBeVisible();
 	await expect(bay.getByRole('button', { name: /DCS World/ })).toHaveCount(0);
@@ -68,8 +70,8 @@ test('first visit with presets for two games is the bay, with the pilot’s pres
 test('a rebind survives switching to another game and back', async ({ page }) => {
 	await twoGames(page);
 	await expect(page.getByText('0 unsaved in SC')).toBeVisible();
-	await rebind(page, 'Flight', 'Throttle to zero', 'KeyO');
-	await page.getByRole('tab', { name: /SRV/ }).click();
+	await rebind(page, 'Flight', 'Spacebrake', 'KeyJ');
+	await page.getByRole('tab', { name: /Vehicle/ }).click();
 
 	await bindingFor(page).click();
 	const loaded = manifest(page).getByRole('list', { name: 'Loaded this session' });
@@ -92,18 +94,18 @@ test('a rebind survives switching to another game and back', async ({ page }) =>
 		page.getByRole('button', { name: /^Change primary bind for Throttle to 50%, now P$/ })
 	).toBeVisible();
 
-	// And Star Citizen kept its own, in SRV.
+	// And Star Citizen kept its own, in Vehicle.
 	await bindingFor(page).click();
 	await manifest(page)
 		.getByRole('button', { name: /Star Citizen/ })
 		.click();
 	await expect(page.getByText('1 unsaved in SC')).toBeVisible();
-	await expect(page.getByRole('tab', { name: /SRV/ })).toHaveAttribute('aria-selected', 'true');
+	await expect(page.getByRole('tab', { name: /Vehicle/ })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('Leave counts every game and offers to export them all', async ({ page }) => {
 	await twoGames(page);
-	await rebind(page, 'Flight', 'Throttle to zero', 'KeyO');
+	await rebind(page, 'Flight', 'Spacebrake', 'KeyJ');
 	await page.getByRole('link', { name: 'Leave' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Leave preflight?' });
 	await expect(dialog).toContainText('1 in Elite Dangerous, 1 in Star Citizen');
@@ -120,9 +122,9 @@ test('the manifest closes on Esc and returns focus, and blocks binds while open'
 	await expect(bindingFor(page)).toHaveAttribute('aria-expanded', 'true');
 	// Focus moved in.
 	await expect(manifest(page).getByRole('button').first()).toBeFocused();
-	// U is Deploy hardpoints: nothing fires with the manifest open.
+	// U is Toggle Power - All in Star Citizen: nothing fires with the manifest open.
 	await page.keyboard.press('KeyU');
-	await expect(page.locator('[aria-live="polite"]')).not.toContainText('Deploy hardpoints');
+	await expect(page.locator('[aria-live="polite"]')).not.toContainText('Toggle Power');
 	await page.keyboard.press('Escape');
 	await expect(manifest(page)).toBeHidden();
 	await expect(bindingFor(page)).toBeFocused();
@@ -140,8 +142,8 @@ test('Load binds replaces the current game only', async ({ page }) => {
 	await manifest(page).getByRole('button', { name: 'Load a different SC file' }).click();
 	const drawer = page.getByRole('dialog', { name: 'Load binds' });
 	await expect(drawer).toContainText('A new file for Star Citizen');
-	await drawer.locator('#drawer-file').setInputFiles('tests/fixtures/keyboard-only.binds');
-	await expect(bindingFor(page)).toContainText('keyboard-only.binds');
+	await drawer.locator('#drawer-file').setInputFiles('tests/fixtures/star-citizen-defaults.xml');
+	await expect(bindingFor(page)).toContainText('star-citizen-defaults.xml');
 	await bindingFor(page).click();
 	await expect(
 		manifest(page).getByRole('button', { name: /Elite Dangerous.*1 unsaved/ })
@@ -167,4 +169,31 @@ test('the full editor switches games in place and keeps its filter', async ({ pa
 	await expect(changed).toHaveAttribute('aria-pressed', 'true');
 	await expect(page.getByRole('table')).toContainText('Throttle to 50%');
 	await expect(page.getByText('1 unsaved in ED')).toBeVisible();
+});
+
+test('a Star Citizen layout loads from the bay, rebinds and exports as a layout', async ({
+	page
+}) => {
+	await page.goto('./');
+	const bay = page.getByRole('region', { name: /Bring your binds/ });
+	await bay.getByRole('button', { name: /Star Citizen/ }).click();
+	await expect(page.getByText("Pilot's binds · Demo SC layout").first()).toBeVisible();
+	await expect(page.getByRole('tab', { name: /Vehicle/ })).toBeVisible();
+	await rebind(page, 'Flight', 'Spacebrake', 'KeyJ');
+	await expect(page.getByText('1 unsaved in SC')).toBeVisible();
+
+	const [download] = await Promise.all([
+		page.waitForEvent('download'),
+		page.getByRole('button', { name: 'Export SC preset' }).click()
+	]);
+	expect(download.suggestedFilename()).toMatch(/^layout_.+_exported\.xml$/);
+	const text = await readFile(await download.path(), 'utf8');
+	const parsed = parseStarCitizenLayout(text);
+	expect(parsed.bindings['spaceship_movement.v_space_brake'][0]).toEqual({
+		input: { kind: 'key', code: 'KeyJ' }
+	});
+	// The rest of the layout is as it was: the throttle axis on the TWCS.
+	expect(parsed.bindings['spaceship_movement.v_strafe_longitudinal'][0]).toEqual({
+		input: { kind: 'axis', deviceId: 'js2', axis: 'Z' }
+	});
 });

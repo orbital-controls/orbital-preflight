@@ -73,3 +73,18 @@ test('the head carries the canonical and Open Graph tags when siteUrl is set', a
 		'A build with a theme override and no shipped presets.'
 	);
 });
+
+test('with no presets, Star Citizen from the bay opens on the game’s defaults', async ({
+	page
+}) => {
+	await page.goto('./');
+	const bay = page.getByRole('region', { name: /Bring your binds/ });
+	await expect(
+		bay.getByRole('button', { name: /Star Citizen.*Star Citizen 4\.10\.2 defaults/ })
+	).toBeVisible();
+	await bay.getByRole('button', { name: /Star Citizen/ }).click();
+	await expect(page.getByText('Now your')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: /^Binding for/ })).toContainText(
+		'Star Citizen 4.10.2 defaults'
+	);
+});

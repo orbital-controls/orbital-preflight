@@ -23,6 +23,7 @@ import { BindsFormatError, SIMS, simById } from './sims/index.ts';
 import type { SimAdapter } from './sims/index.ts';
 import {
 	MODE_NAMES,
+	MODES,
 	type Action,
 	type Bind,
 	type InputId,
@@ -282,6 +283,17 @@ export class OrbitalPreflight {
 		}
 	}
 
+	/** Loads the current game's own default binds: what it opens on with no file or preset. */
+	loadDefaults(): boolean {
+		const sim = simById(this.sim);
+		if (!sim.defaults) return false;
+		return this.loadText(
+			sim.defaults.source,
+			{ kind: 'defaults', label: sim.defaults.label },
+			sim.id
+		);
+	}
+
 	/** Reads a dropped or chosen file in the tab. Nothing is uploaded. */
 	loadFile(file: File): Promise<boolean> {
 		const sim = this.sim;
@@ -373,6 +385,9 @@ export class OrbitalPreflight {
 		this.#freshFlight();
 		// The newest remembered game opens first next visit.
 		if (session) this.persist(session);
+		// A game with its own defaults and no pilot's preset opens on those defaults rather
+		// than asking for a file (Star Citizen). A preset, where there is one, wins.
+		else if (adapter.defaults && presetFor(this.config.presets, sim) < 0) this.loadDefaults();
 	}
 
 	/** "Pick another game": back to the bay. Loaded games stay loaded. */
@@ -416,8 +431,10 @@ export class OrbitalPreflight {
 						? sim.fileLabel
 						: preset
 							? `Pilot's binds · ${preset.label}`
-							: `Needs your ${sim.fileLabel}`,
-				modeList: modes.map((m) => MODE_NAMES[m]).join(' · '),
+							: sim.defaults
+								? sim.defaults.label
+								: `Needs your ${sim.fileLabel}`,
+				modeList: modes.map((m) => this.modeName(m, sim.id)).join(' · '),
 				status: !ready
 					? 'Coming later'
 					: !session
@@ -482,7 +499,7 @@ export class OrbitalPreflight {
 	}
 
 	/** Why a pressed input can't be bound, or null. */
-	#cannotBind(bind: Bind): string | null {
+	#cannotBind(bind: Bind, target: SlotRef): string | null {
 		const sim = simById(this.sim);
 		for (const input of [bind.input, ...(bind.modifiers ?? [])]) {
 			if ('deviceId' in input && input.deviceId.startsWith('browser-')) {
@@ -491,13 +508,42 @@ export class OrbitalPreflight {
 			const reason = sim.cannotBind?.(input);
 			if (reason) return reason;
 		}
-		return null;
+		const other = this.store.bindings[target.actionId]?.[target.slot === 0 ? 1 : 0] ?? null;
+		return sim.refuse?.(bind, other) ?? null;
+	}
+
+	/** The current game's word for `text`, where it has its own (Decoupled for FA off). */
+	say(text: string): string {
+		return simById(this.sim).words?.text?.[text] ?? text;
+	}
+
+	/** The current game's name for a mode tab: Vehicle in Star Citizen, SRV in Elite. */
+	modeName(mode: Mode, sim: SimId = this.sim): string {
+		return simById(sim).words?.modes?.[mode] ?? MODE_NAMES[mode];
+	}
+
+	/**
+	 * Effects some action in the current file has, by mode: a status chip or HUD readout
+	 * nothing can drive never shows.
+	 */
+	effectsIn = $derived(
+		Object.fromEntries(
+			MODES.map((m) => [
+				m,
+				this.store.actionsIn(m).flatMap((a) => (a.effect ? a.effect.split('|') : []))
+			])
+		) as Record<Mode, string[]>
+	);
+
+	/** Some action in `mode` (the current one by default) has `effect`. */
+	has(effect: string, mode: Mode = this.mode): boolean {
+		return this.effectsIn[mode].includes(effect);
 	}
 
 	#onCandidate(bind: Bind) {
 		const cap = this.cap;
 		if (!cap) return;
-		const reason = this.#cannotBind(bind);
+		const reason = this.#cannotBind(bind, cap.target);
 		if (reason) {
 			this.capNotice = `${reason} Try another.`;
 			return;

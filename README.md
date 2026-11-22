@@ -4,7 +4,7 @@ Load the keybinds file from your space sim, connect your controllers, test every
 
 It's also a framework. Fork this repo onto GitHub Pages to show off your own binds: visitors test them with their own stick and keyboard, and download them as they are or after changing them.
 
-Elite Dangerous `.binds` files work today. Star Citizen, X4 and DCS are listed as coming later.
+Elite Dangerous `.binds` files and Star Citizen layouts (`layout_…_exported.xml`) work today. X4 and DCS are listed as coming later.
 
 A visitor can load binds for more than one game in the same tab and switch between them from "Binding for" in the top bar: each game keeps its own file, edits, mode and controller pairing while the tab is open. Export is per game; Leave counts unsaved changes across all of them.
 
@@ -66,7 +66,6 @@ export default defineConfig({
 ```ts
 presets: [
 	{ file: 'hotas.binds', label: 'My HOTAS setup' }, // the config's `sim`
-	// Listed, but "Coming later" until Star Citizen files are supported:
 	{ file: 'layout_vex_exported.xml', label: 'My SC layout', sim: 'star-citizen' }
 ];
 ```
@@ -109,14 +108,14 @@ pnpm build          # static output in build/
 
 `pnpm test:e2e` uses Playwright's Chromium (`pnpm exec playwright install chromium`). To use a Chromium you already have, set `PW_CHROMIUM_PATH`.
 
-The multi-game variant (`tests/fixtures/multi.config.ts`) needs two loadable games while only Elite is ready, so it is built with `ORBITAL_PREFLIGHT_MOCK_SIMS=star-citizen`: Star Citizen stands in, reading and writing Elite files under its own name, as the design boards' mocks do. That variable is for test builds only.
+The multi-game variant (`tests/fixtures/multi.config.ts`) has presets for Elite Dangerous and Star Citizen (`static/binds/demo-star-citizen.xml`).
 
 ### Where things are
 
 | Path                                           | What                                                                            |
 | ---------------------------------------------- | ------------------------------------------------------------------------------- |
 | `orbital-preflight.config.ts`                  | The fork's config.                                                              |
-| `src/lib/orbital-preflight/sims/`              | The sim registry and adapters: parse and write. `elite/` is the Elite one.      |
+| `src/lib/orbital-preflight/sims/`              | The sim registry and adapters: parse and write. `elite/`, `star-citizen/`.      |
 | `src/lib/orbital-preflight/sessions.svelte.ts` | One session per game loaded this visit, and which is current.                   |
 | `src/lib/orbital-preflight/xml.ts`             | An XML scanner that keeps offsets, so the writer splices instead of rebuilding. |
 | `src/lib/orbital-preflight/bindings.ts`        | Clashes, Move / Swap / Keep both, filter counts. Pure.                          |
@@ -141,9 +140,22 @@ All three views are real-time three.js scenes: the Lantern II flying in space, t
 - **On foot** is Pad 7 Compact: a one-level hangar with Lantern II parked on the pad, seven numbered stops, and the Tracer P1 sidearm in the right hand (`scene/pad.ts`, `scene/walker.ts`, `scene/foot.ts`). Held move binds and sprint walk a kinematic first-person walker (no physics engine) that collides with the walls, crates, locker, barrier, console, ship and ramp. A click in the viewport locks the pointer for mouse look; Esc lets go, and so do a drawer, a dialog, the editor and listening for a rebind (which also freezes the pilot). Fire, aim, reload, holster, swap and flashlight drive the viewmodel; the target panel's rings light and count hits. Each stop is a 2 m zone: standing in one shows its prompts in the HUD with your current binds ("Not bound" when nothing is) and marks it visited for the visit. The viewport draws the on-foot crosshair over the scene, as the placeholder does. `?op-spawn=5` starts at stop 5 (or `?op-spawn=x,z,yawDegrees` anywhere); in `pnpm dev`, `?op-overview` views the bay from high in a corner. The Tracer's cartridge holds six, so the mock flight's magazine is 6 (the board's mock had 24 of 30), and the pilot starts with the sidearm drawn.
 - **Frame time and GPU memory**: the canvas carries `data-op-frame-ms`, the rolling average CPU time per frame (update and render submit), and `data-op-gpu`, the geometries, textures and shader programs alive (`geometries/textures/programs`). Leaving a mode and coming back should land on the same numbers; an e2e test checks it. In `pnpm dev`, `?op-orbit=135` swings the chase camera around the ship to look at it from another side.
 
+### Star Citizen
+
+A Star Citizen layout holds only what the pilot changed from the game's defaults: one `<rebind input="js1_button3"/>` per device per action, with `js1_ ` (a space) clearing a default. So the adapter (`sims/star-citizen/`) reads the game's own defaults first and lays the layout over them.
+
+- **The defaults** are the game's own `Data\Libs\Config\defaultProfile.xml`, checked in as `data/star-citizen/defaultProfile.xml` with the `build_manifest.json` that names its build (4.10.2 LIVE today; a copy found online, not unpacked here). `sims/star-citizen/defaults.ts` is generated from it and the English `global.ini` by `node scripts/sc-catalogue.ts <defaultProfile.xml> <global.ini> <version>`, keeping the action maps and actions the keybinding screen lists, with their English names. After a patch, replace both data files and run it again.
+- **Opens on the defaults**: picking Star Citizen with no pilot's preset loads the game's own defaults (a layout that changes nothing) straight away, labelled "Star Citizen 4.10.2 defaults"; load a layout over them from Load binds. A preset, where the config has one, wins. Elite still asks for a file: its defaults aren't in hand.
+- **Ids** are `‹actionmap›.‹action›` (`spaceship_movement.v_yaw`), because the game reuses action names across maps.
+- **Modes**: ship (flight, weapons, targeting, power, mining, salvage, turrets…), Vehicle (ground vehicles; the tab Elite calls SRV) and on foot (with EVA, interaction and emotes).
+- **Slots**: an action's first two devices with a bind, keyboard and mouse first, then joysticks and the gamepad (controllers first on an axis action). A third device's bind stays in the file untouched. A rebind can't put two binds on one device, Star Citizen takes only Shift, Ctrl and Alt (or a gamepad shoulder) as modifiers, and it binds whole axes only.
+- **Clashes**: maps the game reads only in their own operator mode or seat (guns, missiles, quantum, mining, salvage, scanning, turrets, tractor beam, EVA, interaction, the camera) don't clash with flight, and neither do a tap, a long press and a double tap on one key. Actions the game's own defaults put on one input (Space jumps, fires the jump thrusters and climbs ledges) don't clash with each other (`Action.shares`), only with anything else put there. The defaults load with no clashes.
+- **Words**: the HUD and toasts say Star Citizen's terms where it has its own (Decoupled for FA off, SCM for hardpoints, SHD for SYS); status chips and readouts that no Star Citizen action drives (silent running, the SRV turret, drive assist, recall) don't show.
+- **Controllers**: devices come from the layout's `<options type="joystick">` lines, with USB ids from their DirectInput guid. The first joystick and the gamepad the defaults bind to are always listed, so they can be paired even with a keyboard-only layout. A controller the layout doesn't name gets the next joystick instance and an `<options>` line on export.
+
 ### Exports
 
-Export ‹ABBR› preset (Export ED preset) writes a new file for the current game, covering all its modes: the original text with the changed slots and the `PresetName` replaced, and every other byte left as it was. The file you loaded is never modified. The new preset is named "‹original name› rebound", and the file "‹name›.‹major›.‹minor›.binds". Leave's "Export all N games, then leave" writes one such file per game with changes, a moment apart; browsers may ask before allowing several downloads from one page.
+Export ‹ABBR› preset (Export ED preset) writes a new file for the current game, covering all its modes: the original text with the changed slots and the preset name replaced, and every other byte left as it was. The file you loaded is never modified. The new preset is named "‹original name› rebound". Elite's file is "‹name›.‹major›.‹minor›.binds"; Star Citizen's is `layout_‹name›_exported.xml`, as the game names its own exports, with `profileName` and the header's `label` set to the new name. Leave's "Export all N games, then leave" writes one such file per game with changes, a moment apart; browsers may ask before allowing several downloads from one page.
 
 ## Unverified
 
@@ -161,6 +173,7 @@ These were written from memory, not checked against real files or devices, and a
 - **Stick axis signs** for the 3D scene: stick forward reads negative (nose down), right is positive for roll, yaw and SRV steering, and the file's `Inverted` flag isn't applied.
 - **SRV drive speed axis**: read as a forward-only lever like the ship's throttle (full forward −1 is full speed, pulled back is stopped). Elite can also run it full range, with the back half as reverse; that setting isn't in the binds file.
 - **K for Toggle camera**, in Ship and in SRV: free in the shipped presets; not checked against Elite's own default binds.
+- **Star Citizen**: the layout format is checked against layouts exported by the game (4.3 and later), and the defaults come from 4.10.2's `defaultProfile.xml` (a copy found online, not unpacked here). Still open: key names no file in hand uses (F13+, Print, Scroll lock, numpad Enter), the gamepad stick directions (`thumbl_up`…), which browser buttons the game calls `mouse4` and `mouse5`, which action maps the game reads apart (the clash contexts above), that a press and a tap on one key really do clash, whether the game accepts a new `<options>` line with a generic "Joystick" name, and the "Where's my file?" menu path. `star-citizen.xml` and the demo layout are **synthetic**.
 - **On-foot axis signs**: `HumanoidForwardAxis`, `HumanoidStrafeAxis`, `HumanoidRotateAxis` and `HumanoidPitchAxis` are taken as the browser reports them (stick forward negative walks forward and looks up). Pad 7 only prompts for binds an Elite action can answer on foot (a spec checks it): the exported file has no lean, helmet, fire mode, wrist menu or on-foot recall bind, so those prompts and the walker's lean are gone. Scan is the profile analyser (`HumanoidSwitchToCompAnalyser`) and Ping is `HumanoidPing`; Look is the mouse, as the file's `MouseHumanoidXMode` setting has it.
 
 ## Licence

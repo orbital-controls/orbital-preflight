@@ -40,15 +40,12 @@
 
 	const SCENE_COPY = {
 		ship: {
-			tag: 'SHIP',
 			text: 'Real-time 3D flight view, chase camera. Ship, gear, hardpoints, lights, flame and weapon fire all react to live input.'
 		},
 		srv: {
-			tag: 'SRV',
 			text: 'Real-time 3D surface drive, third person. Wheels, suspension, thrusters, headlights and turret react to live input.'
 		},
 		foot: {
-			tag: 'ON FOOT',
 			text: 'Real-time first-person view inside a station. Movement, crouch, weapon, flashlight and prompts react to live input.'
 		}
 	};
@@ -170,7 +167,7 @@
 				>
 					<span
 						class="border border-dashed border-course/60 bg-abyss/60 px-[10px] py-1 font-mono text-[11px] font-bold tracking-[.14em] text-course notch op-notch-xs"
-						>PLACEHOLDER · 3D SCENE · {SCENE_COPY[app.mode].tag}</span
+						>PLACEHOLDER · 3D SCENE · {app.modeName(app.mode).toUpperCase()}</span
 					>
 					<span class="max-w-[440px] font-mono text-[13px] text-ink-900"
 						>{SCENE_COPY[app.mode].text}</span

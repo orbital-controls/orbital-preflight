@@ -22,8 +22,11 @@
 	const ship = $derived(shipHud(s));
 	const srv = $derived(srvHud(s));
 	const foot = $derived(footHud(s));
-	const chips = $derived(statusChips(s, mode));
-	const modeName = $derived({ ship: 'Ship', srv: 'SRV', foot: 'On foot' }[mode]);
+	const chips = $derived(
+		statusChips(s, mode, (e) => app.has(e, mode)).map((c) => ({ ...c, name: app.say(c.name) }))
+	);
+	const hasPips = $derived(['pSys', 'pEng', 'pWep'].some((e) => app.has(e, mode)));
+	const modeName = $derived(app.modeName(mode));
 
 	const interact = $derived.by(() => {
 		const action = app.store.actionsIn('foot').find((a) => a.effect === 'interact');
@@ -47,7 +50,10 @@
 	const toast = $derived.by(() => {
 		if (!app.last) return { head: 'Waiting on you', lines: [] as string[], clash: false };
 		const names = app.lastActs.map((id) => app.actionById(id)?.name ?? id);
-		return { head: inputLabel(app.last, app.roles, true), lines: names, clash: names.length > 1 };
+		// Several actions on one input is a clash unless the sim overloads it on purpose
+		// (Star Citizen's Right mouse aims, throws and fires a tool): the store knows which.
+		const clash = names.length > 1 && app.lastActs.some((id) => app.store.clashes[mode].has(id));
+		return { head: inputLabel(app.last, app.roles, true), lines: names, clash };
 	});
 
 	const capAction = $derived(app.cap ? app.actionById(app.cap.target.actionId) : null);
@@ -64,7 +70,7 @@
 	<div class="flex gap-3">
 		{#each pips(s) as p (p.name)}
 			<div class="flex flex-col gap-[3px]">
-				<span class="op-hud">{p.name}</span>
+				<span class="op-hud">{app.say(p.name)}</span>
 				<div class="flex gap-[2px]">
 					{#each [0, 1, 2, 3] as c (c)}
 						<span class="h-2 w-[10px] {c < p.value ? 'bg-course' : 'bg-course/18'}"></span>
@@ -92,9 +98,9 @@
 				{@render bar('Throttle', ship.thr, 'bg-course', 'bg-course/18', 'h-2')}
 				<div class="flex items-baseline gap-[10px]">
 					<span class="font-mono text-[30px] leading-none font-semibold">{ship.spd}</span>
-					<span class="op-hud">m/s</span><span class="op-hud text-trail">{ship.mode}</span>
+					<span class="op-hud">m/s</span><span class="op-hud text-trail">{app.say(ship.mode)}</span>
 				</div>
-				{@render pipRow()}
+				{#if hasPips}{@render pipRow()}{/if}
 			</div>
 			<div class="absolute right-[18px] bottom-4 flex w-[170px] flex-col gap-[6px]">
 				<div class="flex justify-between op-hud">
@@ -111,20 +117,24 @@
 					<span class="font-mono text-[30px] leading-none font-semibold">{srv.spd}</span>
 					<span class="op-hud">m/s</span><span class="op-hud text-trail">{srv.dir}</span>
 				</div>
-				<span class="op-hud {srv.assistOff ? 'text-trail' : ''}">{srv.assist}</span>
+				{#if app.has('da', 'srv')}
+					<span class="op-hud {srv.assistOff ? 'text-trail' : ''}">{srv.assist}</span>
+				{/if}
 				{@render bar('Hull', srv.hull, 'bg-course', 'bg-course/18')}
 				{@render bar('Fuel', srv.fuel, 'bg-trail', 'bg-trail/18')}
-				{@render pipRow()}
+				{#if hasPips}{@render pipRow()}{/if}
 			</div>
-			<div
-				class="absolute right-[18px] bottom-4 flex flex-col gap-[2px] px-3 py-2 glass notch op-notch-xs"
-			>
-				<span class="op-hud">Your ship</span>
-				<span
-					class="font-mono text-[15px] font-bold {srv.shipCalled ? 'text-trail' : 'text-ink-500'}"
-					>{srv.ship}</span
+			{#if app.has('recall', 'srv')}
+				<div
+					class="absolute right-[18px] bottom-4 flex flex-col gap-[2px] px-3 py-2 glass notch op-notch-xs"
 				>
-			</div>
+					<span class="op-hud">Your ship</span>
+					<span
+						class="font-mono text-[15px] font-bold {srv.shipCalled ? 'text-trail' : 'text-ink-500'}"
+						>{srv.ship}</span
+					>
+				</div>
+			{/if}
 		{:else}
 			<div class="absolute top-4 left-[18px] flex w-[200px] flex-col gap-[6px]">
 				{@render bar('Health', foot.health, 'bg-alert', 'bg-alert/20')}
@@ -192,7 +202,7 @@
 			<div class="absolute top-[210px] right-0 left-0 flex justify-center">
 				<span
 					class="border-y border-trail bg-void/70 px-[22px] py-[10px] font-mono text-[18px] font-semibold tracking-[.14em] text-trail uppercase"
-					>{s.msg}</span
+					>{app.say(s.msg)}</span
 				>
 			</div>
 		{/if}

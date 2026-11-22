@@ -11,7 +11,9 @@ export interface KeyOwners {
 /** What each input does in the current mode, for lighting and labelling deck keys. */
 export function ownersByInput(app: OrbitalPreflight): Map<string, KeyOwners> {
 	const map = new Map<string, KeyOwners>();
-	const seen = new Map<string, number>();
+	// Per context and exact bind, the share groups on it: one group is the sim's own
+	// overload (Space jumps and climbs), two or more is a clash (as `clashingActions`).
+	const seen = new Map<string, Set<string>>();
 	for (const action of app.store.actionsIn(app.mode)) {
 		for (const slot of app.store.bindings[action.id] ?? []) {
 			if (!slot) continue;
@@ -19,8 +21,10 @@ export function ownersByInput(app: OrbitalPreflight): Map<string, KeyOwners> {
 			const owners = map.get(key) ?? { names: [], clash: false };
 			if (!owners.names.includes(action.name)) owners.names.push(action.name);
 			const exact = `${action.context ?? ''}|${bindKey(slot)}`;
-			seen.set(exact, (seen.get(exact) ?? 0) + 1);
-			if ((seen.get(exact) ?? 0) > 1) owners.clash = true;
+			const groups = seen.get(exact) ?? new Set<string>();
+			groups.add(action.shares ?? action.id);
+			seen.set(exact, groups);
+			if (groups.size > 1) owners.clash = true;
 			map.set(key, owners);
 		}
 	}

@@ -263,3 +263,24 @@ test('a gamepad pairs with the file’s gamepad and fires its binds by control n
 	await press(page, 0, 0);
 	await expect(page.locator('[aria-live="polite"]')).toContainText('Menu select');
 });
+
+test('switching to Star Citizen with no preset opens on the game’s defaults', async ({ page }) => {
+	await page.goto('./');
+	await ready(page);
+	await page.getByRole('button', { name: /^Binding for/ }).click();
+	await page
+		.getByRole('dialog', { name: 'Switch game' })
+		.getByRole('button', { name: /Star Citizen/ })
+		.click();
+	await expect(page.getByText('Now your')).toHaveCount(0);
+	const binding = page.getByRole('button', { name: /^Binding for/ });
+	await expect(binding).toContainText('Star Citizen');
+	await expect(binding).toContainText('Star Citizen 4.10.2 defaults');
+	await expect(page.getByRole('tab', { name: /Vehicle/ })).toBeVisible();
+	await expect(
+		page.getByRole('button', { name: /^Change primary bind for Throttle - Increase, now W$/ })
+	).toBeVisible();
+	// W is Throttle - Increase in the game's defaults.
+	await page.keyboard.press('KeyW');
+	await expect(page.locator('[aria-live="polite"]')).toContainText('Throttle - Increase');
+});

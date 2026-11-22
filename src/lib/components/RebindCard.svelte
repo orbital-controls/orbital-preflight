@@ -18,7 +18,7 @@
 	const holder = $derived(app.holderOf(cap.target, cap.cand));
 	const other = $derived(holder ? app.actionById(holder.actionId) : null);
 	const label = (b: typeof now, long = false) => bindLabel(b, app.roles, long);
-	const modeName = $derived({ ship: 'Ship', srv: 'SRV', foot: 'On foot' }[app.mode]);
+	const modeName = $derived(app.modeName(app.mode));
 	const changedFromFile = $derived(label(now) !== label(file));
 	const devices = $derived(
 		app.mode === 'foot' ? ['Keyboard', 'Mouse'] : ['Keyboard', ...app.hub.pads.map((p) => p.name)]

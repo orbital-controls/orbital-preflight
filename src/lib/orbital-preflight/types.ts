@@ -33,6 +33,12 @@ export interface Action {
 	 */
 	context?: string;
 	/**
+	 * Actions in the same group share inputs on purpose: the sim's own defaults put them on
+	 * one key (Star Citizen's Space jumps, fires the jump thrusters and climbs ledges). They
+	 * don't clash with each other, but still clash with any other action on that input.
+	 */
+	shares?: string;
+	/**
 	 * Which flight axis an analogue action drives, for the 3D scene: a bound stick or
 	 * throttle axis moves the ship directly rather than through the mock flight's steps.
 	 */

@@ -11,8 +11,6 @@ declare global {
 
 	/** The deploy base path, from BASE_PATH at build time. */
 	const __OP_BASE__: string;
-	/** Test builds only: `later` sims that stand in with Elite files (sims/index.ts). */
-	const __OP_MOCK_SIMS__: string[];
 }
 
 export {};

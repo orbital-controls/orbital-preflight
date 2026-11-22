@@ -1,0 +1,51 @@
+<ActionMaps version="1" optionsVersion="2" rebindVersion="2" profileName="Demo HOTAS">
+ <CustomisationUIHeader label="Demo HOTAS" description="" image="">
+  <devices>
+   <keyboard instance="1"/>
+   <mouse instance="1"/>
+   <joystick instance="1"/>
+   <joystick instance="2"/>
+  </devices>
+  <categories>
+   <category label="@ui_CCSpaceFlight"/>
+  </categories>
+ </CustomisationUIHeader>
+ <options type="keyboard" instance="1" Product="Keyboard  {6F1D2B61-D5A0-11CF-BFC7-444553540000}"/>
+ <options type="joystick" instance="1" Product=" VKB-Sim Gladiator NXT R  {0200231D-0000-0000-0000-504944564944}"/>
+ <options type="joystick" instance="2" Product="Thrustmaster TWCS Throttle  {B687044F-0000-0000-0000-504944564944}">
+  <flight_move_strafe_longitudinal invert="1"/>
+ </options>
+ <modifiers />
+ <actionmap name="spaceship_movement">
+  <action name="v_strafe_longitudinal">
+   <rebind input="js2_z"/>
+  </action>
+  <action name="v_toggle_landing_system">
+   <rebind input="kb1_k"/>
+   <rebind input="js1_button12"/>
+  </action>
+  <action name="v_afterburner">
+   <rebind input="js2_button1"/>
+  </action>
+ </actionmap>
+ <actionmap name="spaceship_weapons">
+  <action name="v_weapon_preset_attack">
+   <rebind input="js1_button1"/>
+  </action>
+ </actionmap>
+ <actionmap name="lights_controller">
+  <action name="v_lights">
+   <rebind input="kb1_ralt+l"/>
+  </action>
+ </actionmap>
+ <actionmap name="spaceship_defensive">
+  <action name="v_weapon_countermeasure_noise_launch">
+   <rebind input="kb1_ "/>
+  </action>
+ </actionmap>
+ <actionmap name="player">
+  <action name="toggle_flashlight">
+   <rebind input="kb1_mouse4" activationMode="press"/>
+  </action>
+ </actionmap>
+</ActionMaps>

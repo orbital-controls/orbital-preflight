@@ -145,8 +145,12 @@ export function inputLabel(input: InputId, roles: DeviceRole[], long = false): s
 			const name = r ? (long ? r.long : r.short) : 'Pad';
 			return `${name} ${PAD_LABELS[input.control] ?? input.control}${half}`;
 		}
-		case 'raw':
+		case 'raw': {
+			// Mouse axes, which a sim may bind but the deck has no key for.
+			const axis = /^maxis_([xyz])$/i.exec(input.key);
+			if (axis) return `Mouse ${axis[1].toUpperCase()}${long ? ' axis' : ''}`;
 			return long ? `${input.device} ${input.key}` : input.key;
+		}
 	}
 }
 

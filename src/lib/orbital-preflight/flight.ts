@@ -526,36 +526,45 @@ export interface StatusChip {
 	on: boolean;
 }
 
-export function statusChips(s: FlightState, mode: Mode): StatusChip[] {
-	const c = (name: string, on: boolean) => ({ name, on });
+/**
+ * The status chips for a mode. With `has`, a chip shows only when some action in the file
+ * drives it: Star Citizen has no SRV turret or silent running, so no chip for them.
+ */
+export function statusChips(
+	s: FlightState,
+	mode: Mode,
+	has: (effect: string) => boolean = () => true
+): StatusChip[] {
+	const c = (name: string, on: boolean, ...effects: string[]): StatusChip[] =>
+		effects.some(has) ? [{ name, on }] : [];
 	if (mode === 'ship') {
 		return [
-			c('GEAR', s.gear),
-			c('HARDPOINTS', s.hp),
-			c('LIGHTS', s.lights),
-			c('FA OFF', s.faOff),
-			c('SILENT', s.silent),
-			c('SCOOP', s.scoop),
-			c('NV', s.nv)
+			...c('GEAR', s.gear, 'gear'),
+			...c('HARDPOINTS', s.hp, 'hp'),
+			...c('LIGHTS', s.lights, 'lights'),
+			...c('FA OFF', s.faOff, 'fa'),
+			...c('SILENT', s.silent, 'silent'),
+			...c('SCOOP', s.scoop, 'scoop'),
+			...c('NV', s.nv, 'nv')
 		];
 	}
 	if (mode === 'srv') {
 		return [
-			c('TURRET', s.turret),
-			c('HEADLIGHTS', s.sLights),
-			c('DA OFF', s.daOff),
-			c('SCOOP', s.sScoop),
-			c('HANDBRAKE', s.sThr === 0),
-			c('SHIP INBOUND', s.shipCalled)
+			...c('TURRET', s.turret, 'turret'),
+			...c('HEADLIGHTS', s.sLights, 'sLights'),
+			...c('DA OFF', s.daOff, 'da'),
+			...c('SCOOP', s.sScoop, 'sScoop'),
+			...c('HANDBRAKE', s.sThr === 0, 'brake', 'drvRev', 'drvFwd'),
+			...c('SHIP INBOUND', s.shipCalled, 'recall')
 		];
 	}
 	return [
-		c('FLASHLIGHT', s.flash),
-		c('NV', s.fNv),
-		c('CROUCH', s.crouch),
-		c('SPRINT', s.sprintT > 0),
-		c('ADS', s.aim),
-		c('HOLSTERED', s.holster)
+		...c('FLASHLIGHT', s.flash, 'flash'),
+		...c('NV', s.fNv, 'fNv'),
+		...c('CROUCH', s.crouch, 'crouch'),
+		...c('SPRINT', s.sprintT > 0, 'sprint'),
+		...c('ADS', s.aim, 'aim'),
+		...c('HOLSTERED', s.holster, 'holster')
 	];
 }
 

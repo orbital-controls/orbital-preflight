@@ -5,8 +5,8 @@ import { resolveConfig, type OrbitalPreflightConfig } from './config.ts';
 import { leaveSummary } from './leave.ts';
 import { storageKey } from './persist.ts';
 
-// Only Elite Dangerous is ready. As the boards' mocks do (and the e2e multi build),
-// Star Citizen stands in here with Elite files, so there are two games to switch between.
+// Session behaviour, not file formats: Star Citizen stands in here with Elite files, so
+// both games read the same fixtures (multi.e2e.ts switches between real files).
 vi.mock('./sims/index.ts', async (importOriginal) => {
 	const real = await importOriginal<typeof import('./sims/index.ts')>();
 	const elite = real.simById('elite-dangerous');

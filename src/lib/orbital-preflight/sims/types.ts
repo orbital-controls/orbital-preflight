@@ -1,4 +1,4 @@
-import type { BindingMap, InputId, Mode, ParsedBinds, SimId } from '../types.ts';
+import type { Bind, BindingMap, InputId, Mode, ParsedBinds, SimId } from '../types.ts';
 
 /** "Where's my file?" in the Load drawer. UNVERIFIED: flagged for Phil to confirm. */
 export interface FileHelp {
@@ -6,6 +6,19 @@ export interface FileHelp {
 	step?: string;
 	path: string;
 	tip: string;
+}
+
+/**
+ * A sim's own words where the mock flight and the HUD speak Elite's: "Flight assist off"
+ * is "Decoupled" in Star Citizen. Every key is text the app would show otherwise.
+ */
+export interface SimWords {
+	/** Tab names where the sim's differ from Ship, SRV and On foot. */
+	modes?: Partial<Record<Mode, string>>;
+	/** The note under the mode tabs, per mode. */
+	modeNotes?: Partial<Record<Mode, string>>;
+	/** Toast messages, status chips, HUD labels and power pips, by the text they replace. */
+	text?: Record<string, string>;
 }
 
 /**
@@ -41,10 +54,23 @@ export interface SimAdapter {
 	 * input the export couldn't write.
 	 */
 	cannotBind?(input: InputId): string | null;
+	/**
+	 * Why the sim's files can't hold the whole of `bind` in a slot whose action holds
+	 * `other` in its other slot, or null when they can (modifiers it doesn't take, or one
+	 * bind per device).
+	 */
+	refuse?(bind: Bind, other: Bind | null): string | null;
 	/** The device id the sim's files use for a controller they don't name, from its USB ids. */
 	newDeviceId?(vendor: string, product: string): string | null;
 	/** The download's file name for a preset name. */
 	fileName?(parsed: ParsedBinds, presetName: string): string;
+	words?: SimWords;
+	/**
+	 * The game's own default binds, as a file `parse` reads. A game with these and no
+	 * pilot's preset opens on them instead of asking for a file. Only for a sim whose
+	 * defaults we have from the game.
+	 */
+	defaults?: { label: string; source: string };
 }
 
 export class BindsFormatError extends Error {}

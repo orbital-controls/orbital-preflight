@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
-	import { MODE_NAMES, type Mode } from '#lib/orbital-preflight/types.ts';
+	import type { Mode } from '#lib/orbital-preflight/types.ts';
 
 	/**
-	 * Ship / SRV / On foot, with per-mode change badges. Shared by the fly page and the
+	 * Ship / SRV (Vehicle in Star Citizen) / On foot, with per-mode change badges. Shared by the fly page and the
 	 * editor. The tabs are the current game's: the modes its file has actions in.
 	 */
 	interface Props {
@@ -16,19 +16,16 @@
 	const app = useOrbitalPreflight();
 	const modes = $derived(app.loaded ? app.modes : simById(app.sim).modes);
 
-	const DEFS: Record<Mode, { name: string; sub: string; icon: string }> = {
+	const DEFS: Record<Mode, { sub: string; icon: string }> = {
 		ship: {
-			name: MODE_NAMES.ship,
 			sub: 'Flight',
 			icon: 'M15 3 L19 15 L28 21 L19 20 L15 27 L11 20 L2 21 L11 15 Z'
 		},
 		srv: {
-			name: MODE_NAMES.srv,
 			sub: 'Surface driving',
 			icon: 'M4 19 H26 L23 12 H7 Z M11 12 L13 8 H17 L19 12 M5 23 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0 M19 23 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0'
 		},
 		foot: {
-			name: MODE_NAMES.foot,
 			sub: 'First person',
 			icon: 'M12 6 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0 M15 10 V19 M15 19 L11 27 M15 19 L19 27 M9 14 L15 12 L21 14'
 		}
@@ -72,7 +69,7 @@
 				/></svg
 			>
 			<span class="flex flex-col leading-[1.1]">
-				<span class="font-display text-[20px] font-black uppercase">{def.name}</span>
+				<span class="font-display text-[20px] font-black uppercase">{app.modeName(mode)}</span>
 				{#if !compact}
 					<span class="font-mono text-[11px] opacity-75"
 						>{def.sub}{app.loaded ? ` · ${app.store.actionsIn(mode).length} binds` : ''}</span
@@ -81,7 +78,7 @@
 			</span>
 			{#if changes > 0}
 				<span
-					aria-label="{changes} unsaved changes in {def.name}"
+					aria-label="{changes} unsaved changes in {app.modeName(mode)}"
 					class="ml-auto flex h-5 min-w-5 items-center justify-center rounded-[10px] bg-trail px-[6px] font-mono text-[12px] font-bold text-void"
 					>{changes}</span
 				>

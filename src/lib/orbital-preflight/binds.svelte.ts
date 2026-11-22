@@ -15,7 +15,8 @@ import { MODES } from './types.ts';
 export type FileOrigin =
 	| { kind: 'preset'; index: number; label: string }
 	| { kind: 'upload'; fileName: string }
-	| { kind: 'remembered'; label: string };
+	| { kind: 'remembered'; label: string }
+	| { kind: 'defaults'; label: string };
 
 export interface LoadedFile {
 	parsed: ParsedBinds;
