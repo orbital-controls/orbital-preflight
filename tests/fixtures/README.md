@@ -7,4 +7,6 @@
 
 `.gitattributes` marks `*.binds` as binary text (`-text`) so git never rewrites their line endings.
 
+`star-citizen.xml` is a Star Citizen layout in the format the game exports (checked against real exports, not one itself): a VKB stick as `js1`, a TWCS throttle as `js2`, a few keyboard, mouse and controller rebinds, and one `kb1_ ` clearing a default. `v_toggle_landing_system` and `v_vtol_toggle` share `K` on purpose. `static/binds/demo-star-citizen.xml` is a copy. `star-citizen-defaults.xml` changes nothing, so it reads as the game's defaults.
+
 When real files arrive, drop them in here, add them to the round-trip test in `src/lib/orbital-preflight/sims/elite/elite.spec.ts`, and replace `static/binds/demo.binds` with one of them.
