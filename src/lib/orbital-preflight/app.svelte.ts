@@ -283,7 +283,7 @@ export class OrbitalPreflight {
 		}
 	}
 
-	/** Loads the current game's own default binds, for a pilot with no file handy. */
+	/** Loads the current game's own default binds: what it opens on with no file or preset. */
 	loadDefaults(): boolean {
 		const sim = simById(this.sim);
 		if (!sim.defaults) return false;
@@ -385,6 +385,9 @@ export class OrbitalPreflight {
 		this.#freshFlight();
 		// The newest remembered game opens first next visit.
 		if (session) this.persist(session);
+		// A game with its own defaults and no pilot's preset opens on those defaults rather
+		// than asking for a file (Star Citizen). A preset, where there is one, wins.
+		else if (adapter.defaults && presetFor(this.config.presets, sim) < 0) this.loadDefaults();
 	}
 
 	/** "Pick another game": back to the bay. Loaded games stay loaded. */
@@ -428,7 +431,9 @@ export class OrbitalPreflight {
 						? sim.fileLabel
 						: preset
 							? `Pilot's binds · ${preset.label}`
-							: `Needs your ${sim.fileLabel}`,
+							: sim.defaults
+								? sim.defaults.label
+								: `Needs your ${sim.fileLabel}`,
 				modeList: modes.map((m) => this.modeName(m, sim.id)).join(' · '),
 				status: !ready
 					? 'Coming later'

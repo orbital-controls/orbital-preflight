@@ -264,7 +264,7 @@ test('a gamepad pairs with the file’s gamepad and fires its binds by control n
 	await expect(page.locator('[aria-live="polite"]')).toContainText('Menu select');
 });
 
-test('with no Star Citizen file, the pilot can fly with the game’s defaults', async ({ page }) => {
+test('switching to Star Citizen with no preset opens on the game’s defaults', async ({ page }) => {
 	await page.goto('./');
 	await ready(page);
 	await page.getByRole('button', { name: /^Binding for/ }).click();
@@ -272,9 +272,7 @@ test('with no Star Citizen file, the pilot can fly with the game’s defaults', 
 		.getByRole('dialog', { name: 'Switch game' })
 		.getByRole('button', { name: /Star Citizen/ })
 		.click();
-	await page
-		.getByRole('button', { name: 'No file handy? Fly with the Star Citizen defaults' })
-		.click();
+	await expect(page.getByText('Now your')).toHaveCount(0);
 	const binding = page.getByRole('button', { name: /^Binding for/ });
 	await expect(binding).toContainText('Star Citizen');
 	await expect(binding).toContainText('Star Citizen 4.10.2 defaults');
