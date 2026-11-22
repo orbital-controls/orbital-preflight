@@ -1,1 +1,2 @@
 *.binds -text
+data/** -text

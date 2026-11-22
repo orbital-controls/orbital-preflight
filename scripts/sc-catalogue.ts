@@ -6,6 +6,9 @@
  *
  *   node scripts/sc-catalogue.ts <defaultProfile.xml> <global.ini> <game version>
  *
+ * The defaults in use are checked in as data/star-citizen/defaultProfile.xml, with the
+ * build_manifest.json that names their game build. Replace both after a patch.
+ *
  * Only action maps the keybinding screen lists (those with a `UICategory`) and actions it
  * labels (`UILabel`) are kept; debug, spectator and dev-camera maps aren't. Run it again
  * with a newer game's files to follow a patch.
