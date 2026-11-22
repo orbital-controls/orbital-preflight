@@ -78,7 +78,7 @@ describe('page name', () => {
 		expect(presetFor(config.presets, 'x4')).toBe(-1);
 	});
 
-	it('routes a first visit: remembered games, then one sim’s presets, else the bay', () => {
+	it('routes a first visit: one sim’s presets open, else the bay', () => {
 		const one = resolveConfig({
 			...base,
 			presets: [
@@ -93,10 +93,8 @@ describe('page name', () => {
 				{ file: 'b.xml', label: 'B', sim: 'star-citizen' }
 			]
 		}).presets;
-		expect(firstVisit([], 0)).toEqual({ kind: 'bay' });
-		expect(firstVisit(one, 0)).toEqual({ kind: 'preset', index: 0 });
-		expect(firstVisit(several, 0)).toEqual({ kind: 'bay' });
-		expect(firstVisit(several, 2)).toEqual({ kind: 'restore' });
-		expect(firstVisit([], 1)).toEqual({ kind: 'restore' });
+		expect(firstVisit([])).toEqual({ kind: 'bay' });
+		expect(firstVisit(one)).toEqual({ kind: 'preset', index: 0 });
+		expect(firstVisit(several)).toEqual({ kind: 'bay' });
 	});
 });

@@ -8,9 +8,6 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
-
-	/** The deploy base path, from BASE_PATH at build time. */
-	const __OP_BASE__: string;
 }
 
 export {};

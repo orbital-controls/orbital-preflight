@@ -150,15 +150,13 @@ export function themeCss(theme: ResolvedConfig['theme']): string {
 }
 
 /** Where a first visit lands. */
-export type FirstVisit = { kind: 'restore' } | { kind: 'preset'; index: number } | { kind: 'bay' };
+export type FirstVisit = { kind: 'preset'; index: number } | { kind: 'bay' };
 
 /**
- * Remembered games come back and skip the bay. Otherwise presets for one sim open the
- * first of them straight away, as a single-game fork always has; presets for several
- * sims, or none, show the bay.
+ * Presets for one sim open the first of them straight away, as a single-game fork always
+ * has; presets for several sims, or none, show the bay.
  */
-export function firstVisit(presets: readonly ResolvedPreset[], remembered: number): FirstVisit {
-	if (remembered > 0) return { kind: 'restore' };
+export function firstVisit(presets: readonly ResolvedPreset[]): FirstVisit {
 	const sims = new Set(presets.map((p) => p.sim));
 	if (sims.size === 1) return { kind: 'preset', index: 0 };
 	return { kind: 'bay' };

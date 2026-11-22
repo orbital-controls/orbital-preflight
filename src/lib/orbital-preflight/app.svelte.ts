@@ -17,7 +17,6 @@ import { deviceRoles } from './labels.ts';
 import { withLocalActions } from './local-actions.ts';
 import { analogAxes, type Analog } from './scene/analog.ts';
 import { heldEffects, NO_HELD } from './scene/held.ts';
-import { clearLayout, loadLayouts, saveLayout, type RememberedLayout } from './persist.ts';
 import { Session, Sessions } from './sessions.svelte.ts';
 import { BindsFormatError, SIMS, simById } from './sims/index.ts';
 import type { SimAdapter } from './sims/index.ts';
@@ -119,8 +118,6 @@ export class OrbitalPreflight {
 	flight = $state.raw<FlightState>(initialFlight());
 	last = $state.raw<InputId | null>(null);
 	lastActs = $state.raw<string[]>([]);
-	/** "Remember this layout" ticked before the game's file is in. */
-	#rememberNext = false;
 	loadError = $state<string | null>(null);
 	/**
 	 * WebGL couldn't start, or the 3D scene failed mid-flight: the viewport keeps the 2D
@@ -149,11 +146,6 @@ export class OrbitalPreflight {
 	capNotice = $state<string | null>(null);
 	loaded = $derived(this.games.current !== null);
 
-	/** "Remember this layout on this browser", for the current game. */
-	get remember(): boolean {
-		return this.games.current?.remember ?? this.#rememberNext;
-	}
-
 	/** Anything over the page that stops bind inputs: a drawer, Leave, the manifest. */
 	get blocked(): boolean {
 		return this.drawer !== null || this.leaving || this.manifest;
@@ -161,7 +153,6 @@ export class OrbitalPreflight {
 
 	constructor(
 		readonly config: ResolvedConfig,
-		readonly base: string,
 		/** Shipped preset files by name, read at build time. */
 		readonly presetSources: Record<string, string>
 	) {
@@ -214,40 +205,10 @@ export class OrbitalPreflight {
 		this.armPairing();
 	}
 
-	/**
-	 * First visit: remembered games come back (the newest is current) and skip the bay;
-	 * otherwise presets for one sim open the first of them; otherwise the bay.
-	 */
+	/** First visit: presets for one sim open the first of them; otherwise the bay. */
 	init() {
-		const ready = SIMS.filter((s) => s.status === 'ready').map((s) => s.id);
-		const restored = loadLayouts(this.base, ready).filter((l) => this.#restore(l));
-		const route = firstVisit(this.config.presets, restored.length);
-		if (route.kind === 'restore') this.switchTo(restored[0].sim);
-		else if (route.kind === 'preset') this.loadPreset(route.index);
-	}
-
-	#restore(layout: RememberedLayout): boolean {
-		try {
-			const parsed = simById(layout.sim).parse?.(layout.source);
-			if (!parsed) return false;
-			const session = this.games.open(layout.sim, (s) => this.#wire(s));
-			session.store.load(
-				withLocalActions(parsed),
-				{ kind: 'remembered', label: layout.label },
-				layout.edits
-			);
-			if (layout.mode && session.modes.includes(layout.mode)) session.mode = layout.mode;
-			session.remember = true;
-			return true;
-		} catch {
-			clearLayout(this.base, layout.sim);
-			return false;
-		}
-	}
-
-	/** A remembered layout follows every edit to its game. */
-	#wire(session: Session) {
-		session.store.onchange = () => this.persist(session);
+		const route = firstVisit(this.config.presets);
+		if (route.kind === 'preset') this.loadPreset(route.index);
 	}
 
 	/** The pilot's presets for the current game, with their index in the config. */
@@ -313,10 +274,7 @@ export class OrbitalPreflight {
 
 	#afterLoad(parsed: ParsedBinds, origin: FileOrigin) {
 		this.cancelCapture();
-		const fresh = !this.games.get(parsed.sim);
-		const session = this.games.open(parsed.sim, (s) => this.#wire(s));
-		if (fresh) session.remember = this.#rememberNext;
-		this.#rememberNext = false;
+		const session = this.games.open(parsed.sim);
 		session.store.load(withLocalActions(parsed), origin);
 		if (!session.modes.includes(session.mode)) session.mode = session.modes[0] ?? 'ship';
 		if (this.games.currentSim !== parsed.sim) this.games.currentSim = parsed.sim;
@@ -331,7 +289,6 @@ export class OrbitalPreflight {
 		this.q = '';
 		this.#freshFlight();
 		this.ed = { sel: null, cat: 'All', filter: 'all', q: '', pend: null };
-		this.persist(session);
 	}
 
 	/**
@@ -383,11 +340,10 @@ export class OrbitalPreflight {
 			pend: null
 		};
 		this.#freshFlight();
-		// The newest remembered game opens first next visit.
-		if (session) this.persist(session);
 		// A game with its own defaults and no pilot's preset opens on those defaults rather
 		// than asking for a file (Star Citizen). A preset, where there is one, wins.
-		else if (adapter.defaults && presetFor(this.config.presets, sim) < 0) this.loadDefaults();
+		if (!session && adapter.defaults && presetFor(this.config.presets, sim) < 0)
+			this.loadDefaults();
 	}
 
 	/** "Pick another game": back to the bay. Loaded games stay loaded. */
@@ -462,7 +418,6 @@ export class OrbitalPreflight {
 	setMode(mode: Mode) {
 		this.cancelCapture();
 		this.mode = mode;
-		if (this.games.current) this.persist(this.games.current);
 		this.cat = 'All';
 		this.q = '';
 		this.last = null;
@@ -746,30 +701,6 @@ export class OrbitalPreflight {
 			if (exportSession(session)) n++;
 		}
 		return n;
-	}
-
-	persist(session: Session | null = this.games.current) {
-		const file = session?.store.file;
-		if (!session?.remember || !file) return;
-		saveLayout(this.base, {
-			sim: session.sim,
-			label: fileLine(session).replace(/^Pilot's binds · /, ''),
-			source: file.parsed.source,
-			edits: session.store.edits(),
-			mode: session.mode
-		});
-	}
-
-	/** Ticks or unticks "Remember this layout" for the current game only. */
-	setRemember(on: boolean) {
-		const session = this.games.current;
-		if (!session) {
-			this.#rememberNext = on;
-			return;
-		}
-		session.remember = on;
-		if (on) this.persist(session);
-		else clearLayout(this.base, session.sim);
 	}
 
 	leaveNow() {

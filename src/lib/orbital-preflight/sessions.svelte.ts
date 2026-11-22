@@ -5,16 +5,14 @@ import type { PadPairing } from './inputs/hub.svelte.ts';
 import { MODES, type Mode, type SimId } from './types.ts';
 
 /**
- * One game while the tab is open: its file (or the pilot's preset, or a remembered
- * layout), the file as loaded and as edited (both in `store`, with the parsed document
+ * One game while the tab is open: its file (or the pilot's preset, or the game's own
+ * defaults), the file as loaded and as edited (both in `store`, with the parsed document
  * the writer splices into), the mode it was left in and how controllers were paired
  * with its file's devices. Switching games never discards any of it.
  */
 export class Session {
 	readonly store = new BindStore();
 	mode = $state<Mode>('ship');
-	/** "Remember this layout on this browser", for this game alone. */
-	remember = $state(false);
 	/**
 	 * Controller pairing as it was when this game was last current. The hub holds the
 	 * live pairing for the current game; this is the copy kept while another is.
@@ -54,11 +52,10 @@ export class Sessions {
 	}
 
 	/** The game's session, made empty if it has none yet. Doesn't change `currentSim`. */
-	open(sim: SimId, setup?: (session: Session) => void): Session {
+	open(sim: SimId): Session {
 		const existing = this.#sessions.get(sim);
 		if (existing) return existing;
 		const session = new Session(sim);
-		setup?.(session);
 		this.#sessions = new Map([...this.#sessions, [sim, session]]);
 		return session;
 	}

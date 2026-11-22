@@ -126,18 +126,8 @@
 		<p class="text-[14px] text-ink-900">{sim.help.tip}</p>
 	</section>
 
-	<label class="flex min-h-11 cursor-pointer items-center gap-3 font-mono text-[14px] text-ink-500">
-		<input
-			type="checkbox"
-			checked={app.remember}
-			onchange={(e) => app.setRemember(e.currentTarget.checked)}
-			class="size-5 accent-course"
-		/>Remember this layout on this browser
-	</label>
-	<p class="-mt-3 font-mono text-[12px] text-ink-900">
-		{app.remember
-			? `${sim.name} is saved in this browser only. Untick to forget it.`
-			: 'Read in this tab. Nothing is uploaded and there’s no account.'}
+	<p class="font-mono text-[12px] text-ink-900">
+		Read in this tab. Nothing is uploaded and there’s no account.
 	</p>
 	<PoweredBy />
 </div>

@@ -34,9 +34,6 @@ export default defineConfig({
 			prerender: { entries: ['*'] }
 		})
 	],
-	define: {
-		__OP_BASE__: JSON.stringify(base)
-	},
 	// three.js is one lazy chunk (~620 kB, ~160 kB gzipped), fetched only when the 3D
 	// viewport mounts. Above this, a chunk has grown and is worth a look.
 	build: { chunkSizeWarningLimit: 700 },

@@ -7,7 +7,7 @@ const config = resolveConfig({ title: 't', description: 'd', siteName: 's', home
 const demo = readFileSync('tests/fixtures/hotas.binds', 'utf8');
 
 function loaded() {
-	const app = new OrbitalPreflight(config, '', {});
+	const app = new OrbitalPreflight(config, {});
 	app.loadText(demo, { kind: 'upload', fileName: 'hotas.binds' });
 	return app;
 }

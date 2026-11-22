@@ -5,7 +5,7 @@
 	import { TICK_MS } from '#lib/orbital-preflight/flight.ts';
 	import { presetSources } from '#lib/orbital-preflight/presets.ts';
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
-	import { base, site } from '#lib/orbital-preflight/site.ts';
+	import { site } from '#lib/orbital-preflight/site.ts';
 	import type { SimId } from '#lib/orbital-preflight/types.ts';
 	import Bay from './Bay.svelte';
 	import BindsPanel from './BindsPanel.svelte';
@@ -24,7 +24,7 @@
 	 * The one page: the bay or the fly view, binds, deck, drawers and the full editor,
 	 * all reading the current game's session.
 	 */
-	const app = new OrbitalPreflight(site, base, presetSources);
+	const app = new OrbitalPreflight(site, presetSources);
 	setOrbitalPreflight(app);
 
 	let opener: HTMLElement | null = $state(null);
@@ -35,7 +35,7 @@
 	 * presets open straight away shows nothing under the bar until the preset is in, rather
 	 * than flashing the bay (or offering keys and tiles that do nothing yet).
 	 */
-	const bayFirst = firstVisit(site.presets, 0).kind === 'bay';
+	const bayFirst = firstVisit(site.presets).kind === 'bay';
 
 	const MODE_NOTES = {
 		ship: 'Ship binds. In game, boarding, deploying the SRV or disembarking switches the set for you. Here, pick it.',
