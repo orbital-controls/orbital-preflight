@@ -78,7 +78,7 @@ describe('page name', () => {
 		expect(presetFor(config.presets, 'x4')).toBe(-1);
 	});
 
-	it('routes a first visit: one sim’s presets open, else the bay', () => {
+	it('routes a first visit: the one game with binds opens, else the bay', () => {
 		const one = resolveConfig({
 			...base,
 			presets: [
@@ -96,5 +96,13 @@ describe('page name', () => {
 		expect(firstVisit([])).toEqual({ kind: 'bay' });
 		expect(firstVisit(one)).toEqual({ kind: 'preset', index: 0 });
 		expect(firstVisit(several)).toEqual({ kind: 'bay' });
+		// A game that opens on its own defaults counts as a game with binds.
+		expect(firstVisit(one, ['star-citizen'])).toEqual({ kind: 'bay' });
+		expect(firstVisit([], ['star-citizen'])).toEqual({ kind: 'bay' });
+		const scOnly = resolveConfig({
+			...base,
+			presets: [{ file: 'b.xml', label: 'B', sim: 'star-citizen' }]
+		}).presets;
+		expect(firstVisit(scOnly, ['star-citizen'])).toEqual({ kind: 'preset', index: 0 });
 	});
 });

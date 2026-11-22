@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { exportAndParse, openLoad, ready, rebind } from './helpers.ts';
+import { exportAndParse, openElite, openLoad, ready, rebind } from './helpers.ts';
 
 const BASE = '/orbital-preflight';
 
@@ -8,7 +8,7 @@ test('works under a non-root base path', async ({ page }) => {
 	page.on('response', (r) => {
 		if (r.status() >= 400) failed.push(r.url());
 	});
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	expect(failed).toEqual([]);
 

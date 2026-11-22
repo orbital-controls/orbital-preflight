@@ -1,24 +1,34 @@
 import { expect, test } from '@playwright/test';
 import { fakeGamepads, hold, press, unplug } from './controllers.ts';
-import { exportAndParse, openLoad, ready, rebind } from './helpers.ts';
+import { exportAndParse, openElite, openLoad, ready, rebind } from './helpers.ts';
 
-test('the pilot’s default preset loads on first visit', async ({ page }) => {
+test('a first visit is the bay: the pilot’s Elite preset and Star Citizen’s defaults', async ({
+	page
+}) => {
 	await page.goto('./');
 	await expect(page).toHaveTitle('Orbital Preflight: test my space sim binds');
 	await expect(page.locator('h1')).toHaveText('Orbital Preflight');
+	const bay = page.getByRole('region', { name: /Bring your binds/ });
+	await expect(
+		bay.getByRole('button', { name: /Elite Dangerous.*Demo HOTAS setup/ })
+	).toBeVisible();
+	await expect(
+		bay.getByRole('button', { name: /Star Citizen.*Star Citizen 4\.10\.2 defaults/ })
+	).toBeVisible();
+	await bay.getByRole('button', { name: /Elite Dangerous/ }).click();
 	await ready(page);
 	await expect(page.getByRole('tab', { name: /Ship/ })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('a key press fires its binds and the HUD says so', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await page.keyboard.press('KeyU');
 	await expect(page.locator('[aria-live="polite"]')).toContainText('Deploy hardpoints');
 });
 
 test('rebind one action, export, and parse the export', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await rebind(page, 'Flight', 'Throttle to 50%', 'KeyP');
 	await expect(page.getByText('1 unsaved in ED')).toBeVisible();
@@ -30,7 +40,7 @@ test('rebind one action, export, and parse the export', async ({ page }) => {
 });
 
 test('a taken input offers Move, Swap and Keep both', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await page
 		.getByRole('group', { name: 'Category' })
@@ -46,7 +56,7 @@ test('a taken input offers Move, Swap and Keep both', async ({ page }) => {
 });
 
 test('drawers are dialogs: focus moves in, Esc closes, focus returns', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	const opener = page.getByRole('button', { name: 'No controllers connected' });
 	await opener.click();
@@ -58,7 +68,7 @@ test('drawers are dialogs: focus moves in, Esc closes, focus returns', async ({ 
 });
 
 test('Leave asks first when there are unsaved changes', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await rebind(page, 'Flight', 'Throttle to 50%', 'KeyP');
 	await page.getByRole('link', { name: 'Leave' }).click();
@@ -68,7 +78,7 @@ test('Leave asks first when there are unsaved changes', async ({ page }) => {
 });
 
 test('the full editor shares the store and has mode tabs', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await page.getByRole('button', { name: 'Full editor' }).click();
 	await expect(page.getByRole('heading', { name: 'Bind editor' })).toBeFocused();
@@ -78,12 +88,9 @@ test('the full editor shares the store and has mode tabs', async ({ page }) => {
 	await expect(page.getByRole('tab', { name: /SRV/ })).toHaveAttribute('aria-selected', 'true');
 });
 
-test('with presets for one game, the bay is skipped and Load binds offers them', async ({
-	page
-}) => {
-	await page.goto('./');
+test('Load binds offers the current game’s presets', async ({ page }) => {
+	await openElite(page);
 	await ready(page);
-	await expect(page.getByRole('heading', { name: /Bring your binds/ })).toHaveCount(0);
 	await openLoad(page);
 	const drawer = page.getByRole('dialog', { name: 'Load binds' });
 	await expect(drawer).toContainText('A new file for Elite Dangerous');
@@ -105,7 +112,7 @@ test('controllers show up on the deck under their own names as they’re detecte
 		{ id: 'T.16000M (Vendor: 044f Product: b10a)', buttons: 16 },
 		{ id: 'VKBsim Gladiator EVO (Vendor: 1234 Product: 5678)', buttons: 32 }
 	]);
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	const deck = page.getByRole('region', { name: 'Input deck' });
 	await expect(deck.getByRole('heading', { name: 'T.16000M' })).toBeVisible();
@@ -119,7 +126,7 @@ test('controllers show up on the deck under their own names as they’re detecte
 });
 
 test('with no controllers detected, the deck asks for a button press', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await expect(
 		page.getByText('Press a button on your stick or throttle and it shows up here.')
@@ -128,7 +135,7 @@ test('with no controllers detected, the deck asks for a button press', async ({ 
 });
 
 test('a rebind can be finished from the keyboard alone', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await page
 		.getByRole('group', { name: 'Category' })
@@ -148,7 +155,7 @@ test('a rebind can be finished from the keyboard alone', async ({ page }) => {
 });
 
 test('Esc leaves a rebind without binding Esc', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await page
 		.getByRole('group', { name: 'Category' })
@@ -161,7 +168,7 @@ test('Esc leaves a rebind without binding Esc', async ({ page }) => {
 });
 
 test('holding Shift with a key captures Shift+key', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await page
 		.getByRole('group', { name: 'Category' })
@@ -178,7 +185,7 @@ test('holding Shift with a key captures Shift+key', async ({ page }) => {
 
 test('a controller pulled out mid-press lets go of its button', async ({ page }) => {
 	await fakeGamepads(page, [{ id: 'T.16000M (Vendor: 044f Product: b10a)', buttons: 16 }]);
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	const deck = page.getByRole('region', { name: 'Input deck' });
 	const toast = page.locator('[aria-live="polite"]');
@@ -203,7 +210,7 @@ test('with the Controllers drawer open, pressing a button pairs an unknown contr
 }) => {
 	// No USB id in Gamepad.id, so it can't match by USB and waits for a press.
 	await fakeGamepads(page, [{ id: 'Mystery Stick', buttons: 12 }]);
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await page.getByRole('button', { name: '1 controller connected' }).click();
 	const drawer = page.getByRole('dialog', { name: 'Controllers' });
@@ -220,7 +227,7 @@ test('a gamepad pairs with the file’s gamepad and fires its binds by control n
 	await fakeGamepads(page, [
 		{ id: 'Xbox Controller (STANDARD GAMEPAD)', buttons: 16, mapping: 'standard' }
 	]);
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await openLoad(page);
 	// A stick and a gamepad (Elite names unknown devices by USB id, here product 0000).
@@ -265,7 +272,7 @@ test('a gamepad pairs with the file’s gamepad and fires its binds by control n
 });
 
 test('switching to Star Citizen with no preset opens on the game’s defaults', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	await page.getByRole('button', { name: /^Binding for/ }).click();
 	await page

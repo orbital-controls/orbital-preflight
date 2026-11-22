@@ -18,7 +18,7 @@ import { withLocalActions } from './local-actions.ts';
 import { analogAxes, type Analog } from './scene/analog.ts';
 import { heldEffects, NO_HELD } from './scene/held.ts';
 import { Session, Sessions } from './sessions.svelte.ts';
-import { BindsFormatError, SIMS, simById } from './sims/index.ts';
+import { BindsFormatError, SIMS, SIMS_WITH_DEFAULTS, simById } from './sims/index.ts';
 import type { SimAdapter } from './sims/index.ts';
 import {
 	MODE_NAMES,
@@ -205,9 +205,9 @@ export class OrbitalPreflight {
 		this.armPairing();
 	}
 
-	/** First visit: presets for one sim open the first of them; otherwise the bay. */
+	/** First visit: the one game with binds opens on its first preset; otherwise the bay. */
 	init() {
-		const route = firstVisit(this.config.presets);
+		const route = firstVisit(this.config.presets, SIMS_WITH_DEFAULTS);
 		if (route.kind === 'preset') this.loadPreset(route.index);
 	}
 

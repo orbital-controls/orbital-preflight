@@ -2,6 +2,18 @@ import { expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { parseEliteBinds } from '../../src/lib/orbital-preflight/sims/elite/index.ts';
 
+/**
+ * Opens the shipped config and picks Elite in the bay. Its preset is one of two games
+ * with binds (Star Citizen opens on its own defaults), so a first visit is the bay.
+ */
+export async function openElite(page: Page, url = './') {
+	await page.goto(url);
+	await page
+		.getByRole('region', { name: /Bring your binds/ })
+		.getByRole('button', { name: /Elite Dangerous/ })
+		.click();
+}
+
 /** Waits for the app to start and the shipped demo preset to load. */
 export async function ready(page: Page) {
 	await expect(page.locator('[data-ready="true"]')).toHaveCount(1);

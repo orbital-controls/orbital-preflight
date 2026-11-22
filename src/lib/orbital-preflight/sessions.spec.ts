@@ -23,6 +23,8 @@ vi.mock('./sims/index.ts', async (importOriginal) => {
 	return {
 		...real,
 		SIMS: sims,
+		// The stand-in reads Elite files and has no defaults of its own.
+		SIMS_WITH_DEFAULTS: [],
 		simById: (id: string) => {
 			const sim = sims.find((s) => s.id === id);
 			if (!sim) throw new Error(id);

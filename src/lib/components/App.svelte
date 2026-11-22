@@ -4,7 +4,7 @@
 	import { firstVisit } from '#lib/orbital-preflight/config.ts';
 	import { TICK_MS } from '#lib/orbital-preflight/flight.ts';
 	import { presetSources } from '#lib/orbital-preflight/presets.ts';
-	import { simById } from '#lib/orbital-preflight/sims/index.ts';
+	import { SIMS_WITH_DEFAULTS, simById } from '#lib/orbital-preflight/sims/index.ts';
 	import { site } from '#lib/orbital-preflight/site.ts';
 	import type { SimId } from '#lib/orbital-preflight/types.ts';
 	import Bay from './Bay.svelte';
@@ -35,7 +35,7 @@
 	 * presets open straight away shows nothing under the bar until the preset is in, rather
 	 * than flashing the bay (or offering keys and tiles that do nothing yet).
 	 */
-	const bayFirst = firstVisit(site.presets).kind === 'bay';
+	const bayFirst = firstVisit(site.presets, SIMS_WITH_DEFAULTS).kind === 'bay';
 
 	const MODE_NOTES = {
 		ship: 'Ship binds. In game, boarding, deploying the SRV or disembarking switches the set for you. Here, pick it.',
