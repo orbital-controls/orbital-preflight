@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { OrbitalPreflight } from './app.svelte.ts';
 import { resolveConfig, type OrbitalPreflightConfig } from './config.ts';
 import { leaveSummary } from './leave.ts';
-import { storageKey } from './persist.ts';
 
 // Session behaviour, not file formats: Star Citizen stands in here with Elite files, so
 // both games read the same fixtures (multi.e2e.ts switches between real files).
@@ -24,6 +23,8 @@ vi.mock('./sims/index.ts', async (importOriginal) => {
 	return {
 		...real,
 		SIMS: sims,
+		// The stand-in reads Elite files and has no defaults of its own.
+		SIMS_WITH_DEFAULTS: [],
 		simById: (id: string) => {
 			const sim = sims.find((s) => s.id === id);
 			if (!sim) throw new Error(id);
@@ -37,24 +38,9 @@ const keyboard = readFileSync('tests/fixtures/keyboard-only.binds', 'utf8');
 const P = { input: { kind: 'key', code: 'KeyP' } } as const;
 const O = { input: { kind: 'key', code: 'KeyO' } } as const;
 
-function memoryStorage(): Storage {
-	const data = new Map<string, string>();
-	return {
-		get length() {
-			return data.size;
-		},
-		clear: () => data.clear(),
-		getItem: (k) => data.get(k) ?? null,
-		key: (i) => [...data.keys()][i] ?? null,
-		removeItem: (k) => void data.delete(k),
-		setItem: (k, v) => void data.set(k, String(v))
-	};
-}
-
-function app(config: Partial<OrbitalPreflightConfig> = {}, base = '') {
+function app(config: Partial<OrbitalPreflightConfig> = {}) {
 	return new OrbitalPreflight(
 		resolveConfig({ title: 't', description: 'd', siteName: 's', homeUrl: 'h', ...config }),
-		base,
 		{ 'demo.binds': hotas, 'kb.binds': keyboard }
 	);
 }
@@ -69,12 +55,6 @@ function twoGames() {
 	a.loadText(hotas, { kind: 'upload', fileName: 'sc.binds' });
 	return a;
 }
-
-beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
-afterEach(() => {
-	vi.unstubAllGlobals();
-	vi.useRealTimers();
-});
 
 describe('multi-game sessions', () => {
 	it('switching keeps each game’s edits and mode', () => {
@@ -179,81 +159,6 @@ describe('multi-game sessions', () => {
 		expect(a.hub.pads[0].deviceId).toBeNull();
 		a.switchTo('star-citizen');
 		expect(a.hub.pads[0]).toMatchObject({ deviceId: 'T16000M', pairedBy: 'press' });
-	});
-});
-
-describe('remembered layouts, per game', () => {
-	it('stores one key per sim under the base path, and brings every game back', () => {
-		// Every save in the same millisecond, as on a fast machine: the order still holds.
-		vi.useFakeTimers({ now: Date.UTC(2026, 10, 21), toFake: ['Date'] });
-		const a = app({}, '/alice');
-		a.switchTo('elite-dangerous');
-		a.setRemember(true);
-		a.loadText(hotas, { kind: 'upload', fileName: 'hotas.binds' });
-		a.store.settle({ actionId: 'SetSpeed50', slot: 0 }, { kind: 'apply' }, P);
-		a.switchTo('star-citizen');
-		a.loadText(keyboard, { kind: 'upload', fileName: 'kb.binds' });
-		expect(localStorage.getItem(storageKey('/alice', 'star-citizen'))).toBeNull();
-		a.setRemember(true);
-		a.setMode('foot');
-
-		expect(storageKey('/alice', 'elite-dangerous')).toBe(
-			'orbital-preflight:/alice:elite-dangerous'
-		);
-		expect(localStorage.getItem('orbital-preflight:/alice:elite-dangerous')).toContain(
-			'SetSpeed50'
-		);
-		expect(localStorage.getItem('orbital-preflight:/alice:star-citizen')).toContain('kb.binds');
-		expect(localStorage.getItem('orbital-preflight:/bob:elite-dangerous')).toBeNull();
-
-		const next = app({ presets: [{ file: 'demo.binds', label: 'Demo' }] }, '/alice');
-		next.init();
-		// The last current game opens; the preset doesn't replace it.
-		expect(next.sim).toBe('star-citizen');
-		expect(next.mode).toBe('foot');
-		expect(next.games.sessions.size).toBe(2);
-		expect(next.games.get('elite-dangerous')?.store.bindings.SetSpeed50[0]).toEqual(P);
-
-		next.setRemember(false);
-		expect(localStorage.getItem('orbital-preflight:/alice:star-citizen')).toBeNull();
-		expect(localStorage.getItem('orbital-preflight:/alice:elite-dangerous')).not.toBeNull();
-	});
-
-	it('carries a pre-sessions layout over to its sim’s key', () => {
-		localStorage.setItem(
-			'orbital-preflight:/:layout',
-			JSON.stringify({
-				version: 1,
-				sim: 'elite-dangerous',
-				label: 'Old',
-				source: hotas,
-				edits: {},
-				savedAt: '2026-01-01T00:00:00Z'
-			})
-		);
-		const a = app();
-		a.init();
-		expect(a.fileLine).toBe('Old');
-		expect(localStorage.getItem('orbital-preflight:/:layout')).toBeNull();
-		expect(localStorage.getItem('orbital-preflight:/:elite-dangerous')).not.toBeNull();
-	});
-
-	it('storage that throws doesn’t stop the app', () => {
-		vi.stubGlobal('localStorage', {
-			getItem: () => {
-				throw new Error('blocked');
-			},
-			setItem: () => {
-				throw new Error('blocked');
-			},
-			removeItem: () => {
-				throw new Error('blocked');
-			}
-		});
-		const a = app({ presets: [{ file: 'demo.binds', label: 'Demo' }] });
-		a.init();
-		a.setRemember(true);
-		expect(a.loaded).toBe(true);
 	});
 });
 

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openLoad } from './helpers.ts';
+import { openElite, openLoad } from './helpers.ts';
 
 /** The 3D viewport: it mounts, reacts to the flight state, and falls back without WebGL. */
 
@@ -8,7 +8,7 @@ const scene = '[data-op-scene="3d"]';
 test('the ship view mounts a WebGL canvas and the gear key moves the gear target', async ({
 	page
 }) => {
-	await page.goto('./');
+	await openElite(page);
 	await openLoad(page);
 	await page.locator('#drawer-file').setInputFiles('tests/fixtures/hotas.binds');
 	await expect(page.getByText('hotas.binds')).toBeVisible();
@@ -28,7 +28,7 @@ test('the ship view mounts a WebGL canvas and the gear key moves the gear target
 test('Toggle camera is a bind in Panels, and the viewport button does the same', async ({
 	page
 }) => {
-	await page.goto('./');
+	await openElite(page);
 	const canvas = page.locator(scene);
 	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
 	const toast = page.locator('[aria-live="polite"]');
@@ -57,7 +57,7 @@ test('Toggle camera is a bind in Panels, and the viewport button does the same',
 });
 
 test('a lost WebGL context falls back to the placeholder', async ({ page }) => {
-	await page.goto('./');
+	await openElite(page);
 	const canvas = page.locator(scene);
 	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
 	await canvas.evaluate((el) => {
@@ -86,7 +86,7 @@ test('without WebGL the 2D placeholder stays and the page still works', async ({
 			);
 		} as typeof original;
 	});
-	await page.goto('./');
+	await openElite(page);
 	await expect(page.getByText(/PLACEHOLDER · 3D SCENE · SHIP/)).toBeVisible();
 	await expect(page.locator(scene)).toHaveCount(0);
 	await page.keyboard.press('KeyU');
@@ -114,7 +114,7 @@ async function recordAttribute(page: import('@playwright/test').Page, name: stri
 test('SRV mode mounts the Wick LR scene; steer and thruster keys reach it', async ({ page }) => {
 	// Software WebGL on a two-core CI runner, beside another scene test: give it room.
 	test.slow();
-	await page.goto('./');
+	await openElite(page);
 	const canvas = page.locator(scene);
 	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
 	await expect(canvas).toHaveAttribute('data-op-scene-mode', 'ship');
@@ -176,7 +176,7 @@ test('without WebGL the SRV keeps its 2D placeholder', async ({ page }) => {
 			);
 		} as typeof original;
 	});
-	await page.goto('./');
+	await openElite(page);
 	await page.getByRole('tab', { name: /SRV/ }).click();
 	await expect(page.getByText(/PLACEHOLDER · 3D SCENE · SRV/)).toBeVisible();
 	await expect(page.locator(scene)).toHaveCount(0);
@@ -187,7 +187,7 @@ test('without WebGL the SRV keeps its 2D placeholder', async ({ page }) => {
 
 /** Opens the on-foot scene, standing where `spawn` says (a stop, or "x,z,yawDegrees"). */
 async function onFoot(page: import('@playwright/test').Page, spawn: string) {
-	await page.goto(`./?op-spawn=${spawn}`);
+	await openElite(page, `./?op-spawn=${spawn}`);
 	const canvas = page.locator(scene);
 	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
 	await page.getByRole('tab', { name: /On foot/ }).click();
@@ -257,7 +257,7 @@ test('without WebGL on foot keeps its 2D placeholder', async ({ page }) => {
 			);
 		} as typeof original;
 	});
-	await page.goto('./');
+	await openElite(page);
 	await page.getByRole('tab', { name: /On foot/ }).click();
 	await expect(page.getByText(/PLACEHOLDER · 3D SCENE · ON FOOT/)).toBeVisible();
 	await expect(page.locator(scene)).toHaveCount(0);
@@ -272,7 +272,7 @@ test('leaving a mode frees its scene: GPU resources come back to the same number
 }) => {
 	// Three scene builds on software WebGL: give it room.
 	test.slow();
-	await page.goto('./');
+	await openElite(page);
 	const canvas = page.locator(scene);
 	await expect(canvas).toHaveAttribute('data-op-ready', 'true', { timeout: 15_000 });
 	// `geometries/textures/programs`, sampled once a second.

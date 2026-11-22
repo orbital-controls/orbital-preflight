@@ -150,17 +150,19 @@ export function themeCss(theme: ResolvedConfig['theme']): string {
 }
 
 /** Where a first visit lands. */
-export type FirstVisit = { kind: 'restore' } | { kind: 'preset'; index: number } | { kind: 'bay' };
+export type FirstVisit = { kind: 'preset'; index: number } | { kind: 'bay' };
 
 /**
- * Remembered games come back and skip the bay. Otherwise presets for one sim open the
- * first of them straight away, as a single-game fork always has; presets for several
- * sims, or none, show the bay.
+ * The first visit opens straight into a game only when it is the one game with binds to
+ * fly: presets for it, and no other game with presets or binds of its own (`withDefaults`,
+ * the sims that open on their game's defaults, Star Citizen today). Otherwise the bay.
  */
-export function firstVisit(presets: readonly ResolvedPreset[], remembered: number): FirstVisit {
-	if (remembered > 0) return { kind: 'restore' };
-	const sims = new Set(presets.map((p) => p.sim));
-	if (sims.size === 1) return { kind: 'preset', index: 0 };
+export function firstVisit(
+	presets: readonly ResolvedPreset[],
+	withDefaults: readonly SimId[] = []
+): FirstVisit {
+	const sims = new Set([...presets.map((p) => p.sim), ...withDefaults]);
+	if (presets.length && sims.size === 1) return { kind: 'preset', index: 0 };
 	return { kind: 'bay' };
 }
 

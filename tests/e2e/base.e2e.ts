@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { exportAndParse, openLoad, ready, rebind } from './helpers.ts';
+import { exportAndParse, openElite, openLoad, ready, rebind } from './helpers.ts';
 
 const BASE = '/orbital-preflight';
 
@@ -8,7 +8,7 @@ test('works under a non-root base path', async ({ page }) => {
 	page.on('response', (r) => {
 		if (r.status() >= 400) failed.push(r.url());
 	});
-	await page.goto('./');
+	await openElite(page);
 	await ready(page);
 	expect(failed).toEqual([]);
 
@@ -23,17 +23,4 @@ test('works under a non-root base path', async ({ page }) => {
 	await rebind(page, 'Flight', 'Throttle to 50%', 'KeyP');
 	const { parsed } = await exportAndParse(page);
 	expect(parsed.presetName).toBe('Demo HOTAS rebound');
-});
-
-test('remembered layouts are kept per base path', async ({ page }) => {
-	await page.goto('./');
-	await ready(page);
-	await openLoad(page);
-	await page.getByRole('checkbox', { name: 'Remember this layout on this browser' }).check();
-	const keys = await page.evaluate(() => Object.keys(localStorage));
-	expect(keys).toContain(`orbital-preflight:${BASE}:elite-dangerous`);
-
-	// It comes back on the next visit, and the bay stays skipped.
-	await page.reload();
-	await expect(page.getByRole('button', { name: /^Binding for Elite Dangerous/ })).toBeVisible();
 });

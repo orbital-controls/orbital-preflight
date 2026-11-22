@@ -39,6 +39,11 @@ const dcs: SimAdapter = {
 
 export const SIMS: readonly SimAdapter[] = [elite, starCitizen, x4, dcs];
 
+/** Ready sims that open on their game's own defaults: they always have binds to fly. */
+export const SIMS_WITH_DEFAULTS: readonly SimId[] = SIMS.filter(
+	(s) => s.status === 'ready' && s.defaults
+).map((s) => s.id);
+
 export function simById(id: SimId): SimAdapter {
 	const sim = SIMS.find((s) => s.id === id);
 	if (!sim) throw new Error(`Unknown sim "${id}"`);

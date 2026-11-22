@@ -58,10 +58,10 @@ export default defineConfig({
 
 #### Presets and the first visit
 
-- **Presets for one sim** (the usual fork, and the old single-sim shape: `sim` plus `presets` with no `sim` of their own): a first visit skips the game picker and opens with the first preset loaded; the top bar reads "Pilot's binds · ‹label›".
-- **Presets for several sims**: a first visit shows the bay, one tile per game, and the games you have presets for read "Pilot's binds · ‹label›". Picking one loads its first preset. A sim that isn't supported yet shows as "Coming later" and can't be picked, preset or not.
-- **No presets**: the bay, and each game asks for the visitor's own file.
-- **"Remember this layout on this browser"** is kept per game. Remembered games come back on the next visit, the one used last is current, and the bay is skipped.
+- **One game with binds**: presets for one sim (the old single-sim shape too: `sim` plus `presets` with no `sim` of their own), and no other game with binds. A first visit skips the game picker and opens with the first preset loaded; the top bar reads "Pilot's binds · ‹label›". Star Citizen always has binds (its game's defaults), so this only happens when the presets are Star Citizen's.
+- **Two or more games with binds**: a first visit shows the bay, one tile per game. Games with presets read "Pilot's binds · ‹label›" and picking one loads its first preset; Star Citizen with no preset reads "Star Citizen 4.10.2 defaults" and opens on them. With Elite presets alone, that's the bay with Elite and Star Citizen. A sim that isn't supported yet shows as "Coming later" and can't be picked.
+- **No presets**: the bay; Elite asks for the visitor's own file, and Star Citizen opens on the game's defaults.
+- **Nothing is kept between visits**: the app stores nothing in the browser, so every visit starts from this routing.
 
 ```ts
 presets: [
