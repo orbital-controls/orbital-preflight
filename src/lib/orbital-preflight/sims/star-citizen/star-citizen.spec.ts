@@ -336,6 +336,14 @@ describe('writeStarCitizenLayout', () => {
 	});
 });
 
+describe('Star Citizen defaults', () => {
+	it('ships the game’s defaults as a layout that changes nothing', () => {
+		const parsed = parseStarCitizenLayout(starCitizen.defaults!.source);
+		expect(starCitizen.defaults!.label).toMatch(/^Star Citizen \d+\.\d+/);
+		expect(parsed.bindings).toEqual(parseStarCitizenLayout(EMPTY).bindings);
+	});
+});
+
 describe('Star Citizen words', () => {
 	it('names what the mock flight says in Star Citizen’s terms', () => {
 		const s = act(initialFlight(), 'fa', 'Decoupled');

@@ -283,6 +283,17 @@ export class OrbitalPreflight {
 		}
 	}
 
+	/** Loads the current game's own default binds, for a pilot with no file handy. */
+	loadDefaults(): boolean {
+		const sim = simById(this.sim);
+		if (!sim.defaults) return false;
+		return this.loadText(
+			sim.defaults.source,
+			{ kind: 'defaults', label: sim.defaults.label },
+			sim.id
+		);
+	}
+
 	/** Reads a dropped or chosen file in the tab. Nothing is uploaded. */
 	loadFile(file: File): Promise<boolean> {
 		const sim = this.sim;

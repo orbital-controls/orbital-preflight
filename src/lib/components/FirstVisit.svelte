@@ -54,6 +54,14 @@
 			>
 		</span>
 	</div>
+	{#if sim.defaults}
+		<button
+			type="button"
+			onclick={() => app.loadDefaults()}
+			class="min-h-11 cursor-pointer border-0 bg-transparent font-mono text-[14px] text-ink-200 underline"
+			>No file handy? Fly with the {sim.name} defaults</button
+		>
+	{/if}
 	{#if app.loadError}
 		<p role="alert" class="font-mono text-[13px] text-alert">{app.loadError}</p>
 	{/if}

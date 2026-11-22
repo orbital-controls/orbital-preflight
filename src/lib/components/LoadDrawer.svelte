@@ -106,6 +106,14 @@
 			>Drop your {sim.extensions[0]} file</span
 		>
 		<FilePicker id="drawer-file" />
+		{#if sim.defaults}
+			<button
+				type="button"
+				onclick={() => app.loadDefaults()}
+				class="min-h-10 cursor-pointer border-0 bg-transparent font-mono text-[13px] text-course underline"
+				>Use the {sim.name} defaults instead</button
+			>
+		{/if}
 		{#if app.loadError}<p role="alert" class="font-mono text-[13px] text-alert">
 				{app.loadError}
 			</p>{/if}

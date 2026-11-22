@@ -65,6 +65,11 @@ export interface SimAdapter {
 	/** The download's file name for a preset name. */
 	fileName?(parsed: ParsedBinds, presetName: string): string;
 	words?: SimWords;
+	/**
+	 * The game's own default binds, as a file `parse` reads, for "Fly with the defaults"
+	 * when the pilot has no file handy. Only for a sim whose defaults we have from the game.
+	 */
+	defaults?: { label: string; source: string };
 }
 
 export class BindsFormatError extends Error {}

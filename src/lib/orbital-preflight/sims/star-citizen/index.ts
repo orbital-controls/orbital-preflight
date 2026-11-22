@@ -454,6 +454,15 @@ export const starCitizen: SimAdapter = {
 	refuse,
 	newDeviceId,
 	fileName: starCitizenFileName,
+	// A layout that changes nothing reads as the game's defaults.
+	defaults: {
+		label: `Star Citizen ${GAME_VERSION} defaults`,
+		source:
+			'<ActionMaps version="1" optionsVersion="2" rebindVersion="2" profileName="Defaults">\n' +
+			' <CustomisationUIHeader label="Defaults" description="" image="">\n' +
+			'  <devices>\n   <keyboard instance="1"/>\n   <mouse instance="1"/>\n  </devices>\n' +
+			' </CustomisationUIHeader>\n <modifiers />\n</ActionMaps>\n'
+	},
 	words: {
 		modes: { srv: 'Vehicle' },
 		modeNotes: {
