@@ -36,12 +36,16 @@ export const LOCAL_ACTIONS: readonly { action: Action; binding: Binding }[] = [
 ];
 
 /**
- * `parsed` with the local actions added, unless the file already has one by that id. A
+ * `parsed` with the local actions added, unless the file already has one by that id, and
+ * only in modes the sim has (X4 has no SRV, so no SRV tab for a camera toggle alone). A
  * default bind the file already uses in that mode is left off, so adding the action never
  * creates a clash or makes an existing key fire twice.
  */
 export function withLocalActions(parsed: ParsedBinds): ParsedBinds {
-	const extra = LOCAL_ACTIONS.filter(({ action }) => !(action.id in parsed.bindings));
+	const modes = new Set(parsed.actions.map((a) => a.mode));
+	const extra = LOCAL_ACTIONS.filter(
+		({ action }) => !(action.id in parsed.bindings) && modes.has(action.mode)
+	);
 	if (!extra.length) return parsed;
 	const actions = [...parsed.actions, ...extra.map((e) => e.action)];
 	const bindings = {
