@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { fakeGamepads, hold, press, unplug } from './controllers.ts';
+import { readFile } from 'node:fs/promises';
 import { exportAndParse, openElite, openLoad, ready, rebind } from './helpers.ts';
 
 test('a first visit is the bay: the pilot’s Elite preset and Star Citizen’s defaults', async ({
@@ -290,4 +291,38 @@ test('switching to Star Citizen with no preset opens on the game’s defaults', 
 	// W is Throttle - Increase in the game's defaults.
 	await page.keyboard.press('KeyW');
 	await expect(page.locator('[aria-live="polite"]')).toContainText('Throttle - Increase');
+});
+
+test('X4 opens on the game’s Keyboard and Mouse profile and exports an inputmap.xml', async ({
+	page
+}) => {
+	await openElite(page);
+	await ready(page);
+	await page.getByRole('button', { name: /^Binding for/ }).click();
+	await page
+		.getByRole('dialog', { name: 'Switch game' })
+		.getByRole('button', { name: /X4: Foundations/ })
+		.click();
+	const binding = page.getByRole('button', { name: /^Binding for/ });
+	await expect(binding).toContainText('X4: Foundations');
+	await expect(binding).toContainText('X4 9.00 defaults');
+	await expect(page.getByRole('tab', { name: /First person/ })).toBeVisible();
+	await expect(page.getByRole('tab', { name: /Vehicle|SRV/ })).toHaveCount(0);
+	// X is Accelerate in the game's profile (its Boost is on Tab, which the browser keeps).
+	await page.keyboard.press('KeyX');
+	await expect(page.locator('[aria-live="polite"]')).toContainText('Accelerate');
+
+	await rebind(page, 'Steering: Digital', 'Boost', 'KeyJ');
+	const [download] = await Promise.all([
+		page.waitForEvent('download'),
+		page.getByRole('button', { name: 'Export X4 preset' }).click()
+	]);
+	expect(download.suggestedFilename()).toBe('inputmap.xml');
+	const text = await readFile(await download.path(), 'utf8');
+	expect(text).toContain(
+		'<state id="INPUT_STATE_BOOST" source="INPUT_SOURCE_KEYBOARD" code="INPUT_KEYCODE_J" />'
+	);
+	expect(text).not.toContain(
+		'<state id="INPUT_STATE_BOOST" source="INPUT_SOURCE_KEYBOARD" code="INPUT_KEYCODE_TAB" />'
+	);
 });

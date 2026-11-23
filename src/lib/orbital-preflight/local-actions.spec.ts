@@ -23,6 +23,15 @@ describe('local actions', () => {
 		});
 	});
 
+	it('adds nothing to a mode the sim doesn’t have', () => {
+		const shipOnly = parseEliteBinds(source);
+		shipOnly.actions = shipOnly.actions.filter((a) => a.mode !== 'srv');
+		const parsed = withLocalActions(shipOnly);
+		expect(parsed.actions.some((a) => a.mode === 'srv')).toBe(false);
+		expect(parsed.bindings).not.toHaveProperty('OrbitalPreflightToggleCameraSrv');
+		expect(parsed.bindings).toHaveProperty('OrbitalPreflightToggleCamera');
+	});
+
 	it('is never written to an export, even when rebound', () => {
 		const parsed = withLocalActions(parseEliteBinds(source));
 		const out = writeEliteBinds(

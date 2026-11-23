@@ -4,7 +4,7 @@ Load the keybinds file from your space sim, connect your controllers, test every
 
 It's also a framework. Fork this repo onto GitHub Pages to show off your own binds: visitors test them with their own stick and keyboard, and download them as they are or after changing them.
 
-Elite Dangerous `.binds` files and Star Citizen layouts (`layout_…_exported.xml`) work today. X4 and DCS are listed as coming later.
+Elite Dangerous `.binds` files, Star Citizen layouts (`layout_…_exported.xml`) and X4: Foundations `inputmap.xml` files work today. DCS is listed as coming later.
 
 A visitor can load binds for more than one game in the same tab and switch between them from "Binding for" in the top bar: each game keeps its own file, edits, mode and controller pairing while the tab is open. Export is per game; Leave counts unsaved changes across all of them.
 
@@ -58,9 +58,9 @@ export default defineConfig({
 
 #### Presets and the first visit
 
-- **One game with binds**: presets for one sim (the old single-sim shape too: `sim` plus `presets` with no `sim` of their own), and no other game with binds. A first visit skips the game picker and opens with the first preset loaded; the top bar reads "Pilot's binds · ‹label›". Star Citizen always has binds (its game's defaults), so this only happens when the presets are Star Citizen's.
-- **Two or more games with binds**: a first visit shows the bay, one tile per game. Games with presets read "Pilot's binds · ‹label›" and picking one loads its first preset; Star Citizen with no preset reads "Star Citizen 4.10.2 defaults" and opens on them. With Elite presets alone, that's the bay with Elite and Star Citizen. A sim that isn't supported yet shows as "Coming later" and can't be picked.
-- **No presets**: the bay; Elite asks for the visitor's own file, and Star Citizen opens on the game's defaults.
+- **One game with binds**: presets for one sim (the old single-sim shape too: `sim` plus `presets` with no `sim` of their own), and no other game with binds. A first visit skips the game picker and opens with the first preset loaded; the top bar reads "Pilot's binds · ‹label›". Star Citizen and X4 always have binds (their games' defaults), so while both are listed this doesn't happen: there are always at least two games with binds, and a first visit is the bay.
+- **Two or more games with binds**: a first visit shows the bay, one tile per game. Games with presets read "Pilot's binds · ‹label›" and picking one loads its first preset; Star Citizen with no preset reads "Star Citizen 4.10.2 defaults" and opens on them, and X4 reads "X4 9.00 defaults". With Elite presets alone, that's the bay with Elite, Star Citizen and X4. A sim that isn't supported yet shows as "Coming later" and can't be picked.
+- **No presets**: the bay; Elite asks for the visitor's own file, and Star Citizen and X4 open on their games' defaults.
 - **Nothing is kept between visits**: the app stores nothing in the browser, so every visit starts from this routing.
 
 ```ts
@@ -112,18 +112,18 @@ The multi-game variant (`tests/fixtures/multi.config.ts`) has presets for Elite 
 
 ### Where things are
 
-| Path                                           | What                                                                            |
-| ---------------------------------------------- | ------------------------------------------------------------------------------- |
-| `orbital-preflight.config.ts`                  | The fork's config.                                                              |
-| `src/lib/orbital-preflight/sims/`              | The sim registry and adapters: parse and write. `elite/`, `star-citizen/`.      |
-| `src/lib/orbital-preflight/sessions.svelte.ts` | One session per game loaded this visit, and which is current.                   |
-| `src/lib/orbital-preflight/xml.ts`             | An XML scanner that keeps offsets, so the writer splices instead of rebuilding. |
-| `src/lib/orbital-preflight/bindings.ts`        | Clashes, Move / Swap / Keep both, filter counts. Pure.                          |
-| `src/lib/orbital-preflight/binds.svelte.ts`    | The bind store: the file, the edits, undo per action, reset per mode, export.   |
-| `src/lib/orbital-preflight/flight.ts`          | The mock flight state machine and the HUD values. Pure.                         |
-| `src/lib/orbital-preflight/inputs/`            | Keyboard, mouse and Gamepad API input, and controller pairing.                  |
-| `src/lib/orbital-preflight/scene/`             | The 3D viewport: pure flight → part mappings, and the three.js engine.          |
-| `src/lib/components/`                          | One component per UI piece.                                                     |
+| Path                                           | What                                                                              |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| `orbital-preflight.config.ts`                  | The fork's config.                                                                |
+| `src/lib/orbital-preflight/sims/`              | The sim registry and adapters: parse and write. `elite/`, `star-citizen/`, `x4/`. |
+| `src/lib/orbital-preflight/sessions.svelte.ts` | One session per game loaded this visit, and which is current.                     |
+| `src/lib/orbital-preflight/xml.ts`             | An XML scanner that keeps offsets, so the writer splices instead of rebuilding.   |
+| `src/lib/orbital-preflight/bindings.ts`        | Clashes, Move / Swap / Keep both, filter counts. Pure.                            |
+| `src/lib/orbital-preflight/binds.svelte.ts`    | The bind store: the file, the edits, undo per action, reset per mode, export.     |
+| `src/lib/orbital-preflight/flight.ts`          | The mock flight state machine and the HUD values. Pure.                           |
+| `src/lib/orbital-preflight/inputs/`            | Keyboard, mouse and Gamepad API input, and controller pairing.                    |
+| `src/lib/orbital-preflight/scene/`             | The 3D viewport: pure flight → part mappings, and the three.js engine.            |
+| `src/lib/components/`                          | One component per UI piece.                                                       |
 
 ### The 3D scene
 
@@ -153,9 +153,23 @@ A Star Citizen layout holds only what the pilot changed from the game's defaults
 - **Words**: the HUD and toasts say Star Citizen's terms where it has its own (Decoupled for FA off, SCM for hardpoints, SHD for SYS); status chips and readouts that no Star Citizen action drives (silent running, the SRV turret, drive assist, recall) don't show.
 - **Controllers**: devices come from the layout's `<options type="joystick">` lines, with USB ids from their DirectInput guid. The first joystick and the gamepad the defaults bind to are always listed, so they can be paired even with a keyboard-only layout. A controller the layout doesn't name gets the next joystick instance and an `<options>` line on export.
 
+### X4: Foundations
+
+A pilot's binds are `Documents\Egosoft\X4\‹player id›\inputmap.xml`, which the game writes whenever controls change. Unlike a Star Citizen layout it holds every bind, one element per input: `<state id="INPUT_STATE_BOOST" source="INPUT_SOURCE_KEYBOARD" code="INPUT_KEYCODE_TAB"/>`. The adapter is `sims/x4/`.
+
+- **The defaults** are the game's own "Keyboard and Mouse" profile, `libraries/inputmap.xml`, checked in as `data/x4/inputmap.xml` (9.00, from a copy found online, not unpacked here) with its WASD variant beside it. The app reads the file itself, as it ships: picking X4 with no pilot's preset opens on it, labelled "X4 9.00 defaults". Entries the game marks `removed="true"` (a bind a later version took away) aren't binds. After a patch, replace both files.
+- **The catalogue** is every row of the game's Controls screen a pilot can rebind, under the game's own section names, generated into `sims/x4/controls.ts` by `node scripts/x4-catalogue.ts <gameoptions.lua> <0001-l044.xml> <version>` from the controls menu script and the English text (neither committed; they live in the gitignored `design/x4/`). Sections the menu won't let a pilot change (menu and dialog navigation) are left out. The menu names controls by number and binds files by name; the script's `IDS` table pairs them (see Unverified).
+- **Rows that rebind several controls**: some rows set the same input on more than one control ("Map" opens the map and closes it again; "Menu back" is three). The row is one action, named after its first control; the writer gives every control in it the same change.
+- **Ids** are the file's own control names (`INPUT_ACTION_OPEN_MAP`, `INPUT_STATE_BOOST`, `INPUT_RANGE_THROTTLE`). Ranges are the axis actions.
+- **Modes**: Ship (the Space and Menus tabs) and First person. X4 has no ground vehicles, so there's no SRV tab, and Orbital Preflight's own Toggle camera is only added to the modes a game has.
+- **Slots**: a control's first two physical inputs, keyboard and mouse first, then controllers by slot (controllers first on a range). Radial menu entries and any third input stay in the file untouched. Keys and mouse buttons take Shift and Ctrl as modifiers, the wheel Shift; X4 sets its two controller modifiers in game, not in the file. Axis halves (`sgn`) are fine.
+- **Controllers**: the file names eight controller slots (`INPUT_SOURCE_JOYBUTTONS` to `…_8`), not devices, so they pair by press. A slot whose every input is a gamepad control (the Xbox names, the D-pad, the sticks and triggers) reads as a gamepad; any other as a stick, with the Xbox names as buttons 1 to 10 and the D-pad as its hat. A new controller goes in the next free slot; which physical controller X4 puts there is set in game.
+- **Clashes** follow the game's own check: two rows clash when they're in the same tab and share one of the menu's contexts. Rows in the main context all share it; camera-only and map-only rows get their own, and the Menus tab never clashes with flight. Both shipped profiles load with no clashes.
+- **Words**: Travel mode stands in for supercruise and countermeasures for chaff. X4 deploys no hardpoints, so its guns fire whenever they're bound; the heat bar and the on-foot sidearm readout don't show, since no X4 bind drives them.
+
 ### Exports
 
-Export ‹ABBR› preset (Export ED preset) writes a new file for the current game, covering all its modes: the original text with the changed slots and the preset name replaced, and every other byte left as it was. The file you loaded is never modified. The new preset is named "‹original name› rebound". Elite's file is "‹name›.‹major›.‹minor›.binds"; Star Citizen's is `layout_‹name›_exported.xml`, as the game names its own exports, with `profileName` and the header's `label` set to the new name. Leave's "Export all N games, then leave" writes one such file per game with changes, a moment apart; browsers may ask before allowing several downloads from one page.
+Export ‹ABBR› preset (Export ED preset) writes a new file for the current game, covering all its modes: the original text with the changed slots and the preset name replaced, and every other byte left as it was. The file you loaded is never modified. The new preset is named "‹original name› rebound". Elite's file is "‹name›.‹major›.‹minor›.binds"; Star Citizen's is `layout_‹name›_exported.xml`, as the game names its own exports, with `profileName` and the header's `label` set to the new name. X4's is always `inputmap.xml`, the name the game reads; a pilot's file has no preset name, so only a saved profile's `name` changes. Leave's "Export all N games, then leave" writes one such file per game with changes, a moment apart; browsers may ask before allowing several downloads from one page.
 
 ## Unverified
 
@@ -174,6 +188,7 @@ These were written from memory, not checked against real files or devices, and a
 - **SRV drive speed axis**: read as a forward-only lever like the ship's throttle (full forward −1 is full speed, pulled back is stopped). Elite can also run it full range, with the back half as reverse; that setting isn't in the binds file.
 - **K for Toggle camera**, in Ship and in SRV: free in the shipped presets; not checked against Elite's own default binds.
 - **Star Citizen**: the layout format is checked against layouts exported by the game (4.3 and later), and the defaults come from 4.10.2's `defaultProfile.xml` (a copy found online, not unpacked here). Still open: key names no file in hand uses (F13+, Print, Scroll lock, numpad Enter), the gamepad stick directions (`thumbl_up`…), which browser buttons the game calls `mouse4` and `mouse5`, which action maps the game reads apart (the clash contexts above), that a press and a tap on one key really do clash, whether the game accepts a new `<options>` line with a generic "Joystick" name, and the "Where's my file?" menu path. `star-citizen.xml` and the demo layout are **synthetic**.
+- **X4**: the format is checked against the profiles the game ships (9.00) and game-written `inputmap.xml` files found online, not one of Phil's. Still open: the `IDS` table in `scripts/x4-catalogue.ts`, worked out by lining up a game-written file (which lists controls in the game's number order) against the menu's numbered names, with the menu script's own comments as anchors; Next and Previous surface element (213, 214) follow their labels, though the game-written file has them the other way round. Also: key names no file uses, which stick button numbers the Xbox names stand for (A is 1 up to Right thumb 10, Big button 11), which way the wheel's `sgn="1"` turns, that the gamepad's Z and RZ axes are its left and right triggers, telling a gamepad slot from a stick by its inputs alone, whether the game accepts an export made from the shipped profile with its upgrade notes (`sinceversion`, `removed`) left in, and the "Where's my file?" path. `x4.xml` is **synthetic**.
 - **On-foot axis signs**: `HumanoidForwardAxis`, `HumanoidStrafeAxis`, `HumanoidRotateAxis` and `HumanoidPitchAxis` are taken as the browser reports them (stick forward negative walks forward and looks up). Pad 7 only prompts for binds an Elite action can answer on foot (a spec checks it): the exported file has no lean, helmet, fire mode, wrist menu or on-foot recall bind, so those prompts and the walker's lean are gone. Scan is the profile analyser (`HumanoidSwitchToCompAnalyser`) and Ping is `HumanoidPing`; Look is the mouse, as the file's `MouseHumanoidXMode` setting has it.
 
 ## Licence

@@ -214,9 +214,10 @@ function pip(pips: FlightState['pips'], i: number): FlightState['pips'] {
 /**
  * The state after one action fires. `effect` is the action's effect id; `name` is its
  * readable name, for the "would open" message panels get. Unknown effects change nothing:
- * the toast still says the action fired.
+ * the toast still says the action fired. `stowable` says the game deploys its hardpoints
+ * (some action has `hp`); when it doesn't, as in X4, the guns are always ready.
  */
-export function act(s: FlightState, effect: string, name: string): FlightState {
+export function act(s: FlightState, effect: string, name: string, stowable = true): FlightState {
 	const p: Partial<FlightState> = {};
 	const msg = (text: string, ticks = 40) => {
 		p.msg = text;
@@ -283,11 +284,11 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 			msg('Orbit lines toggled');
 			break;
 		case 'fire':
-			if (!s.hp) msg('Hardpoints are stowed');
+			if (stowable && !s.hp) msg('Hardpoints are stowed');
 			else p.fireT = 5;
 			break;
 		case 'fire2':
-			if (!s.hp) msg('Hardpoints are stowed');
+			if (stowable && !s.hp) msg('Hardpoints are stowed');
 			else p.fire2T = 6;
 			break;
 		case 'hp':
