@@ -3,10 +3,14 @@
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { footHud, shipHud, srvHud, type SceneProps } from '#lib/orbital-preflight/flight.ts';
 	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
+	import { SYSTEMS, underReticle } from '#lib/orbital-preflight/scene/galaxy-map.ts';
+	import { BODIES, SYSTEM_NAME } from '#lib/orbital-preflight/scene/system-map.ts';
 	import FirstVisit from './FirstVisit.svelte';
 	import Hud from './Hud.svelte';
 	import PlaceholderScene from './PlaceholderScene.svelte';
 	import Scene3D from './Scene3D.svelte';
+	import GalaxyMap from './GalaxyMap.svelte';
+	import SystemMap from './SystemMap.svelte';
 
 	/**
 	 * The flight view. The ship flies, the SRV drives and the pilot walks Pad 7 in the 3D
@@ -52,6 +56,18 @@
 
 	const label = $derived.by(() => {
 		if (!app.loaded) return 'No binds loaded yet.';
+		if (app.map?.kind === 'system') {
+			const sel = BODIES[app.map.state.sel];
+			return `System map of ${SYSTEM_NAME}, ${BODIES.length} bodies. ${sel.name} selected.`;
+		}
+		if (app.map?.kind === 'galaxy') {
+			const under = underReticle(app.map.state);
+			const at = under === null ? 'Nothing' : SYSTEMS[under].name;
+			const route = app.map.state.route.length
+				? ` Route plotted, ${app.map.state.route.length - 1} jumps.`
+				: '';
+			return `Galaxy map, ${SYSTEMS.length} star systems. ${at} under the reticle.${route}`;
+		}
 		const s = app.flight;
 		if (app.mode === 'ship') {
 			const h = shipHud(s);
@@ -104,7 +120,7 @@
 								flight={app.flight}
 								mode={app.mode}
 								analog={app.analog}
-								covered={covered || !live}
+								covered={covered || !live || app.map !== null}
 								frozen={app.cap !== null}
 								held={app.held}
 								onstatus={(status) => {
@@ -154,13 +170,18 @@
 						</svg>
 					{/if}
 				{/if}
+				{#if app.map?.kind === 'galaxy'}
+					<GalaxyMap map={app.map.state} />
+				{:else if app.map?.kind === 'system'}
+					<SystemMap map={app.map.state} />
+				{/if}
 			{:else}
 				<PlaceholderScene flight={app.flight} mode="ship" empty />
 			{/if}
 		</div>
 
 		{#if app.loaded}
-			{#if !scene && !live}
+			{#if !scene && !live && !app.map}
 				<div
 					class="pointer-events-none absolute top-24 left-1/2 flex -translate-x-1/2 flex-col items-center gap-[6px] text-center"
 					aria-hidden="true"
@@ -179,7 +200,7 @@
 			<FirstVisit {onwhere} />
 		{/if}
 	</div>
-	{#if live && app.mode !== 'foot'}
+	{#if live && app.mode !== 'foot' && !app.map}
 		<button
 			type="button"
 			aria-pressed={app.flight.cam === 'cockpit'}

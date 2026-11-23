@@ -17,6 +17,22 @@ import { deviceRoles } from './labels.ts';
 import { withLocalActions } from './local-actions.ts';
 import { analogAxes, type Analog } from './scene/analog.ts';
 import { heldEffects, NO_HELD } from './scene/held.ts';
+import {
+	GALAXY_LIMITS,
+	GALAXY_PRESSES,
+	initialGalaxyMap,
+	pressGalaxyMap,
+	SYSTEMS,
+	type GalaxyMapState
+} from './scene/galaxy-map.ts';
+import { isCameraEffect, mapInput, stepCamera } from './scene/map-camera.ts';
+import {
+	initialSystemMap,
+	pressSystemMap,
+	SYSTEM_LIMITS,
+	SYSTEM_PRESSES,
+	type SystemMapState
+} from './scene/system-map.ts';
 import { Session, Sessions } from './sessions.svelte.ts';
 import { BindsFormatError, SIMS, SIMS_WITH_DEFAULTS, simById } from './sims/index.ts';
 import type { SimAdapter } from './sims/index.ts';
@@ -116,6 +132,15 @@ export class OrbitalPreflight {
 	editor = $state(false);
 	ed = $state<EditorView>({ sel: null, cat: 'All', filter: 'all', q: '', pend: null });
 	flight = $state.raw<FlightState>(initialFlight());
+	/**
+	 * The galaxy map or the system map, while one is open (its bind opened it): it takes
+	 * the map binds, and the flight's don't fire. Null when neither is.
+	 */
+	map = $state.raw<OpenMap | null>(null);
+	/** The route last plotted on the galaxy map: system indices, current system first. */
+	route = $state.raw<readonly number[]>([]);
+	/** The binds panel's category before the map switched it to the map's own. */
+	#catBeforeMap: string | null = null;
 	last = $state.raw<InputId | null>(null);
 	lastActs = $state.raw<string[]>([]);
 	loadError = $state<string | null>(null);
@@ -301,6 +326,8 @@ export class OrbitalPreflight {
 		this.flight = { ...initialFlight(), cam: this.flight.cam };
 		this.footStop = null;
 		this.footDone = [];
+		this.closeMap();
+		this.route = [];
 	}
 
 	// Switching games.
@@ -424,6 +451,8 @@ export class OrbitalPreflight {
 		this.lastActs = [];
 		this.flight = enterMode(this.flight);
 		this.footStop = null;
+		this.map = null;
+		this.#catBeforeMap = null;
 		this.ed = { ...this.ed, sel: null, cat: 'All', pend: null };
 	}
 
@@ -558,10 +587,16 @@ export class OrbitalPreflight {
 
 	// Input dispatch.
 
-	/** Actions in the current mode that `input` fires, with the effect each one runs. */
-	matching(input: InputId): { action: Action; effect: string | undefined }[] {
+	/**
+	 * Actions that `input` fires, with the effect each one runs: the current mode's, or
+	 * those in `actions`.
+	 */
+	matching(
+		input: InputId,
+		actions: readonly Action[] = this.store.actionsIn(this.mode)
+	): { action: Action; effect: string | undefined }[] {
 		const held: { action: Action; effect: string | undefined; modifier: boolean }[] = [];
-		for (const action of this.store.actionsIn(this.mode)) {
+		for (const action of actions) {
 			const binding = this.store.bindings[action.id];
 			if (!binding) continue;
 			for (const slot of binding) {
@@ -603,14 +638,88 @@ export class OrbitalPreflight {
 			if (owner) this.ed = { ...this.ed, sel: owner.id, cat: 'All', filter: 'all', q: '' };
 			return;
 		}
+		if (this.map) {
+			this.#onMapInput(input);
+			return;
+		}
 		const hits = this.matching(input);
+		if (hits.some((h) => h.effect === 'galmap')) this.openMap('galaxy');
+		else if (hits.some((h) => h.effect === 'sysmap')) this.openMap('system');
 		let flight = this.flight;
 		// Panels say they "would open" (their effect is `panel`). An action with no effect
 		// of its own only shows in the last-input toast: nothing would open for Thrust left.
 		for (const { action, effect } of hits) {
 			if (effect) flight = act(flight, effect, action.name);
 		}
+		// With a route plotted on the galaxy map, Target next system in route names it.
+		if (this.route.length > 1 && hits.some((h) => h.effect === 'route'))
+			flight = { ...flight, msg: `Next in route · ${SYSTEMS[this.route[1]].name}`, msgT: 40 };
 		this.flight = flight;
+		this.last = input;
+		this.lastActs = hits.map((h) => h.action.id);
+	}
+
+	/**
+	 * The actions the open map reads: the current mode's bind for that map (to close it)
+	 * and, from any mode, the map camera and the menu binds that map uses. Elite files
+	 * them under the ship, but the game reads them wherever the map is opened from.
+	 */
+	mapActions = $derived.by(() => {
+		const kind = this.map?.kind;
+		if (!kind) return [];
+		const presses = kind === 'galaxy' ? GALAXY_PRESSES : SYSTEM_PRESSES;
+		const opener = kind === 'galaxy' ? 'galmap' : 'sysmap';
+		return this.store.actions.filter((a) => {
+			const effects = a.effect?.split('|') ?? [];
+			if (a.effect === opener) return a.mode === this.mode;
+			return effects.some((e) => isCameraEffect(e) || presses.includes(e));
+		});
+	});
+
+	openMap(kind: OpenMap['kind']) {
+		this.map =
+			kind === 'galaxy'
+				? { kind, state: initialGalaxyMap(this.route) }
+				: { kind, state: initialSystemMap() };
+		// The camera binds are the ship's "Galaxy map" category: show them while it's open.
+		if (this.store.actionsIn(this.mode).some((a) => a.category === 'Galaxy map')) {
+			this.#catBeforeMap ??= this.cat;
+			this.cat = 'Galaxy map';
+		}
+	}
+
+	closeMap() {
+		this.map = null;
+		if (this.#catBeforeMap !== null && this.cat === 'Galaxy map') this.cat = this.#catBeforeMap;
+		this.#catBeforeMap = null;
+	}
+
+	/**
+	 * A press while a map is open: only its binds fire. Buttons and keys nudge the camera
+	 * once here; `step()` keeps it moving while they're held, and reads axes. A half axis
+	 * pushed past its threshold only presses menu binds: the camera reads it as an axis.
+	 */
+	#onMapInput(input: InputId) {
+		const open = this.map!;
+		const hits = this.matching(input, this.mapActions);
+		const isAxis = (input.kind === 'axis' || input.kind === 'pad') && Boolean(input.half);
+		let next: OpenMap = open;
+		let msg: string | undefined;
+		let close = false;
+		for (const { effect } of hits) {
+			if (!effect || (isAxis && isCameraEffect(effect))) continue;
+			const out =
+				next.kind === 'galaxy'
+					? { ...pressGalaxyMap(next.state, effect), kind: 'galaxy' as const }
+					: { ...pressSystemMap(next.state, effect), kind: 'system' as const };
+			next = { kind: out.kind, state: out.map } as OpenMap;
+			msg = out.msg ?? msg;
+			close ||= Boolean(out.close);
+		}
+		if (next.kind === 'galaxy') this.route = next.state.route;
+		if (close) this.closeMap();
+		else this.map = next;
+		if (msg) this.flight = { ...this.flight, msg, msgT: 40 };
 		this.last = input;
 		this.lastActs = hits.map((h) => h.action.id);
 	}
@@ -677,7 +786,28 @@ export class OrbitalPreflight {
 	}
 
 	step() {
-		if (this.loaded && !this.editor) this.flight = tick(this.flight, this.mode);
+		if (!this.loaded || this.editor) return;
+		this.flight = tick(this.flight, this.mode);
+		const open = this.map;
+		if (open) {
+			// Frozen while listening for a rebind or with a drawer open, as the flight is.
+			const idle = this.cap !== null || this.blocked;
+			const input = idle
+				? {}
+				: mapInput(
+						this.mapActions,
+						this.store.bindings,
+						(i) => this.hub.held.has(inputKey(i)),
+						(key) => this.hub.axes.get(key)
+					);
+			if (open.kind === 'galaxy') {
+				const state = stepCamera(open.state, input, GALAXY_LIMITS);
+				if (state !== open.state) this.map = { kind: 'galaxy', state };
+			} else {
+				const state = stepCamera(open.state, input, SYSTEM_LIMITS);
+				if (state !== open.state) this.map = { kind: 'system', state };
+			}
+		}
 	}
 
 	// Files out.
@@ -707,6 +837,10 @@ export class OrbitalPreflight {
 		window.location.href = this.config.homeUrl;
 	}
 }
+
+/** The map open over the flight view. */
+export type OpenMap =
+	{ kind: 'galaxy'; state: GalaxyMapState } | { kind: 'system'; state: SystemMapState };
 
 /** What the "Binding for" block's file line says for a game. */
 export function fileLine(session: Session | null | undefined): string {

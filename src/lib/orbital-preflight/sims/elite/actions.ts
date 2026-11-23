@@ -12,7 +12,12 @@ import type { Action, AnalogRole, Mode } from '../../types.ts';
  * game versions.
  */
 
-/** `[id, name, effect?, axis?]`. Effects are the mock flight's, from the StandFly board. */
+/**
+ * `[id, name, effect?, axis?]`. Effects are the mock flight's, from the StandFly board,
+ * and the maps': Galaxy map and System map open them (`scene/galaxy-map.ts`,
+ * `scene/system-map.ts`), and the "Galaxy map" camera binds, which Elite shares between
+ * both, and Menu left, right, select and back drive them. UNVERIFIED: the axes' directions (`neg|pos`) in the game's camera.
+ */
 type Entry = [id: string, name: string, effect?: string, axis?: true];
 
 const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
@@ -86,11 +91,11 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 		Navigation: [
 			['HyperSuperCombination', 'Frame shift drive', 'fsd'],
 			['Supercruise', 'Supercruise', 'sc'],
-			['GalaxyMapOpen', 'Galaxy map', 'panel'],
+			['GalaxyMapOpen', 'Galaxy map', 'galmap'],
 			['TargetNextRouteSystem', 'Target next system in route', 'route'],
 			['OrbitLinesToggle', 'Orbit lines', 'orbit'],
 			['Hyperspace', 'Hyperspace jump'],
-			['SystemMapOpen', 'System map', 'panel']
+			['SystemMapOpen', 'System map', 'sysmap']
 		],
 		Combat: [
 			['PrimaryFire', 'Primary fire', 'fire'],
@@ -167,10 +172,10 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 		Menus: [
 			['UI_Up', 'Menu up'],
 			['UI_Down', 'Menu down'],
-			['UI_Left', 'Menu left'],
-			['UI_Right', 'Menu right'],
-			['UI_Select', 'Menu select'],
-			['UI_Back', 'Menu back'],
+			['UI_Left', 'Menu left', 'uiLeft'],
+			['UI_Right', 'Menu right', 'uiRight'],
+			['UI_Select', 'Menu select', 'uiSelect'],
+			['UI_Back', 'Menu back', 'uiBack'],
 			['UI_Toggle', 'Menu toggle'],
 			['CycleNextPanel', 'Next panel tab'],
 			['CyclePreviousPanel', 'Previous panel tab'],
@@ -178,26 +183,26 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 			['CyclePreviousPage', 'Previous page']
 		],
 		'Galaxy map': [
-			['CamPitchAxis', 'Map pitch', undefined, true],
-			['CamPitchUp', 'Map pitch up'],
-			['CamPitchDown', 'Map pitch down'],
-			['CamYawAxis', 'Map yaw', undefined, true],
-			['CamYawLeft', 'Map yaw left'],
-			['CamYawRight', 'Map yaw right'],
-			['CamTranslateYAxis', 'Map forward / back', undefined, true],
-			['CamTranslateForward', 'Map forward'],
-			['CamTranslateBackward', 'Map back'],
-			['CamTranslateXAxis', 'Map left / right', undefined, true],
-			['CamTranslateLeft', 'Map left'],
-			['CamTranslateRight', 'Map right'],
-			['CamTranslateZAxis', 'Map up / down', undefined, true],
-			['CamTranslateUp', 'Map up'],
-			['CamTranslateDown', 'Map down'],
-			['CamZoomAxis', 'Map zoom', undefined, true],
-			['CamZoomIn', 'Map zoom in'],
-			['CamZoomOut', 'Map zoom out'],
-			['CamTranslateZHold', 'Map up / down hold'],
-			['GalaxyMapHome', 'Map home']
+			['CamPitchAxis', 'Map pitch', 'mapPitchDn|mapPitchUp', true],
+			['CamPitchUp', 'Map pitch up', 'mapPitchUp'],
+			['CamPitchDown', 'Map pitch down', 'mapPitchDn'],
+			['CamYawAxis', 'Map yaw', 'mapYawL|mapYawR', true],
+			['CamYawLeft', 'Map yaw left', 'mapYawL'],
+			['CamYawRight', 'Map yaw right', 'mapYawR'],
+			['CamTranslateYAxis', 'Map forward / back', 'mapFwd|mapBack', true],
+			['CamTranslateForward', 'Map forward', 'mapFwd'],
+			['CamTranslateBackward', 'Map back', 'mapBack'],
+			['CamTranslateXAxis', 'Map left / right', 'mapLeft|mapRight', true],
+			['CamTranslateLeft', 'Map left', 'mapLeft'],
+			['CamTranslateRight', 'Map right', 'mapRight'],
+			['CamTranslateZAxis', 'Map up / down', 'mapDown|mapUp', true],
+			['CamTranslateUp', 'Map up', 'mapUp'],
+			['CamTranslateDown', 'Map down', 'mapDown'],
+			['CamZoomAxis', 'Map zoom', 'mapZoomOut|mapZoomIn', true],
+			['CamZoomIn', 'Map zoom in', 'mapZoomIn'],
+			['CamZoomOut', 'Map zoom out', 'mapZoomOut'],
+			['CamTranslateZHold', 'Map up / down hold', 'mapZHold'],
+			['GalaxyMapHome', 'Map home', 'mapHome']
 		],
 		Scanners: [
 			['ExplorationFSSEnter', 'Full spectrum scanner'],
@@ -376,8 +381,8 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 			['FocusCommsPanel_Buggy', 'Comms panel', 'panel'],
 			['FocusRadarPanel_Buggy', 'Role panel', 'panel'],
 			['FocusRightPanel_Buggy', 'Right panel', 'panel'],
-			['GalaxyMapOpen_Buggy', 'Galaxy map', 'panel'],
-			['SystemMapOpen_Buggy', 'System map', 'panel'],
+			['GalaxyMapOpen_Buggy', 'Galaxy map', 'galmap'],
+			['SystemMapOpen_Buggy', 'System map', 'sysmap'],
 			['QuickCommsPanel_Buggy', 'Quick comms', 'panel'],
 			['OpenCodexGoToDiscovery_Buggy', 'Codex discovery', 'panel'],
 			['UIFocus_Buggy', 'UI focus']
@@ -440,8 +445,8 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 		Panels: [
 			['HumanoidEmoteWheelButton', 'Emote wheel', 'panel'],
 			['HumanoidItemWheelButton', 'Item wheel', 'panel'],
-			['GalaxyMapOpen_Humanoid', 'Galaxy map', 'panel'],
-			['SystemMapOpen_Humanoid', 'System map', 'panel'],
+			['GalaxyMapOpen_Humanoid', 'Galaxy map', 'galmap'],
+			['SystemMapOpen_Humanoid', 'System map', 'sysmap'],
 			['FocusCommsPanel_Humanoid', 'Comms panel', 'panel'],
 			['QuickCommsPanel_Humanoid', 'Quick comms', 'panel'],
 			['HumanoidOpenAccessPanelButton', 'Access panel', 'panel'],

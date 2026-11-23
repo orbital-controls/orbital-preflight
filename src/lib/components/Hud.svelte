@@ -82,18 +82,19 @@
 {/snippet}
 
 <div class="pointer-events-none absolute inset-0">
-	{#if s.tgt && mode !== 'foot'}
+	{#if s.tgt && mode !== 'foot' && !app.map}
 		<div
 			class="absolute left-[692px] size-10 border-2 border-trail shadow-[0_0_10px_rgba(255,194,26,0.6)]"
 			style:top="{mode === 'srv' ? 194 : 112}px"
 		></div>
 	{/if}
-	{#if (mode === 'ship' && s.nv) || (mode === 'foot' && s.fNv)}
+	{#if !app.map && ((mode === 'ship' && s.nv) || (mode === 'foot' && s.fNv))}
 		<div class="absolute inset-0 bg-course-deep/20"></div>
 	{/if}
 
 	<div aria-hidden="true">
-		{#if mode === 'ship'}
+		<!-- An open map draws its own readouts: the vehicle's step aside while it's open. -->
+		{#if app.map}{:else if mode === 'ship'}
 			<div class="absolute top-4 left-[18px] flex w-[220px] flex-col gap-2">
 				{@render bar('Throttle', ship.thr, 'bg-course', 'bg-course/18', 'h-2')}
 				<div class="flex items-baseline gap-[10px]">
@@ -207,7 +208,7 @@
 			</div>
 		{/if}
 
-		<div class="absolute bottom-4 left-[18px] flex gap-[6px]">
+		<div class={['absolute bottom-4 left-[18px] flex gap-[6px]', { hidden: app.map }]}>
 			{#each chips as chip (chip.name)}
 				<span
 					class="border px-[9px] py-[5px] font-mono text-[11px] font-bold tracking-[.1em] notch op-notch-xs {chip.on
