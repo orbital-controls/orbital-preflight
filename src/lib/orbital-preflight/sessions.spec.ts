@@ -100,7 +100,7 @@ describe('multi-game sessions', () => {
 		expect(a.games.totalChanges).toBe(1 + sc);
 		const rows = a.gameRows;
 		expect(rows.find((r) => r.sim.id === 'elite-dangerous')?.status).toBe('1 unsaved');
-		expect(rows.find((r) => r.sim.id === 'x4')?.status).toBe('Coming later');
+		expect(rows.find((r) => r.sim.id === 'dcs')?.status).toBe('Coming later');
 		expect(leaveSummary(rows)).toMatchObject({
 			total: 1 + sc,
 			exportLabel: 'Export all 2 games, then leave'
@@ -120,7 +120,7 @@ describe('multi-game sessions', () => {
 	it('a game picked but not loaded waits for its file, and the bay drops it', () => {
 		const a = twoGames();
 		a.switchTo('elite-dangerous');
-		a.switchTo('x4');
+		a.switchTo('dcs');
 		expect(a.sim).toBe('elite-dangerous');
 		a.openBay();
 		expect(a.chosen).toBe(false);
@@ -199,7 +199,7 @@ describe('first visit', () => {
 		expect(a.presets.map((p) => p.label)).toEqual(['Stand-in']);
 		// A tile for a game with no preset goes to its file drop.
 		a.openBay();
-		a.pickInBay('x4');
+		a.pickInBay('dcs');
 		expect(a.chosen).toBe(false);
 	});
 });

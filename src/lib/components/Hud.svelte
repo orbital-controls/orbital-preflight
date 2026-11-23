@@ -26,6 +26,9 @@
 		statusChips(s, mode, (e) => app.has(e, mode)).map((c) => ({ ...c, name: app.say(c.name) }))
 	);
 	const hasPips = $derived(['pSys', 'pEng', 'pWep'].some((e) => app.has(e, mode)));
+	// Readouts no bind can move stay off: X4 has no heat to sink and no sidearm on foot.
+	const hasHeat = $derived(['heatsink', 'silent'].some((e) => app.has(e, 'ship')));
+	const hasSidearm = $derived(['primary', 'reload'].some((e) => app.has(e, 'foot')));
 	const modeName = $derived(app.modeName(mode));
 
 	const interact = $derived.by(() => {
@@ -103,15 +106,18 @@
 				</div>
 				{#if hasPips}{@render pipRow()}{/if}
 			</div>
-			<div class="absolute right-[18px] bottom-4 flex w-[170px] flex-col gap-[6px]">
-				<div class="flex justify-between op-hud">
-					<span>Heat</span><span class={ship.hot ? 'text-alert' : 'text-ink-200'}>{ship.heat}%</span
-					>
+			{#if hasHeat}
+				<div class="absolute right-[18px] bottom-4 flex w-[170px] flex-col gap-[6px]">
+					<div class="flex justify-between op-hud">
+						<span>Heat</span><span class={ship.hot ? 'text-alert' : 'text-ink-200'}
+							>{ship.heat}%</span
+						>
+					</div>
+					<div class="h-2 bg-alert/18">
+						<div class="h-full bg-alert" style:width="{ship.heat}%"></div>
+					</div>
 				</div>
-				<div class="h-2 bg-alert/18">
-					<div class="h-full bg-alert" style:width="{ship.heat}%"></div>
-				</div>
-			</div>
+			{/if}
 		{:else if mode === 'srv'}
 			<div class="absolute top-4 left-[18px] flex w-[220px] flex-col gap-2">
 				<div class="flex items-baseline gap-[10px]">
@@ -188,15 +194,17 @@
 					</span>
 				</div>
 			{/if}
-			<div
-				class="absolute right-[18px] bottom-4 flex flex-col items-end px-[14px] py-2 glass notch op-notch-xs"
-			>
-				<span class="op-hud">{foot.weapon}</span>
-				<span class="font-mono text-[30px] leading-[1.05] font-semibold"
-					>{foot.ammo} <span class="text-[16px] text-ink-900">/ {foot.reserve}</span></span
+			{#if hasSidearm}
+				<div
+					class="absolute right-[18px] bottom-4 flex flex-col items-end px-[14px] py-2 glass notch op-notch-xs"
 				>
-				{#if foot.reloading}<span class="pulse op-hud text-trail">Reloading</span>{/if}
-			</div>
+					<span class="op-hud">{foot.weapon}</span>
+					<span class="font-mono text-[30px] leading-[1.05] font-semibold"
+						>{foot.ammo} <span class="text-[16px] text-ink-900">/ {foot.reserve}</span></span
+					>
+					{#if foot.reloading}<span class="pulse op-hud text-trail">Reloading</span>{/if}
+				</div>
+			{/if}
 		{/if}
 
 		{#if s.msgT > 0}
