@@ -119,7 +119,7 @@ const OUTLIER = 'Thule';
 const ECONOMIES = ['Extraction', 'Refinery', 'Agriculture', 'Industrial', 'High tech', 'Tourism'];
 
 /** A small seeded generator (mulberry32), so the pocket is the same on every visit. */
-function rng(seed: number): () => number {
+export function rng(seed: number): () => number {
 	let a = seed >>> 0;
 	return () => {
 		a = (a + 0x6d2b79f5) >>> 0;

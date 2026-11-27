@@ -11,6 +11,7 @@ import {
 	SYSTEMS,
 	systemById
 } from '../../src/lib/orbital-preflight/galaxy.ts';
+import { arriveIn, bodiesOf, layout, toScreen } from '../../src/lib/orbital-preflight/system.ts';
 import { exportAndParse, openElite, openLoad, ready, rebind } from './helpers.ts';
 
 test('a first visit is the bay: the pilot’s Elite preset and Star Citizen’s defaults', async ({
@@ -81,6 +82,43 @@ test('the galaxy map opens, plots a route and the drive jumps along it', async (
 	const second = systemById(plotRoute(HOME, far.id)![1])!.name;
 	await expect(nextJump).toContainText(second, { timeout: 20_000 });
 	await expect(nextJump).not.toContainText('charging');
+});
+
+test('the system map opens, targets a body and supercruise closes on it', async ({ page }) => {
+	await openElite(page);
+	await ready(page);
+	await page.keyboard.press('KeyM');
+	const map = page.getByRole('region', { name: 'System map' });
+	await expect(map).toBeVisible();
+	await expect(map.getByRole('heading', { name: 'Halden', exact: true })).toBeVisible();
+	await page.keyboard.press('KeyW');
+	await expect(map.getByText('Last input · Map forward')).toBeVisible();
+	await page.keyboard.press('Home');
+
+	// Click a planet where Map mode draws it, and target it.
+	const planet = bodiesOf(HOME).find((b) => b.kind === 'planet')!;
+	const p = layout(HOME).find((v) => v.body.id === planet.id)!;
+	const at = toScreen(arriveIn(HOME).flat, p.x, p.y);
+	const box = (await map.locator('canvas').boundingBox())!;
+	await page.mouse.click(box.x + (at.x * box.width) / MAP_W, box.y + (at.y * box.height) / MAP_H);
+	await expect(map.getByRole('heading', { name: planet.name })).toBeVisible();
+	await map.getByRole('button', { name: 'Target' }).click();
+	await expect(map.getByText(`Target · ${planet.name}`)).toBeVisible();
+
+	// Orrery mode shows the same system.
+	await map.getByRole('button', { name: 'Orrery' }).click();
+	await expect(map.getByRole('button', { name: 'Orrery' })).toHaveAttribute('aria-pressed', 'true');
+
+	// Back to the cockpit: the HUD names the destination, and supercruise closes on it.
+	await page.keyboard.press('Backspace');
+	await expect(map).toBeHidden();
+	const destination = page.locator('[data-op-destination]');
+	await expect(destination).toContainText(planet.name);
+	const before = await destination.textContent();
+	await page.keyboard.down('ShiftLeft');
+	await page.keyboard.press('KeyJ');
+	await page.keyboard.up('ShiftLeft');
+	await expect(destination).not.toHaveText(before!, { timeout: 5_000 });
 });
 
 test('rebind one action, export, and parse the export', async ({ page }) => {

@@ -3,6 +3,7 @@
 	import { footHud, pips, shipHud, srvHud, statusChips } from '#lib/orbital-preflight/flight.ts';
 	import { systemById } from '#lib/orbital-preflight/galaxy.ts';
 	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
+	import { bodyIn, NEAR_LS, toTarget } from '#lib/orbital-preflight/system.ts';
 	import { STOPS } from '#lib/orbital-preflight/scene/pad.ts';
 	import { stopPrompts } from '#lib/orbital-preflight/scene/prompts.ts';
 
@@ -33,6 +34,9 @@
 	const modeName = $derived(app.modeName(mode));
 	// The galaxy map's targeted system, for the frame shift drive to jump to.
 	const jumpTo = $derived(systemById(app.galaxy.target));
+	// The system map's target, for supercruise to close on.
+	const heading = $derived(bodyIn(app.systemMap.system, app.systemMap.target));
+	const headingLs = $derived(toTarget(app.systemMap));
 
 	const interact = $derived.by(() => {
 		const action = app.store.actionsIn('foot').find((a) => a.effect === 'interact');
@@ -115,6 +119,14 @@
 					<span class="op-hud" data-op-next-jump
 						>Next jump · <span class="text-trail">{jumpTo.name}</span>{#if app.galaxy.chargeT > 0}
 							<span class="pulse"> · charging</span>{/if}</span
+					>
+				{/if}
+				{#if heading && headingLs !== null}
+					<span class="op-hud" data-op-destination
+						>Destination · <span class="text-trail">{heading.name}</span> · {headingLs < 10
+							? headingLs.toFixed(1)
+							: Math.round(headingLs).toLocaleString('en-GB')} ls{#if headingLs <= NEAR_LS}
+							<span class="pulse"> · drop when ready</span>{/if}</span
 					>
 				{/if}
 			</div>

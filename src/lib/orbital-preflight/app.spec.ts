@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { OrbitalPreflight } from './app.svelte.ts';
 import { resolveConfig } from './config.ts';
 import { CHARGE_TICKS, HOME, plotRoute, SYSTEMS } from './galaxy.ts';
+import { bodiesOf, NEAR_LS, toTarget } from './system.ts';
 
 const config = resolveConfig({ title: 't', description: 'd', siteName: 's', homeUrl: 'h' });
 const demo = readFileSync('tests/fixtures/hotas.binds', 'utf8');
@@ -16,9 +17,10 @@ function loaded() {
 describe('OrbitalPreflight', () => {
 	it('a panel says it would open', () => {
 		const app = loaded();
-		app.onInput({ input: { kind: 'key', code: 'KeyM' }, pressed: true });
-		expect(app.lastActs).toEqual(['SystemMapOpen']);
-		expect(app.flight.msg).toBe('System map would open');
+		app.setMode('foot');
+		app.onInput({ input: { kind: 'key', code: 'KeyB' }, pressed: true });
+		expect(app.lastActs).toEqual(['HumanoidEmoteWheelButton']);
+		expect(app.flight.msg).toBe('Emote wheel would open');
 	});
 
 	it('remembers the modifiers held with the last input, for the toast', () => {
@@ -87,6 +89,69 @@ describe('OrbitalPreflight', () => {
 			const app = loaded();
 			press(app, 'KeyJ');
 			expect(app.flight.msg).toBe('FSD charging · mass locked');
+		});
+	});
+
+	describe('the system map', () => {
+		const key = (code: string) => ({ kind: 'key' as const, code });
+		const press = (app: OrbitalPreflight, code: string) =>
+			app.onInput({ input: key(code), pressed: true });
+		function onMap() {
+			const app = loaded();
+			press(app, 'KeyM');
+			return app;
+		}
+
+		it('opens on M, reads the map binds, and closes', () => {
+			const app = onMap();
+			expect(app.systemMap.open).toBe(true);
+			expect(app.mapOpen).toBe(true);
+			press(app, 'KeyW');
+			expect(app.lastActs).toEqual(['CamTranslateForward']);
+			press(app, 'KeyM');
+			expect(app.systemMap.open).toBe(false);
+		});
+
+		it('moves Map mode up when a forward bind is held, and goes home', () => {
+			const app = onMap();
+			const y = app.systemMap.flat.y;
+			app.hub.press(key('KeyW'));
+			for (let i = 0; i < 5; i++) app.step();
+			app.hub.release(key('KeyW'));
+			expect(app.systemMap.flat.y).toBeLessThan(y);
+			press(app, 'Home');
+			expect(app.systemMap.flat.y).toBe(y);
+		});
+
+		it('switches to the galaxy map and back', () => {
+			const app = onMap();
+			app.hub.press(key('ShiftLeft'));
+			press(app, 'KeyM');
+			app.hub.release(key('ShiftLeft'));
+			expect(app.galaxy.open).toBe(true);
+			expect(app.systemMap.open).toBe(false);
+			press(app, 'KeyM');
+			expect(app.systemMap.open).toBe(true);
+			expect(app.galaxy.open).toBe(false);
+		});
+
+		it('targets a body; supercruise closes on it and dropping out puts the ship there', () => {
+			const app = onMap();
+			const body = bodiesOf(HOME).find((b) => b.kind === 'planet')!;
+			app.selectBody(body.id);
+			press(app, 'Space');
+			expect(app.systemMap.target).toBe(body.id);
+			expect(app.flight.msg).toBe(`${body.name} targeted`);
+			press(app, 'Backspace');
+			app.flight = { ...app.flight, sc: true, thr: 1 };
+			for (let i = 0; i < 400 && toTarget(app.systemMap)! > NEAR_LS; i++) app.step();
+			expect(toTarget(app.systemMap)).toBeLessThanOrEqual(NEAR_LS);
+			app.hub.press(key('ShiftLeft'));
+			press(app, 'KeyJ');
+			app.hub.release(key('ShiftLeft'));
+			expect(app.flight.sc).toBe(false);
+			expect(app.systemMap.at).toBe(body.id);
+			expect(app.flight.msg).toBe(`Dropped at ${body.name}`);
 		});
 	});
 
