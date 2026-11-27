@@ -39,6 +39,22 @@ import {
 	type GalaxyStep,
 	type MapCamera
 } from './galaxy.ts';
+import {
+	arriveIn,
+	clearTarget,
+	dropAt,
+	selectBody,
+	setView,
+	steerSystem,
+	systemHome,
+	systemSelect,
+	targetBody,
+	tickSystem,
+	toggleSystemMap,
+	type SystemMapState,
+	type SystemStep,
+	type SystemView
+} from './system.ts';
 import { InputHub, type BrowserPad, type InputEvent } from './inputs/hub.svelte.ts';
 import { deviceRoles } from './labels.ts';
 import { withLocalActions } from './local-actions.ts';
@@ -148,6 +164,11 @@ export class OrbitalPreflight {
 	 * Part of the mock flight: it starts over when the flight does.
 	 */
 	galaxy = $state.raw<GalaxyState>(initialGalaxy());
+	/**
+	 * The system map: open or not, its view, and the body the ship is heading for in the
+	 * system the galaxy map says it's in. Part of the mock flight, as the galaxy map is.
+	 */
+	systemMap = $state.raw<SystemMapState>(arriveIn(initialGalaxy().location));
 	last = $state.raw<InputId | null>(null);
 	/** Modifier keys held with `last`, so the toast says Shift+M rather than M. */
 	lastMods = $state.raw<InputId[]>([]);
@@ -336,6 +357,7 @@ export class OrbitalPreflight {
 		this.lastActs = [];
 		this.flight = { ...initialFlight(), cam: this.flight.cam };
 		this.galaxy = initialGalaxy();
+		this.systemMap = arriveIn(this.galaxy.location);
 		this.footStop = null;
 		this.footDone = [];
 	}
@@ -462,6 +484,7 @@ export class OrbitalPreflight {
 		this.lastActs = [];
 		this.flight = enterMode(this.flight);
 		this.galaxy = toggleMap(this.galaxy, false);
+		this.systemMap = toggleSystemMap(this.systemMap, false);
 		this.footStop = null;
 		this.ed = { ...this.ed, sel: null, cat: 'All', pend: null };
 	}
@@ -643,7 +666,8 @@ export class OrbitalPreflight {
 
 	/**
 	 * The galaxy map's own binds: its camera, Map home, and menu select and back. They
-	 * sit in the ship's set, and the game reads them on the map from any mode.
+	 * sit in the ship's set, and the game reads them on the map from any mode. The system
+	 * map reads the same ones: the game has none of its own.
 	 */
 	mapActions = $derived(
 		this.store
@@ -651,14 +675,24 @@ export class OrbitalPreflight {
 			.filter((a) => a.context === 'galaxy map' || a.id === 'UI_Select' || a.id === 'UI_Back')
 	);
 
+	/** The galaxy map or the system map is up, over the viewport. */
+	get mapOpen(): boolean {
+		return this.galaxy.open || this.systemMap.open;
+	}
+
 	/**
-	 * What the game reads now: on the galaxy map, the map's binds and the way back out;
-	 * otherwise the current mode's binds, less the map's, which do nothing off the map.
+	 * What the game reads now: on a map, the map's binds and the ways out (to the cockpit
+	 * or the other map); otherwise the current mode's binds, less the map's, which do
+	 * nothing off the map.
 	 */
 	liveActions = $derived.by(() => {
 		const inMode = this.store.actionsIn(this.mode);
-		if (!this.galaxy.open) return inMode.filter((a) => a.context !== 'galaxy map');
-		return [...this.mapActions, ...inMode.filter((a) => a.effect === 'galmap')];
+		if (!this.galaxy.open && !this.systemMap.open)
+			return inMode.filter((a) => a.context !== 'galaxy map');
+		return [
+			...this.mapActions,
+			...inMode.filter((a) => a.effect === 'galmap' || a.effect === 'sysmap')
+		];
 	});
 
 	/** The galaxy map can open: some action in the current mode opens it. */
@@ -671,10 +705,39 @@ export class OrbitalPreflight {
 		return msg ? { ...flight, msg, msgT: 40 } : flight;
 	}
 
+	#systemStep({ s, msg }: SystemStep, flight: FlightState): FlightState {
+		this.systemMap = s;
+		return msg ? { ...flight, msg, msgT: 40 } : flight;
+	}
+
+	/** On the system map, a bound action does the map's job. */
+	#onSystemMap(action: Action, effect: string | undefined, flight: FlightState): FlightState {
+		if (effect === 'sysmap' || action.id === 'UI_Back') {
+			this.systemMap = toggleSystemMap(this.systemMap, false);
+			return flight;
+		}
+		// Galaxy map from the system map goes straight there. UNVERIFIED.
+		if (effect === 'galmap') {
+			this.systemMap = toggleSystemMap(this.systemMap, false);
+			this.galaxy = toggleMap(this.galaxy, true);
+			return flight;
+		}
+		if (action.id === 'UI_Select') return this.#systemStep(systemSelect(this.systemMap), flight);
+		if (action.id === 'GalaxyMapHome') this.systemMap = systemHome(this.systemMap);
+		return flight;
+	}
+
 	/** On the map, a bound action does the map's job. */
 	#onMap(action: Action, effect: string | undefined, flight: FlightState): FlightState {
+		if (this.systemMap.open) return this.#onSystemMap(action, effect, flight);
 		if (effect === 'galmap' || action.id === 'UI_Back') {
 			this.galaxy = toggleMap(this.galaxy, false);
+			return flight;
+		}
+		// And the system map from the galaxy map. UNVERIFIED.
+		if (effect === 'sysmap') {
+			this.galaxy = toggleMap(this.galaxy, false);
+			this.systemMap = toggleSystemMap(this.systemMap, true);
 			return flight;
 		}
 		if (action.id === 'UI_Select') return this.#galaxyStep(mapSelect(this.galaxy), flight);
@@ -682,11 +745,20 @@ export class OrbitalPreflight {
 		return flight;
 	}
 
-	/** In the cockpit, the effects that read the map's route. */
+	/** In the cockpit, the effects that read the maps' route and target. */
 	#withRoute(effect: string, flight: FlightState): FlightState | null {
 		if (effect === 'galmap') {
 			this.galaxy = toggleMap(this.galaxy, true);
 			return flight;
+		}
+		if (effect === 'sysmap') {
+			this.systemMap = toggleSystemMap(this.systemMap, true);
+			return flight;
+		}
+		// Dropping out of supercruise near the system map's target puts the ship there.
+		if (effect === 'sc' && flight.sc) {
+			const drop = dropAt(this.systemMap);
+			if (drop) return this.#systemStep(drop, { ...flight, sc: false });
 		}
 		if (effect === 'route') return this.#galaxyStep(targetNext(this.galaxy), flight);
 		// With a system targeted the drive jumps to it; otherwise the board's message.
@@ -717,6 +789,32 @@ export class OrbitalPreflight {
 		this.galaxy = { ...this.galaxy, cam };
 	}
 
+	// The system map's panel and mouse.
+
+	closeSystemMap() {
+		this.systemMap = toggleSystemMap(this.systemMap, false);
+	}
+
+	selectBody(id: string) {
+		this.systemMap = selectBody(this.systemMap, id);
+	}
+
+	targetBody() {
+		this.flight = this.#systemStep(targetBody(this.systemMap), this.flight);
+	}
+
+	clearTarget() {
+		this.systemMap = clearTarget(this.systemMap);
+	}
+
+	setSystemView(view: SystemView) {
+		this.systemMap = setView(this.systemMap, view);
+	}
+
+	moveSystemMap(s: SystemMapState) {
+		this.systemMap = s;
+	}
+
 	onInput({ input, pressed }: InputEvent) {
 		if (!pressed || !this.loaded || this.blocked) return;
 		if (this.editor) {
@@ -731,7 +829,7 @@ export class OrbitalPreflight {
 		// of its own only shows in the last-input toast: nothing would open for Thrust left.
 		// A game with no hardpoints to deploy (X4) fires whenever its guns are bound.
 		const stowable = this.has('hp');
-		const onMap = this.galaxy.open;
+		const onMap = this.mapOpen;
 		for (const { action, effect } of hits) {
 			if (onMap) flight = this.#onMap(action, effect, flight);
 			else if (effect)
@@ -762,7 +860,7 @@ export class OrbitalPreflight {
 	 * the pilot) freezes, as the mock flight does.
 	 */
 	analog = $derived.by((): Analog => {
-		const idle = this.cap !== null || this.blocked || this.galaxy.open;
+		const idle = this.cap !== null || this.blocked || this.mapOpen;
 		return analogAxes(
 			this.store.actionsIn(this.mode),
 			this.store.bindings,
@@ -776,8 +874,7 @@ export class OrbitalPreflight {
 	 * says what is still down. Empty while listening for a rebind or with a drawer open.
 	 */
 	held = $derived.by((): ReadonlySet<string> => {
-		if (this.cap !== null || this.blocked || this.galaxy.open || this.mode !== 'foot')
-			return NO_HELD;
+		if (this.cap !== null || this.blocked || this.mapOpen || this.mode !== 'foot') return NO_HELD;
 		return heldEffects(this.store.actionsIn(this.mode), this.store.bindings, (input) =>
 			this.hub.held.has(inputKey(input))
 		);
@@ -808,16 +905,30 @@ export class OrbitalPreflight {
 	step() {
 		if (!this.loaded || this.editor) return;
 		let flight = tick(this.flight, this.mode);
+		const was = this.galaxy.location;
 		flight = this.#galaxyStep(tickGalaxy(this.galaxy), flight);
-		if (this.galaxy.open && this.cap === null && !this.blocked) {
+		// A jump lands in another system: the system map shows it, from its star.
+		if (this.galaxy.location !== was)
+			this.systemMap = arriveIn(this.galaxy.location, this.systemMap);
+		else if (this.mode === 'ship')
+			flight = this.#systemStep(
+				tickSystem(this.systemMap, flight.sc, flight.thr, TICK_MS / 1000),
+				flight
+			);
+		if (this.mapOpen && this.cap === null && !this.blocked) {
 			const drive = mapDrive(
 				this.mapActions.filter((a) => isMapCamera(a.id)),
 				this.store.bindings,
 				(input) => this.hub.held.has(inputKey(input)),
 				this.hub.axes
 			);
-			const cam = steer(this.galaxy.cam, drive, TICK_MS / 1000);
-			if (cam !== this.galaxy.cam) this.moveMap(cam);
+			if (this.galaxy.open) {
+				const cam = steer(this.galaxy.cam, drive, TICK_MS / 1000);
+				if (cam !== this.galaxy.cam) this.moveMap(cam);
+			} else {
+				const s = steerSystem(this.systemMap, drive, TICK_MS / 1000);
+				if (s !== this.systemMap) this.systemMap = s;
+			}
 		}
 		this.flight = flight;
 	}
