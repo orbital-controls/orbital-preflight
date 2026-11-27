@@ -2,22 +2,99 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { OrbitalPreflight } from './app.svelte.ts';
 import { resolveConfig } from './config.ts';
+import { CHARGE_TICKS, HOME, plotRoute, SYSTEMS } from './galaxy.ts';
 
 const config = resolveConfig({ title: 't', description: 'd', siteName: 's', homeUrl: 'h' });
 const demo = readFileSync('tests/fixtures/hotas.binds', 'utf8');
 
 function loaded() {
-	const app = new OrbitalPreflight(config, '', {});
+	const app = new OrbitalPreflight(config, {});
 	app.loadText(demo, { kind: 'upload', fileName: 'hotas.binds' });
 	return app;
 }
 
 describe('OrbitalPreflight', () => {
-	it('an action with no effect of its own says it would open, as on the board', () => {
+	it('a panel says it would open', () => {
+		const app = loaded();
+		app.onInput({ input: { kind: 'key', code: 'KeyM' }, pressed: true });
+		expect(app.lastActs).toEqual(['SystemMapOpen']);
+		expect(app.flight.msg).toBe('System map would open');
+	});
+
+	it('remembers the modifiers held with the last input, for the toast', () => {
+		const app = loaded();
+		const key = (code: string) => ({ kind: 'key' as const, code });
+		app.hub.press(key('ShiftLeft'));
+		app.onInput({ input: key('KeyM'), pressed: true });
+		expect(app.lastActs).toEqual(['GalaxyMapOpen']);
+		expect(app.lastMods).toEqual([key('ShiftLeft')]);
+		app.hub.release(key('ShiftLeft'));
+		app.onInput({ input: key('KeyM'), pressed: true });
+		expect(app.lastMods).toEqual([]);
+	});
+
+	describe('the galaxy map', () => {
+		const key = (code: string) => ({ kind: 'key' as const, code });
+		function onMap() {
+			const app = loaded();
+			app.hub.press(key('ShiftLeft'));
+			app.onInput({ input: key('KeyM'), pressed: true });
+			app.hub.release(key('ShiftLeft'));
+			return app;
+		}
+		const press = (app: OrbitalPreflight, code: string) =>
+			app.onInput({ input: key(code), pressed: true });
+
+		it('opens, and only its own binds fire while it is open', () => {
+			const app = onMap();
+			expect(app.galaxy.open).toBe(true);
+			press(app, 'KeyW');
+			// W pitches the ship and steps menus too, but on the map it only moves the map.
+			expect(app.lastActs).toEqual(['CamTranslateForward']);
+			press(app, 'Backspace');
+			expect(app.galaxy.open).toBe(false);
+			press(app, 'KeyW');
+			expect(app.lastActs).not.toContain('CamTranslateForward');
+		});
+
+		it('moves while a map bind is held, and goes home', () => {
+			const app = onMap();
+			app.hub.press(key('KeyW'));
+			for (let i = 0; i < 10; i++) app.step();
+			app.hub.release(key('KeyW'));
+			expect(app.galaxy.cam.focus).not.toEqual([0, 0, 0]);
+			press(app, 'Home');
+			expect(app.galaxy.cam.focus).toEqual([0, 0, 0]);
+		});
+
+		it('plots a route, and the drive follows it', () => {
+			const app = onMap();
+			const far = SYSTEMS.find((s) => (plotRoute(HOME, s.id)?.length ?? 0) >= 2)!;
+			app.selectSystem(far.id);
+			press(app, 'Space');
+			expect(app.galaxy.route.at(-1)).toBe(far.id);
+			expect(app.flight.msg).toMatch(/^Route plotted/);
+			const first = app.galaxy.route[0];
+			press(app, 'Backspace');
+			press(app, 'KeyJ');
+			expect(app.flight.msg).toMatch(/^Charging FSD · jumping to/);
+			for (let i = 0; i < CHARGE_TICKS; i++) app.step();
+			expect(app.galaxy.location).toBe(first);
+			expect(app.galaxy.target).toBe(app.galaxy.route[0]);
+		});
+
+		it('has no route to jump along until one is plotted', () => {
+			const app = loaded();
+			press(app, 'KeyJ');
+			expect(app.flight.msg).toBe('FSD charging · mass locked');
+		});
+	});
+
+	it('an action with no effect of its own only shows in the toast', () => {
 		const app = loaded();
 		app.onInput({ input: { kind: 'key', code: 'KeyY' }, pressed: true });
 		expect(app.lastActs).toEqual(['CycleNextSubsystem']);
-		expect(app.flight.msg).toBe('Next subsystem would open');
+		expect(app.flight.msgT).toBe(0);
 	});
 
 	it('refuses an input the export could not write, and says why', () => {

@@ -4,6 +4,7 @@
  * - root:  the shipped config at a domain root
  * - base:  the same under /orbital-preflight, as a GitHub Pages project site serves it
  * - theme: tests/fixtures/theme.config.ts, a theme override with no presets
+ * - multi: tests/fixtures/multi.config.ts, presets for Elite Dangerous and Star Citizen
  * - analytics: the shipped config with both providers on, as the Pages workflow would set them
  */
 import { execFileSync } from 'node:child_process';
@@ -16,8 +17,13 @@ export const VARIANTS = {
 		base: '',
 		env: { ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/theme.config.ts' }
 	},
-	analytics: {
+	multi: {
 		port: 4176,
+		base: '',
+		env: { ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/multi.config.ts' }
+	},
+	analytics: {
+		port: 4177,
 		base: '',
 		env: {
 			GA_MEASUREMENT_ID: 'G-TEST000000',

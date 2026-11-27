@@ -5,9 +5,11 @@
 	import { simById } from '#lib/orbital-preflight/sims/index.ts';
 	import FilePicker from './FilePicker.svelte';
 	import PoweredBy from './PoweredBy.svelte';
-	import SimPicker from './SimPicker.svelte';
 
-	/** Game & binds (StandFly · Load drawer), plus the pilot's presets. */
+	/**
+	 * Load binds (Main · Load drawer): a new file for the current game only, plus the
+	 * pilot's presets for it. Other games are switched to from the manifest, not here.
+	 */
 	interface Props {
 		onclose: () => void;
 	}
@@ -24,7 +26,7 @@
 <div class="flex flex-col gap-[18px] px-7 py-6">
 	<div class="flex items-center justify-between">
 		<h2 id="load-title" class="font-display text-[40px] leading-[0.9] font-black uppercase">
-			Game & binds
+			Load binds
 		</h2>
 		<button
 			type="button"
@@ -41,9 +43,9 @@
 	{#if changes > 0}
 		<div class="flex flex-col gap-2 border border-alert bg-alert/8 px-[14px] py-3 notch">
 			<span class="text-[15px] text-ink-100"
-				>Loading a new file replaces your binds, including <b
-					>{changes} unsaved {changes === 1 ? 'change' : 'changes'}</b
-				>.</span
+				>Loading a new file replaces your {sim.name} binds, including
+				<b>{changes} unsaved {changes === 1 ? 'change' : 'changes'}</b>. Your other games are not
+				touched.</span
 			>
 			<button
 				type="button"
@@ -54,11 +56,17 @@
 		</div>
 	{/if}
 
-	{#if app.config.presets.length}
+	<p class="text-[15px] text-ink-500">
+		A new file for <b class="text-ink-200">{sim.name}</b>. To bind another game, use Switch game in
+		the bar.
+	</p>
+
+	{#if app.presets.length}
 		<section aria-labelledby="presets-title" class="flex flex-col gap-2">
 			<h3 id="presets-title" class="op-lbl">Pilot's binds</h3>
 			<ul class="flex flex-col gap-[6px]">
-				{#each app.config.presets as preset, i (preset.file)}
+				{#each app.presets as preset (preset.index)}
+					{@const i = preset.index}
 					{@const loaded = current?.kind === 'preset' && current.index === i}
 					<li
 						class="flex items-center gap-3 border px-3 py-2 notch op-notch-xs {loaded
@@ -91,25 +99,13 @@
 		</section>
 	{/if}
 
-	<section aria-labelledby="sim-title" class="flex flex-col gap-2">
-		<h3 id="sim-title" class="op-lbl">Sim</h3>
-		<SimPicker name="drawer-sim" layout="grid" />
-	</section>
-
 	<div
 		class="flex flex-col items-center gap-[10px] border-2 border-dashed border-course/55 bg-course-deep/6 px-5 py-[26px] text-center notch-card"
 	>
-		{#if sim.status === 'ready'}
-			<span class="font-display text-[26px] leading-none font-extrabold uppercase"
-				>Drop your {sim.extensions[0]} file</span
-			>
-			<FilePicker id="drawer-file" />
-		{:else}
-			<span class="font-display text-[26px] leading-none font-extrabold uppercase"
-				>{sim.name} {sim.status === 'soon' ? 'is coming soon' : 'comes later'}</span
-			>
-			<span class="text-[15px] text-ink-500">Elite Dangerous binds work today.</span>
-		{/if}
+		<span class="font-display text-[26px] leading-none font-extrabold uppercase"
+			>Drop your {sim.extensions[0]} file</span
+		>
+		<FilePicker id="drawer-file" />
 		{#if app.loadError}<p role="alert" class="font-mono text-[13px] text-alert">
 				{app.loadError}
 			</p>{/if}
@@ -130,18 +126,8 @@
 		<p class="text-[14px] text-ink-900">{sim.help.tip}</p>
 	</section>
 
-	<label class="flex min-h-11 cursor-pointer items-center gap-3 font-mono text-[14px] text-ink-500">
-		<input
-			type="checkbox"
-			checked={app.remember}
-			onchange={(e) => app.setRemember(e.currentTarget.checked)}
-			class="size-5 accent-course"
-		/>Remember this layout on this browser
-	</label>
-	<p class="-mt-3 font-mono text-[12px] text-ink-900">
-		{app.remember
-			? 'Saved in this browser only. Untick to forget it.'
-			: 'Read in this tab. Nothing is uploaded and there’s no account.'}
+	<p class="font-mono text-[12px] text-ink-900">
+		Read in this tab. Nothing is uploaded and there’s no account.
 	</p>
 	<PoweredBy />
 </div>

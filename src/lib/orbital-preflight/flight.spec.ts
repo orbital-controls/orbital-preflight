@@ -46,6 +46,20 @@ describe('mock flight', () => {
 		expect(run(s, 'heatsink').heat).toBe(0);
 	});
 
+	it('a tick at rest hands back the same state, so nothing downstream recomputes', () => {
+		const rest = { ...initialFlight(), thr: 0, heat: 0, sThr: 0 };
+		for (const mode of ['ship', 'srv', 'foot'] as const) expect(tick(rest, mode)).toBe(rest);
+		// Coasting to a stop gets there, rather than creeping on for minutes.
+		let coast: FlightState = { ...rest, vy: -20 };
+		for (let i = 0; i < 100; i++) coast = tick(coast, 'ship');
+		expect(Math.abs(coast.vy)).toBe(0);
+		expect(tick(coast, 'ship')).toBe(coast);
+		const moving = { ...initialFlight(), thr: 0.6 };
+		expect(tick(moving, 'ship')).not.toBe(moving);
+		const firing = run(initialFlight(), 'hp', 'fire');
+		expect(tick(firing, 'ship').fireT).toBe(firing.fireT - 1);
+	});
+
 	it('timers count down each tick, and mode switches clear shared effects', () => {
 		let s = run(initialFlight(), 'hp', 'fire', 'tgt');
 		s = tick(s, 'ship');
@@ -60,10 +74,22 @@ describe('mock flight', () => {
 
 	it('on foot: fire spends ammo, reload refills after its timer', () => {
 		let s = run(initialFlight(), 'primary', 'reload');
-		expect(s.ammo).toBe(23);
+		expect(s.ammo).toBe(5);
 		while (s.reloadT > 0) s = tick(s, 'foot');
-		expect(s).toMatchObject({ ammo: 30, reserve: 113 });
-		expect(run(s, 'holster', 'primary')).toMatchObject({ ammo: 30, msg: 'Weapon holstered' });
+		expect(s).toMatchObject({ ammo: 6, reserve: 119 });
+		expect(run(s, 'holster', 'primary')).toMatchObject({ ammo: 6, msg: 'Weapon holstered' });
+	});
+
+	it('on foot: the Tracer empties after six and says so', () => {
+		let s = initialFlight();
+		for (let i = 0; i < 6; i++) s = run(s, 'primary');
+		expect(s.ammo).toBe(0);
+		expect(run(s, 'primary')).toMatchObject({ ammo: 0, msg: 'Empty · reload' });
+	});
+
+	it('on foot: every walk direction is the board walk', () => {
+		for (const e of ['walkF', 'walkB', 'walkL', 'walkR'])
+			expect(run(initialFlight(), e).walkT).toBe(8);
 	});
 
 	it('panels say they would open; unknown effects change nothing', () => {

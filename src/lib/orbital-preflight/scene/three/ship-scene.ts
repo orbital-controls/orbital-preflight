@@ -41,12 +41,16 @@ export interface FrameInput {
 	orbit?: number;
 	/** Listening for a rebind: the SRV holds still (the ship keeps the mock flight's pace). */
 	frozen?: boolean;
+	/** On foot: effects whose binds are held down now (walk directions, sprint). */
+	held?: ReadonlySet<string>;
+	/** On foot: mouse look since the last frame, in pixels (pointer lock only). */
+	look?: { dx: number; dy: number };
 }
 
 /**
  * One mode's 3D world. The engine owns the renderer and the loop; a mode scene owns its
  * objects and camera. The engine builds one when its mode comes up and disposes it when
- * the mode changes. An on-foot scene plugs in the same way.
+ * the mode changes. The on-foot scene plugs in the same way.
  */
 export interface ModeScene {
 	readonly scene: Scene;
@@ -56,6 +60,13 @@ export interface ModeScene {
 	targets(): PartTargets | null;
 	/** The model the part contract covers. */
 	readonly root: Object3D;
+	/**
+	 * A layer drawn over the world after clearing depth, with its own camera (the on-foot
+	 * viewmodel), so it never clips into walls. Skipped while its scene is hidden.
+	 */
+	readonly overlay?: { scene: Scene; camera: PerspectiveCamera };
+	/** Numbers for the e2e tests and the PR (on foot: hits, lit segments, stop). */
+	info?(): Record<string, string | number>;
 	dispose(): void;
 }
 

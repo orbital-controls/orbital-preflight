@@ -15,7 +15,7 @@ import { MODES } from './types.ts';
 export type FileOrigin =
 	| { kind: 'preset'; index: number; label: string }
 	| { kind: 'upload'; fileName: string }
-	| { kind: 'remembered'; label: string };
+	| { kind: 'defaults'; label: string };
 
 export interface LoadedFile {
 	parsed: ParsedBinds;
@@ -28,8 +28,6 @@ export interface LoadedFile {
  */
 export class BindStore {
 	file = $state.raw<LoadedFile | null>(null);
-	/** Called after every edit (settle, undo, reset…), e.g. to save a remembered layout. */
-	onchange: (() => void) | null = null;
 	bindings = $state.raw<BindingMap>({});
 	#history = $state.raw<Record<string, Binding[]>>({});
 
@@ -51,17 +49,9 @@ export class BindStore {
 	/** Changed actions across every mode: the unsaved count in the top bar. */
 	changes = $derived(MODES.reduce((sum, m) => sum + this.counts[m].changed, 0));
 
-	load(parsed: ParsedBinds, origin: FileOrigin, edited?: BindingMap) {
+	load(parsed: ParsedBinds, origin: FileOrigin) {
 		this.file = { parsed, origin };
-		this.bindings = edited
-			? { ...parsed.bindings, ...pick(edited, parsed.bindings) }
-			: parsed.bindings;
-		this.#history = {};
-	}
-
-	unload() {
-		this.file = null;
-		this.bindings = {};
+		this.bindings = parsed.bindings;
 		this.#history = {};
 	}
 
@@ -86,11 +76,6 @@ export class BindStore {
 		}
 		this.#history = history;
 		this.bindings = next;
-		this.onchange?.();
-	}
-
-	canUndo(actionId: string): boolean {
-		return Boolean(this.#history[actionId]?.length) || this.isChanged(actionId);
 	}
 
 	/** One step back for this action; with no history left, back to the file. */
@@ -100,7 +85,6 @@ export class BindStore {
 		if (!previous) return;
 		this.#history = { ...this.#history, [actionId]: stack.slice(0, -1) };
 		this.bindings = { ...this.bindings, [actionId]: previous };
-		this.onchange?.();
 	}
 
 	/** Replaces one action's binds outright (the editor's swap and clear). */
@@ -121,10 +105,6 @@ export class BindStore {
 		this.#commit(next);
 	}
 
-	resetAll() {
-		this.#commit({ ...this.original });
-	}
-
 	/** Changed actions in `mode`, for the per-mode badges. */
 	changedIn(mode: Mode): number {
 		return this.counts[mode].changed;
@@ -139,18 +119,6 @@ export class BindStore {
 		const text = sim.write(file.parsed, this.bindings, presetName);
 		return { fileName: exportFileName(file.parsed, presetName), text };
 	}
-
-	/** Only the edited actions, for "Remember this layout". */
-	edits(): BindingMap {
-		const out: BindingMap = {};
-		for (const id of Object.keys(this.bindings))
-			if (this.isChanged(id)) out[id] = this.bindings[id];
-		return out;
-	}
-}
-
-function pick(edited: BindingMap, known: BindingMap): BindingMap {
-	return Object.fromEntries(Object.entries(edited).filter(([id]) => id in known));
 }
 
 export function exportFileName(parsed: ParsedBinds, presetName: string): string {

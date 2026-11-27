@@ -1,20 +1,38 @@
 <script lang="ts">
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { footHud, pips, shipHud, srvHud, statusChips } from '#lib/orbital-preflight/flight.ts';
-	import { bindLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
+	import { systemById } from '#lib/orbital-preflight/galaxy.ts';
+	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
+	import { STOPS } from '#lib/orbital-preflight/scene/pad.ts';
+	import { stopPrompts } from '#lib/orbital-preflight/scene/prompts.ts';
 
 	/**
 	 * The HUD, as DOM over the scene. It reads the mock flight and the binds, never the
-	 * scene, so swapping in the 3D view leaves it as it is.
+	 * scene, so swapping in the 3D view leaves it as it is. On foot, the 3D scene reports
+	 * the stop zone the pilot is in; the stop's prompts show here with the current binds.
 	 */
+	interface Props {
+		/** The 3D scene is up for this mode (on foot: Pad 7, with stop prompts). */
+		live3d?: boolean;
+	}
+
+	let { live3d = false }: Props = $props();
 	const app = useOrbitalPreflight();
 	const s = $derived(app.flight);
 	const mode = $derived(app.mode);
 	const ship = $derived(shipHud(s));
 	const srv = $derived(srvHud(s));
 	const foot = $derived(footHud(s));
-	const chips = $derived(statusChips(s, mode));
-	const modeName = $derived({ ship: 'Ship', srv: 'SRV', foot: 'On foot' }[mode]);
+	const chips = $derived(
+		statusChips(s, mode, (e) => app.has(e, mode)).map((c) => ({ ...c, name: app.say(c.name) }))
+	);
+	const hasPips = $derived(['pSys', 'pEng', 'pWep'].some((e) => app.has(e, mode)));
+	// Readouts no bind can move stay off: X4 has no heat to sink and no sidearm on foot.
+	const hasHeat = $derived(['heatsink', 'silent'].some((e) => app.has(e, 'ship')));
+	const hasSidearm = $derived(['primary', 'reload'].some((e) => app.has(e, 'foot')));
+	const modeName = $derived(app.modeName(mode));
+	// The galaxy map's targeted system, for the frame shift drive to jump to.
+	const jumpTo = $derived(systemById(app.galaxy.target));
 
 	const interact = $derived.by(() => {
 		const action = app.store.actionsIn('foot').find((a) => a.effect === 'interact');
@@ -22,10 +40,30 @@
 		return slot ? bindLabel(slot, app.roles) : null;
 	});
 
+	const stop = $derived(
+		live3d && mode === 'foot' && app.footStop
+			? (STOPS.find((st) => st.n === app.footStop) ?? null)
+			: null
+	);
+	const prompts = $derived(
+		stop
+			? stopPrompts(stop, app.store.actionsIn('foot'), app.store.bindings, (b) =>
+					bindLabel(b, app.roles)
+				)
+			: []
+	);
+
 	const toast = $derived.by(() => {
 		if (!app.last) return { head: 'Waiting on you', lines: [] as string[], clash: false };
 		const names = app.lastActs.map((id) => app.actionById(id)?.name ?? id);
-		return { head: inputLabel(app.last, app.roles, true), lines: names, clash: names.length > 1 };
+		// Several actions on one input is a clash unless the sim overloads it on purpose
+		// (Star Citizen's Right mouse aims, throws and fires a tool): the store knows which.
+		const clash = names.length > 1 && app.lastActs.some((id) => app.store.clashes[mode].has(id));
+		return {
+			head: bindLabel({ input: app.last, modifiers: app.lastMods }, app.roles, true),
+			lines: names,
+			clash
+		};
 	});
 
 	const capAction = $derived(app.cap ? app.actionById(app.cap.target.actionId) : null);
@@ -42,7 +80,7 @@
 	<div class="flex gap-3">
 		{#each pips(s) as p (p.name)}
 			<div class="flex flex-col gap-[3px]">
-				<span class="op-hud">{p.name}</span>
+				<span class="op-hud">{app.say(p.name)}</span>
 				<div class="flex gap-[2px]">
 					{#each [0, 1, 2, 3] as c (c)}
 						<span class="h-2 w-[10px] {c < p.value ? 'bg-course' : 'bg-course/18'}"></span>
@@ -70,46 +108,94 @@
 				{@render bar('Throttle', ship.thr, 'bg-course', 'bg-course/18', 'h-2')}
 				<div class="flex items-baseline gap-[10px]">
 					<span class="font-mono text-[30px] leading-none font-semibold">{ship.spd}</span>
-					<span class="op-hud">m/s</span><span class="op-hud text-trail">{ship.mode}</span>
+					<span class="op-hud">m/s</span><span class="op-hud text-trail">{app.say(ship.mode)}</span>
 				</div>
-				{@render pipRow()}
-			</div>
-			<div class="absolute right-[18px] bottom-4 flex w-[170px] flex-col gap-[6px]">
-				<div class="flex justify-between op-hud">
-					<span>Heat</span><span class={ship.hot ? 'text-alert' : 'text-ink-200'}>{ship.heat}%</span
+				{#if hasPips}{@render pipRow()}{/if}
+				{#if jumpTo}
+					<span class="op-hud" data-op-next-jump
+						>Next jump · <span class="text-trail">{jumpTo.name}</span>{#if app.galaxy.chargeT > 0}
+							<span class="pulse"> · charging</span>{/if}</span
 					>
-				</div>
-				<div class="h-2 bg-alert/18">
-					<div class="h-full bg-alert" style:width="{ship.heat}%"></div>
-				</div>
+				{/if}
 			</div>
+			{#if hasHeat}
+				<div class="absolute right-[18px] bottom-4 flex w-[170px] flex-col gap-[6px]">
+					<div class="flex justify-between op-hud">
+						<span>Heat</span><span class={ship.hot ? 'text-alert' : 'text-ink-200'}
+							>{ship.heat}%</span
+						>
+					</div>
+					<div class="h-2 bg-alert/18">
+						<div class="h-full bg-alert" style:width="{ship.heat}%"></div>
+					</div>
+				</div>
+			{/if}
 		{:else if mode === 'srv'}
 			<div class="absolute top-4 left-[18px] flex w-[220px] flex-col gap-2">
 				<div class="flex items-baseline gap-[10px]">
 					<span class="font-mono text-[30px] leading-none font-semibold">{srv.spd}</span>
 					<span class="op-hud">m/s</span><span class="op-hud text-trail">{srv.dir}</span>
 				</div>
-				<span class="op-hud {srv.assistOff ? 'text-trail' : ''}">{srv.assist}</span>
+				{#if app.has('da', 'srv')}
+					<span class="op-hud {srv.assistOff ? 'text-trail' : ''}">{srv.assist}</span>
+				{/if}
 				{@render bar('Hull', srv.hull, 'bg-course', 'bg-course/18')}
 				{@render bar('Fuel', srv.fuel, 'bg-trail', 'bg-trail/18')}
-				{@render pipRow()}
+				{#if hasPips}{@render pipRow()}{/if}
 			</div>
-			<div
-				class="absolute right-[18px] bottom-4 flex flex-col gap-[2px] px-3 py-2 glass notch op-notch-xs"
-			>
-				<span class="op-hud">Your ship</span>
-				<span
-					class="font-mono text-[15px] font-bold {srv.shipCalled ? 'text-trail' : 'text-ink-500'}"
-					>{srv.ship}</span
+			{#if app.has('recall', 'srv')}
+				<div
+					class="absolute right-[18px] bottom-4 flex flex-col gap-[2px] px-3 py-2 glass notch op-notch-xs"
 				>
-			</div>
+					<span class="op-hud">Your ship</span>
+					<span
+						class="font-mono text-[15px] font-bold {srv.shipCalled ? 'text-trail' : 'text-ink-500'}"
+						>{srv.ship}</span
+					>
+				</div>
+			{/if}
 		{:else}
 			<div class="absolute top-4 left-[18px] flex w-[200px] flex-col gap-[6px]">
 				{@render bar('Health', foot.health, 'bg-alert', 'bg-alert/20')}
 				{@render bar('Shield', foot.shield, 'bg-course', 'bg-course/18')}
 				{@render bar('Suit battery', foot.battery, 'bg-trail', 'bg-trail/18')}
+				{#if live3d}
+					<span class="op-hud" data-op-stops-done={app.footDone.length}
+						>Pad 7 · {app.footDone.length} of {STOPS.length} stops</span
+					>
+				{/if}
 			</div>
-			{#if interact}
+			{#if live3d}
+				{#if stop}
+					<div
+						class="absolute top-[318px] right-0 left-0 flex justify-center"
+						data-op-stop-prompt={stop.n}
+					>
+						<div class="flex flex-col items-center gap-[6px] bg-abyss/70 px-4 py-[8px]">
+							<span class="op-hud text-trail">Stop {stop.n} · {stop.name}</span>
+							{#each prompts as row (row.label)}
+								<span class="flex items-center gap-[10px] font-mono text-[14px]">
+									{#if row.bound}
+										{#if row.hold}<span class="text-ink-900">Hold</span>{/if}
+										{#each row.keys as key (key)}
+											<span
+												class="bg-ink-200 px-[9px] py-[3px] font-bold text-void notch op-notch-xs"
+												>{key}</span
+											>
+										{/each}
+									{:else}
+										<span
+											class="border border-ink-900/50 px-[9px] py-[2px] text-[12px] text-ink-900 notch op-notch-xs"
+											>Not bound</span
+										>
+									{/if}
+									{row.label}
+								</span>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			{:else if interact}
 				<div class="absolute top-[330px] right-0 left-0 flex justify-center">
 					<span
 						class="flex items-center gap-[10px] bg-abyss/70 px-3 py-[6px] font-mono text-[14px]"
@@ -120,22 +206,24 @@
 					</span>
 				</div>
 			{/if}
-			<div
-				class="absolute right-[18px] bottom-4 flex flex-col items-end px-[14px] py-2 glass notch op-notch-xs"
-			>
-				<span class="op-hud">{foot.weapon}</span>
-				<span class="font-mono text-[30px] leading-[1.05] font-semibold"
-					>{foot.ammo} <span class="text-[16px] text-ink-900">/ {foot.reserve}</span></span
+			{#if hasSidearm}
+				<div
+					class="absolute right-[18px] bottom-4 flex flex-col items-end px-[14px] py-2 glass notch op-notch-xs"
 				>
-				{#if foot.reloading}<span class="pulse op-hud text-trail">Reloading</span>{/if}
-			</div>
+					<span class="op-hud">{foot.weapon}</span>
+					<span class="font-mono text-[30px] leading-[1.05] font-semibold"
+						>{foot.ammo} <span class="text-[16px] text-ink-900">/ {foot.reserve}</span></span
+					>
+					{#if foot.reloading}<span class="pulse op-hud text-trail">Reloading</span>{/if}
+				</div>
+			{/if}
 		{/if}
 
 		{#if s.msgT > 0}
 			<div class="absolute top-[210px] right-0 left-0 flex justify-center">
 				<span
 					class="border-y border-trail bg-void/70 px-[22px] py-[10px] font-mono text-[18px] font-semibold tracking-[.14em] text-trail uppercase"
-					>{s.msg}</span
+					>{app.say(s.msg)}</span
 				>
 			</div>
 		{/if}

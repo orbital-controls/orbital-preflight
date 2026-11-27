@@ -38,18 +38,4 @@ describe('BindStore', () => {
 		expect(back.bindings.SetSpeed50[0]).toEqual({ input: P });
 		expect(store.file?.parsed.source).toBe(source);
 	});
-
-	it('restores remembered edits for actions the file still has', () => {
-		const store = new BindStore();
-		store.load(
-			parsed(),
-			{ kind: 'remembered', label: 'Demo' },
-			{
-				SetSpeed50: [{ input: P }, null],
-				NotInFile: [{ input: P }, null]
-			}
-		);
-		expect(store.changes).toBe(1);
-		expect(store.bindings.NotInFile).toBeUndefined();
-	});
 });

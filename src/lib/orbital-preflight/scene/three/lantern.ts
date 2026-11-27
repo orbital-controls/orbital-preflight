@@ -97,9 +97,6 @@ function layerRing(layer: (typeof LAYERS)[number], grow = 0): Vector3[] {
 	});
 }
 
-/** The hull's top surface height at model (x, y), for seating parts on the nose chamfer. */
-export const NOSE_DECK = { x: 20.26, z: ROOF - 1.4 };
-
 interface Built {
 	root: Group;
 	materials: ShipMaterials;

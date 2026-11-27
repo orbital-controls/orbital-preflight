@@ -29,7 +29,7 @@ describe('analogAxes', () => {
 		const a = analogAxes(actions, bindings, axes);
 		expect(a.pitch).toBe(-1);
 		expect(a.roll).toBe(0);
-		expect(a.has).toEqual({ pitch: true, roll: true, yaw: false, steer: false, drive: false });
+		expect(a.has).toEqual({ ...NO_ANALOG.has, pitch: true, roll: true });
 	});
 
 	it('reads the SRV steering axis centred and the drive axis as a forward lever', () => {
@@ -74,5 +74,48 @@ describe('analogAxes', () => {
 	it('reports nothing for an axis the browser has not seen, or while frozen', () => {
 		expect(analogAxes(actions, bindings, new Map()).has.pitch).toBe(false);
 		expect(analogAxes(actions, bindings, null)).toBe(NO_ANALOG);
+	});
+});
+
+describe('on-foot axes', () => {
+	it('read move and look axes when bound', () => {
+		const actions: Action[] = [
+			{ id: 'Fwd', name: 'Move', category: 'Moving', mode: 'foot', axis: true, analog: 'moveY' },
+			{ id: 'Look', name: 'Look', category: 'Moving', mode: 'foot', axis: true, analog: 'lookX' }
+		];
+		const bindings: BindingMap = {
+			Fwd: [{ input: { kind: 'axis', deviceId: 'pad', axis: 'Y' } }, null],
+			Look: [{ input: { kind: 'axis', deviceId: 'pad', axis: 'RX' } }, null]
+		};
+		const a = analogAxes(
+			actions,
+			bindings,
+			new Map([
+				['pad:Y', -1],
+				['pad:RX', 0.5]
+			])
+		);
+		expect(a.moveY).toBe(-1);
+		expect(a.lookX).toBeGreaterThan(0.4);
+		expect(a.has.moveY && a.has.lookX).toBe(true);
+		expect(a.has.moveX).toBe(false);
+	});
+});
+
+describe('gamepad sticks', () => {
+	it('drive the scene like a stick axis; a half does not', () => {
+		const axes = new Map([['046D0000:LStickY', 0.8]]);
+		const pad: BindingMap = {
+			PitchAxisRaw: [{ input: { kind: 'pad', deviceId: '046D0000', control: 'LStickY' } }, null],
+			RollAxisRaw: [
+				{ input: { kind: 'pad', deviceId: '046D0000', control: 'LStickY', half: 'pos' } },
+				null
+			],
+			YawAxisRaw: [null, null]
+		};
+		const out = analogAxes(actions, pad, axes);
+		expect(out.has.pitch).toBe(true);
+		expect(out.pitch).toBeGreaterThan(0.7);
+		expect(out.has.roll).toBe(false);
 	});
 });

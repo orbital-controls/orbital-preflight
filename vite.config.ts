@@ -34,6 +34,8 @@ export default defineConfig({
 			prerender: { entries: ['*'] }
 		})
 	],
+	// The base path, for the analytics consent key: forks on one github.io origin each ask
+	// their own visitors. Read by the head snippet (at build time) and the client alike.
 	define: { __OP_BASE__: JSON.stringify(base) },
 	// three.js is one lazy chunk (~620 kB, ~160 kB gzipped), fetched only when the 3D
 	// viewport mounts. Above this, a chunk has grown and is worth a look.

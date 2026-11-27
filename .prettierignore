@@ -9,3 +9,6 @@ bun.lockb
 /static/
 /design/
 /build-e2e/
+
+# The game's own files, byte for byte as it ships them.
+/data/

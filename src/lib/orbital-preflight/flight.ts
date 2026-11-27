@@ -12,6 +12,9 @@ import type { Mode } from './types.ts';
 
 export const TICK_MS = 50;
 
+/** Rounds in a Tracer P1 cartridge: one stripe segment each. */
+export const TRACER_ROUNDS = 6;
+
 /** The ship view's camera: behind the ship, or from the pilot's seat. */
 export type CameraView = 'chase' | 'cockpit';
 
@@ -124,11 +127,13 @@ export function initialFlight(): FlightState {
 		holster: false,
 		flash: false,
 		fNv: false,
-		ammo: 24,
-		mag: 30,
+		// The Tracer P1's cartridge holds six (StandFly's mock had 24 of 30). It starts in
+		// hand, so the HUD names the sidearm.
+		ammo: TRACER_ROUNDS,
+		mag: TRACER_ROUNDS,
 		reserve: 120,
 		reloadT: 0,
-		weapon: 0,
+		weapon: 1,
 		health: 0.72,
 		shield: 1,
 		battery: 0.64
@@ -159,14 +164,14 @@ export function tick(s: FlightState, mode: Mode): FlightState {
 		const rad = (s.a * Math.PI) / 180;
 		const sp = s.thr * (s.boostT > 0 ? 2.2 : 1) * (s.sc ? 3 : 1) * 4;
 		const k = s.faOff ? 0.03 : 0.22;
-		p.vx = s.vx + (Math.sin(rad) * sp - s.vx) * k;
-		p.vy = s.vy + (-Math.cos(rad) * sp - s.vy) * k;
+		p.vx = approach(s.vx, Math.sin(rad) * sp, k);
+		p.vy = approach(s.vy, -Math.cos(rad) * sp, k);
 		p.heat = clamp01(
 			s.heat + (s.boostT > 0 ? 0.006 : 0) + (s.fireT > 0 ? 0.01 : 0) + (s.silent ? 0.004 : -0.0015)
 		);
 	}
 	if (mode === 'srv') {
-		p.sSpd = s.sSpd + (s.sThr * 28 - s.sSpd) * 0.08;
+		p.sSpd = approach(s.sSpd, s.sThr * 28, 0.08);
 		p.fuel = Math.max(0, s.fuel - Math.abs(s.sThr) * 0.0002);
 	}
 	if (mode === 'foot') {
@@ -177,7 +182,16 @@ export function tick(s: FlightState, mode: Mode): FlightState {
 		}
 		p.battery = Math.max(0, s.battery - (s.flash ? 0.0004 : 0));
 	}
-	return { ...s, ...p };
+	// At rest nothing moves: hand back the same state, so nothing that reads it recomputes.
+	for (const key of Object.keys(p) as (keyof FlightState)[])
+		if (p[key] !== s[key]) return { ...s, ...p };
+	return s;
+}
+
+/** `k` of the way from `from` to `to`, landing on `to` once it's too close to see. */
+function approach(from: number, to: number, k: number): number {
+	const next = from + (to - from) * k;
+	return Math.abs(to - next) < 1e-4 ? to : next;
 }
 
 function clamp01(n: number): number {
@@ -200,9 +214,10 @@ function pip(pips: FlightState['pips'], i: number): FlightState['pips'] {
 /**
  * The state after one action fires. `effect` is the action's effect id; `name` is its
  * readable name, for the "would open" message panels get. Unknown effects change nothing:
- * the toast still says the action fired.
+ * the toast still says the action fired. `stowable` says the game deploys its hardpoints
+ * (some action has `hp`); when it doesn't, as in X4, the guns are always ready.
  */
-export function act(s: FlightState, effect: string, name: string): FlightState {
+export function act(s: FlightState, effect: string, name: string, stowable = true): FlightState {
 	const p: Partial<FlightState> = {};
 	const msg = (text: string, ticks = 40) => {
 		p.msg = text;
@@ -255,6 +270,8 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 			p.faOff = !s.faOff;
 			msg(s.faOff ? 'Flight assist on' : 'Flight assist off');
 			break;
+		// The galaxy map's route (`galaxy.ts`) handles Target next system in route, and the
+		// drive when a system is targeted; this is the drive with nothing to jump to.
 		case 'fsd':
 			msg('FSD charging · mass locked', 50);
 			break;
@@ -262,18 +279,15 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 			p.sc = !s.sc;
 			msg(s.sc ? 'Dropped from supercruise' : 'Supercruise engaged');
 			break;
-		case 'route':
-			msg('Next system in route targeted');
-			break;
 		case 'orbit':
 			msg('Orbit lines toggled');
 			break;
 		case 'fire':
-			if (!s.hp) msg('Hardpoints are stowed');
+			if (stowable && !s.hp) msg('Hardpoints are stowed');
 			else p.fireT = 5;
 			break;
 		case 'fire2':
-			if (!s.hp) msg('Hardpoints are stowed');
+			if (stowable && !s.hp) msg('Hardpoints are stowed');
 			else p.fire2T = 6;
 			break;
 		case 'hp':
@@ -366,7 +380,12 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 			msg(s.shipCalled ? 'Ship dismissed to orbit' : 'Ship recalled · touching down soon', 50);
 			break;
 		// on foot
-		case 'walk':
+		// One effect per direction, so the 3D walker knows which way; the mock flight
+		// treats them all as the board's walk.
+		case 'walkF':
+		case 'walkB':
+		case 'walkL':
+		case 'walkR':
 			p.walkT = 8;
 			break;
 		case 'sprint':
@@ -427,6 +446,12 @@ export function act(s: FlightState, effect: string, name: string): FlightState {
 			break;
 		case 'fNv':
 			p.fNv = !s.fNv;
+			break;
+		case 'scan':
+			msg('Profile analyser out', 24);
+			break;
+		case 'ping':
+			msg('Ping sent', 16);
 			break;
 		case 'panel':
 			msg(`${name} would open`);
@@ -501,36 +526,45 @@ export interface StatusChip {
 	on: boolean;
 }
 
-export function statusChips(s: FlightState, mode: Mode): StatusChip[] {
-	const c = (name: string, on: boolean) => ({ name, on });
+/**
+ * The status chips for a mode. With `has`, a chip shows only when some action in the file
+ * drives it: Star Citizen has no SRV turret or silent running, so no chip for them.
+ */
+export function statusChips(
+	s: FlightState,
+	mode: Mode,
+	has: (effect: string) => boolean = () => true
+): StatusChip[] {
+	const c = (name: string, on: boolean, ...effects: string[]): StatusChip[] =>
+		effects.some(has) ? [{ name, on }] : [];
 	if (mode === 'ship') {
 		return [
-			c('GEAR', s.gear),
-			c('HARDPOINTS', s.hp),
-			c('LIGHTS', s.lights),
-			c('FA OFF', s.faOff),
-			c('SILENT', s.silent),
-			c('SCOOP', s.scoop),
-			c('NV', s.nv)
+			...c('GEAR', s.gear, 'gear'),
+			...c('HARDPOINTS', s.hp, 'hp'),
+			...c('LIGHTS', s.lights, 'lights'),
+			...c('FA OFF', s.faOff, 'fa'),
+			...c('SILENT', s.silent, 'silent'),
+			...c('SCOOP', s.scoop, 'scoop'),
+			...c('NV', s.nv, 'nv')
 		];
 	}
 	if (mode === 'srv') {
 		return [
-			c('TURRET', s.turret),
-			c('HEADLIGHTS', s.sLights),
-			c('DA OFF', s.daOff),
-			c('SCOOP', s.sScoop),
-			c('HANDBRAKE', s.sThr === 0),
-			c('SHIP INBOUND', s.shipCalled)
+			...c('TURRET', s.turret, 'turret'),
+			...c('HEADLIGHTS', s.sLights, 'sLights'),
+			...c('DA OFF', s.daOff, 'da'),
+			...c('SCOOP', s.sScoop, 'sScoop'),
+			...c('HANDBRAKE', s.sThr === 0, 'brake', 'drvRev', 'drvFwd'),
+			...c('SHIP INBOUND', s.shipCalled, 'recall')
 		];
 	}
 	return [
-		c('FLASHLIGHT', s.flash),
-		c('NV', s.fNv),
-		c('CROUCH', s.crouch),
-		c('SPRINT', s.sprintT > 0),
-		c('ADS', s.aim),
-		c('HOLSTERED', s.holster)
+		...c('FLASHLIGHT', s.flash, 'flash'),
+		...c('NV', s.fNv, 'fNv'),
+		...c('CROUCH', s.crouch, 'crouch'),
+		...c('SPRINT', s.sprintT > 0, 'sprint'),
+		...c('ADS', s.aim, 'aim'),
+		...c('HOLSTERED', s.holster, 'holster')
 	];
 }
 

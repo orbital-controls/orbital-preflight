@@ -6,7 +6,13 @@ scene/
   srv.ts         SRV: flight state → Wick LR targets (wheel yaw, speed, grip, jets, lights). Pure.
   drive.ts       SRV: the kinematic drive model (a ground query and spring per wheel, steering). Pure.
   terrain.ts     SRV: the stand-in moon's height function, rocks and ramps. Pure.
-  analog.ts      bound stick, steering and drive axes from the input hub. Pure.
+  analog.ts      bound stick, steering, drive, move and look axes from the input hub. Pure.
+  held.ts        on foot: the effects whose binds are held down (walk directions, sprint). Pure.
+  tracer.ts      on foot: the Tracer P1 and right hand's rig geometry (gun frame, cm). Pure.
+  foot.ts        on foot: flight state + clocks → the viewmodel's pose; every timing in FOOT_ANIM. Pure.
+  pad.ts         on foot: Pad 7 Compact as data — bay, solids, ramp, stops, prompts, ray casts. Pure.
+  walker.ts      on foot: the kinematic first-person walker. Pure.
+  prompts.ts     on foot: a stop's prompt lines with the pilot's current binds. Pure.
   parts.ts       the part contracts below, and checkParts() to test a model against one.
   three/         the three.js side, loaded with a dynamic import
     index.ts       the engine: renderer, loop, pause, one mode scene at a time, dispose
@@ -19,9 +25,12 @@ scene/
     wick.ts        the procedural Wick LR
     convex.ts      convex solids from half-spaces (the Wick LR's block-out shapes)
     surface.ts     the moon's ground mesh, rocks, ramp slabs and wheel dust
+    foot-scene.ts  on foot: the walker, the parked ship, holo rounds, the viewmodel overlay
+    pad7.ts        on foot: Pad 7's deck, walls, ceiling, pad, stops, props and lights
+    tracer.ts      on foot: the procedural Tracer P1 and Crew Soft right hand
 ```
 
-The engine reads the page's state once a frame and never writes back. A mode is a `ModeScene` (`ship-scene.ts`): its own `Scene`, camera and `update()`. The engine builds a mode's scene when the mode comes up and disposes the last one; an on-foot scene slots in beside `ShipScene` and `SrvScene` in `index.ts`, and `Viewport.svelte` lists which modes are 3D (`IN_3D`).
+The engine reads the page's state once a frame and never writes back. A mode is a `ModeScene` (`ship-scene.ts`): its own `Scene`, camera and `update()`, and optionally an `overlay` (a second scene and camera drawn after the depth buffer is cleared: the on-foot viewmodel). The engine builds a mode's scene when the mode comes up and disposes the last one (and the shown one after 30 s unseen: `release()`) (`ShipScene`, `SrvScene`, `FootScene` in `index.ts`); `Viewport.svelte` lists which modes are 3D (`IN_3D`).
 
 ## The Lantern II part contract
 
@@ -131,3 +140,59 @@ The roof turret is **not on the v0.4 board**. It follows the SRV placeholder's t
 | Recall ship, cargo scoop                     | HUD only                                                                                          |
 | Toggle camera                                | Chase camera or the driver's seat, with the Drive / Recall / Range screens                        |
 | Listening for a rebind                       | The vehicle holds still; the scene keeps drawing                                                  |
+
+## The Tracer P1 part contract (on foot)
+
+The viewmodel is built the same way (`three/tracer.ts`, from the Pistol3D v0.1 block-out) and checked by `checkParts(root, TRACER_PARTS, TRACER_ROOT)`. A Blender glTF of the gun and the Crew Soft right hand can replace `buildTracer()` if it keeps these names, parents, pivots and `userData`.
+
+**Frame:** the gun frame, in centimetres: +X toward the muzzle, +Y up, +Z the gun's right side. The first-person camera is defined in this frame too (`VIEW` in `tracer.ts`: eye (−40, 10, −15) looking at (30, −1, −2), 46° vertical), so the whole viewmodel is one overlay with its own camera and never clips into walls. Rest pose is the final grip pose from Pistol3D: the web of the hand high on the backstrap, middle/ring/pinky wrapped round the front strap, the index straight along the frame, the thumb along the frame's left side. Only `forearmRoll`, `wristFlex` and the index chain are bones that animate.
+
+| Name                                                  | Parent              | Pivot and motion                                                                                                                                                  |
+| ----------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tracer`                                              | (root)              | The gun frame. The scene offsets it for bob, sprint lowering and cant, and the holster / swap dips.                                                               |
+| `forearmRoll`                                         | `tracer`            | The elbow, local +X along the forearm to the wrist, +Y as near up as it goes. `rotation.x` rolls (reload: about +40°, inward: the grip's base toward the player). |
+| `wristFlex`                                           | `forearmRoll`       | The wrist, axes parallel to the gun frame at rest. `rotation.z` lifts the muzzle (about 7° on fire, 12° during reload).                                           |
+| `slide`                                               | `wristFlex`         | Gun origin. `position.x` = −travel: 1.8 back on fire, locked back when empty, home during reload-in.                                                              |
+| `ammoSeg0` … `ammoSeg5`                               | `slide`             | Static. Violet emissive when loaded, metal grey when spent; spent from the front, refilled from the rear.                                                         |
+| `rearSightL`, `rearSightR`, `frontSight`              | `slide`             | Static. The rear posts are gold emissive.                                                                                                                         |
+| `frame`, `barrel`, `triggerGuard`, `trigger`          | `wristFlex`         | Static. The barrel shows when the slide kicks.                                                                                                                    |
+| `emitter`                                             | `wristFlex`         | The muzzle disc, facing +X. Gold; flashes on fire. Holo rounds leave from just ahead of it.                                                                       |
+| `grip`                                                | `wristFlex`         | Top centre of the grip, local −Y down the grip (raked back 18°).                                                                                                  |
+| `cartridge`                                           | `grip`              | Bottom of the grip. White body, gold base cap. Slides out along −Y and fades on reload-out.                                                                       |
+| `cartridgeHolo`                                       | `grip`              | Bottom of the grip. The translucent violet hologram, with a gold scan line at its base, rising in along +Y.                                                       |
+| `palm`, `glove`                                       | `wristFlex`         | Static. The palm and heel round the backstrap and right side; the back of the hand, wrist to knuckles.                                                            |
+| `fingerMid`, `fingerRing`, `fingerPinky` (+`1`, `+2`) | `wristFlex` (chain) | Three bones each, locked to the grip. Each bone's local +X runs to the next joint.                                                                                |
+| `index`, `index1`, `index2`                           | `wristFlex` (chain) | Animates from straight along the frame to the trigger (`indexJoints()`: two-bone IK, fixed lengths).                                                              |
+| `thumb`, `thumb1`, `thumb2`                           | `wristFlex` (chain) | Locked along the frame's left side, pointing at the muzzle.                                                                                                       |
+| `cuffSeam`, `sleeve`, `sleeveStripe`                  | `forearmRoll`       | Static. The soft white sleeve (cuff r 2.9 to elbow r 4.4), the grey seam, the violet top-outer stripe.                                                            |
+
+Required `userData` (`checkParts()` checks it): `forearmRoll` and `grip` carry `length`. The builder also keeps each animated bone's rest orientation in `userData.base`, so a pose is applied on top of it.
+
+### What on foot reacts to
+
+| Flight state / input                      | Scene                                                                                                                                                                             |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Held move binds, bound move axes          | The walker walks (3.2 m/s), sprints (6), crouch-walks (1.6); a step bob on the gun and the eye                                                                                    |
+| Sprint (held, or the mock flight's timer) | Faster; the gun lowers and cants                                                                                                                                                  |
+| Crouch                                    | The eye drops from 1.7 m to 1.05 m                                                                                                                                                |
+| Jump                                      | A 0.87 m hop: enough to vault the 1 m cargo barrier, or climb onto the crates                                                                                                     |
+| Mouse (pointer lock), bound look axes     | Look; slower aiming down the sights                                                                                                                                               |
+| Fire                                      | Index onto the trigger, slide kick, gold emitter flash, a violet holo round to the crosshair, a 7° muzzle rise, a segment greys; a ring hit flashes and counts                    |
+| Empty                                     | Slide locked back, every segment grey; fire does nothing but the HUD's "Empty · reload"                                                                                           |
+| Reload                                    | Forearm rolls in, the spent cartridge drops and fades, the holo cartridge rises in with its scan line, the slide returns, the segments refill rear to front, the wrist rolls back |
+| Aim down sights                           | The rear sights come to the centre; the world's FOV narrows from 70° to 58°                                                                                                       |
+| Holster, next / previous weapon           | The gun drops out of view (and comes back for a swap). The Tracer is the only weapon modelled                                                                                     |
+| Flashlight                                | A cone light from the eye; the viewmodel catches it too                                                                                                                           |
+| Night vision                              | A tint on the canvas, as in the ship                                                                                                                                              |
+| Standing in a stop zone                   | Reported to the page: the HUD shows the stop's prompts and marks it visited                                                                                                       |
+| Listening for a rebind                    | The pilot freezes and the pointer lock is released                                                                                                                                |
+
+Every timing is a placeholder in `FOOT_ANIM` (`foot.ts`).
+
+## Pad 7 Compact (on foot)
+
+`pad.ts` holds the bay as data (metres; +X east toward Lantern II's nose, +Z south, origin the pad centre): the bay bounds, the solids the walker collides with, the ship's ramp as a walkable slope, the seven stops with their prompts, and the target rings. `pad7.ts` builds it; `walker.ts` and `castRay()` read the same data. Pad 7 Full (gantry, drill booth, airlock, EVA hull walk) adds stops, solids and ramps there. The walker is one-level only: it has no ceilings over the walkable floor, so a second level needs overhead checks.
+
+Lantern II is the ship scene's procedural model at 0.27 m per model unit (13.1 m long), parked with its gear down and fitted to Pad3D's plan: hull from x ≈ −6.4 to the nose at ≈ 6.7, the ring ducts at the tail about 3.4 m either side. The ducts hang low (their bottoms at 1.65 m), so they are solids too: crouch to pass under. The ramp panel is too short to reach the deck at x −9.6, so the on-foot scene drops it past horizontal and stretches it about 4× along its length (`rampPose()`): a 3.3 m slope at 16°, until the model has an extending ramp. The tail opening is under a metre tall at this scale: an interior will need a taller tail.
+
+The bay follows Pad3D v0.1 where it shows something: the gold wall lights as one dash per bay between ribs, 24 radial gold ticks round a thin violet pad ring, the route as a smooth open path (`ROUTE`, waypoints read off the plan) from the ramp foot round the outside of the pad to the bay door, crates and the barrier in light grey with a gold top stripe, and the target panel with gold edges top and bottom, a single violet ring and a small gold dot per target.

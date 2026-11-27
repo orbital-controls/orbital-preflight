@@ -6,6 +6,7 @@ test('a theme override takes effect and the fonts come from the package', async 
 		if (r.url().endsWith('.woff2')) fonts.push(`${r.status()} ${r.url()}`);
 	});
 	await page.goto('./');
+	await page.getByRole('button', { name: /Elite Dangerous/ }).click();
 	const trail = await page.evaluate(() =>
 		getComputedStyle(document.documentElement).getPropertyValue('--color-trail').trim()
 	);
@@ -40,11 +41,17 @@ test('the favicon takes its colours from the theme, overrides included', async (
 	expect(svg).toContain('#ff6a00');
 });
 
-test('with no presets, the first visit is the upload state', async ({ page }) => {
+test('with no presets, the first visit is the bay, then the file drop', async ({ page }) => {
 	await page.goto('./');
-	await expect(page.getByText('Bring your binds.')).toBeVisible();
+	await expect(page.getByRole('heading', { name: /Bring your binds/ })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'No game chosen. Load binds.' })).toBeVisible();
 	await expect(page.getByText('Powered by Orbital Preflight')).toHaveCount(0);
+
+	await page.getByRole('button', { name: /Elite Dangerous/ }).click();
+	await expect(page.getByText('Now your')).toBeVisible();
+	await page.getByRole('button', { name: 'Pick another game' }).click();
+	await expect(page.getByRole('heading', { name: /Bring your binds/ })).toBeVisible();
+	await page.getByRole('button', { name: /Elite Dangerous/ }).click();
 
 	await page.locator('#first-file').setInputFiles('tests/fixtures/keyboard-only.binds');
 	await expect(page.getByText('keyboard-only.binds')).toBeVisible();
@@ -64,5 +71,20 @@ test('the head carries the canonical and Open Graph tags when siteUrl is set', a
 	await expect(page.locator('meta[name="description"]')).toHaveAttribute(
 		'content',
 		'A build with a theme override and no shipped presets.'
+	);
+});
+
+test('with no presets, Star Citizen from the bay opens on the game’s defaults', async ({
+	page
+}) => {
+	await page.goto('./');
+	const bay = page.getByRole('region', { name: /Bring your binds/ });
+	await expect(
+		bay.getByRole('button', { name: /Star Citizen.*Star Citizen 4\.10\.2 defaults/ })
+	).toBeVisible();
+	await bay.getByRole('button', { name: /Star Citizen/ }).click();
+	await expect(page.getByText('Now your')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: /^Binding for/ })).toContainText(
+		'Star Citizen 4.10.2 defaults'
 	);
 });

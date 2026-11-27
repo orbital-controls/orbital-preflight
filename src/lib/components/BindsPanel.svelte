@@ -12,7 +12,7 @@
 	const actions = $derived(app.store.actionsIn(app.mode));
 	const clashing = $derived(app.store.clashes[app.mode]);
 	const counts = $derived(app.store.counts[app.mode]);
-	const modeName = $derived({ ship: 'Ship', srv: 'SRV', foot: 'On foot' }[app.mode]);
+	const modeName = $derived(app.modeName(app.mode));
 
 	const categories = $derived([
 		'All',
@@ -23,12 +23,23 @@
 			'Flight',
 			'Driving',
 			'Moving',
+			'Landing',
 			'Navigation',
 			'Turret',
 			'Combat',
+			'Wing',
 			'Systems',
 			'Tools',
-			'Panels'
+			'Panels',
+			'Head look',
+			'Menus',
+			'Galaxy map',
+			'Scanners',
+			'Multicrew',
+			'Fighter orders',
+			'Camera',
+			'Emotes',
+			'Store and Holo-Me'
 		].indexOf(category);
 		return i === -1 ? 99 : i;
 	}

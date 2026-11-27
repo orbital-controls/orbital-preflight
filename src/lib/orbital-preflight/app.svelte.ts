@@ -2,21 +2,80 @@ import { reportBindsExport, reportBindsLoad } from './analytics/events.ts';
 import { getContext, setContext } from 'svelte';
 import { BindStore, download, type FileOrigin } from './binds.svelte.ts';
 import {
+	axisValueKey,
 	findHolders,
+	inputKey,
 	sameInput,
+	wholeAxis,
 	type Resolution,
 	type ShowFilter,
 	type SlotRef
 } from './bindings.ts';
-import type { ResolvedConfig } from './config.ts';
-import { act, enterMode, initialFlight, setThrottle, tick, type FlightState } from './flight.ts';
-import { InputHub, type InputEvent } from './inputs/hub.svelte.ts';
+import { firstVisit, presetFor, type ResolvedConfig } from './config.ts';
+import {
+	act,
+	enterMode,
+	initialFlight,
+	setThrottle,
+	tick,
+	TICK_MS,
+	type FlightState
+} from './flight.ts';
+import {
+	clearRoute,
+	engage,
+	initialGalaxy,
+	isMapCamera,
+	mapDrive,
+	mapHome,
+	mapSelect,
+	plot,
+	select,
+	steer,
+	targetNext,
+	tickGalaxy,
+	toggleMap,
+	type GalaxyState,
+	type GalaxyStep,
+	type MapCamera
+} from './galaxy.ts';
+import { InputHub, type BrowserPad, type InputEvent } from './inputs/hub.svelte.ts';
 import { deviceRoles } from './labels.ts';
 import { withLocalActions } from './local-actions.ts';
 import { analogAxes, type Analog } from './scene/analog.ts';
-import { clearLayout, loadLayout, saveLayout } from './persist.ts';
-import { BindsFormatError, simById } from './sims/index.ts';
-import type { Action, Bind, InputId, Mode, SimId } from './types.ts';
+import { heldEffects, NO_HELD } from './scene/held.ts';
+import { Session, Sessions } from './sessions.svelte.ts';
+import { BindsFormatError, SIMS, SIMS_WITH_DEFAULTS, simById } from './sims/index.ts';
+import type { SimAdapter } from './sims/index.ts';
+import {
+	MODE_NAMES,
+	MODES,
+	type Action,
+	type Bind,
+	type InputId,
+	type Mode,
+	type ParsedBinds,
+	type SimId
+} from './types.ts';
+
+/** One game as the bay and the manifest list it. */
+export interface GameRow {
+	sim: SimAdapter;
+	/** Loaded this visit (it has a session). */
+	loaded: boolean;
+	/** The game being bound now, loaded or waiting for its file. */
+	current: boolean;
+	changes: number;
+	/** Its file, what it needs, or the pilot's preset waiting for it. */
+	file: string;
+	/** "Ship · SRV · On foot": from the file once loaded, else what the parser reads. */
+	modeList: string;
+	/** "3 unsaved", "No changes", "Not loaded", "Waiting for file", "Coming later". */
+	status: string;
+}
+
+/** What the fly page and the editor read before any game is loaded. */
+const EMPTY = new BindStore();
 
 export interface Capture {
 	target: SlotRef;
@@ -40,15 +99,41 @@ export interface EditorView {
 }
 
 /**
- * Everything the page shows that isn't the binds themselves: mode, filters, the rebind
- * card, drawers, the full editor, the mock flight and the last input. One instance per
- * page, shared through context.
+ * Everything the page shows that isn't the binds themselves: the games loaded this visit
+ * and which is current, filters, the rebind card, drawers, the game manifest, the full
+ * editor, the mock flight and the last input. One instance per page, shared through
+ * context. `store` and `mode` are the current game's.
  */
 export class OrbitalPreflight {
-	readonly store = new BindStore();
+	readonly games = new Sessions();
 	readonly hub = new InputHub();
 
-	mode = $state<Mode>('ship');
+	/** The current game's binds: an empty store while no game is loaded. */
+	get store(): BindStore {
+		return this.games.current?.store ?? EMPTY;
+	}
+
+	/** The current game's mode. */
+	get mode(): Mode {
+		return this.games.current?.mode ?? 'ship';
+	}
+	set mode(mode: Mode) {
+		if (this.games.current) this.games.current.mode = mode;
+	}
+
+	/** The current game's modes, from its file. */
+	modes = $derived(this.games.current?.modes ?? []);
+
+	/** The game picked in the bay or the manifest; the config's sim before one is. */
+	get sim(): SimId {
+		return this.games.currentSim ?? this.config.sim;
+	}
+
+	/** A game is picked (loaded or waiting for its file): no bay. */
+	chosen = $derived(this.games.currentSim !== null);
+
+	/** The game manifest under "Binding for" is open. Bind inputs don't fire meanwhile. */
+	manifest = $state(false);
 	cat = $state('All');
 	filter = $state<ShowFilter>('all');
 	q = $state('');
@@ -58,10 +143,15 @@ export class OrbitalPreflight {
 	editor = $state(false);
 	ed = $state<EditorView>({ sel: null, cat: 'All', filter: 'all', q: '', pend: null });
 	flight = $state.raw<FlightState>(initialFlight());
+	/**
+	 * The galaxy map: open or not, its camera, where the ship is and the plotted route.
+	 * Part of the mock flight: it starts over when the flight does.
+	 */
+	galaxy = $state.raw<GalaxyState>(initialGalaxy());
 	last = $state.raw<InputId | null>(null);
+	/** Modifier keys held with `last`, so the toast says Shift+M rather than M. */
+	lastMods = $state.raw<InputId[]>([]);
 	lastActs = $state.raw<string[]>([]);
-	remember = $state(false);
-	sim = $state<SimId>('elite-dangerous');
 	loadError = $state<string | null>(null);
 	/**
 	 * WebGL couldn't start, or the 3D scene failed mid-flight: the viewport keeps the 2D
@@ -79,27 +169,33 @@ export class OrbitalPreflight {
 			...this.hub.pads
 				.filter((p) => p.pairedBy === 'new' && p.deviceId)
 				.filter((p) => !this.store.file?.parsed.devices.some((d) => d.id === p.deviceId))
-				.map((p) => ({ id: p.deviceId!, name: p.name }))
+				.map((p) => ({
+					id: p.deviceId!,
+					name: p.name,
+					...(p.standard && { gamepad: true as const })
+				}))
 		])
 	);
 	/** Why the last input pressed while listening can't be used, if it can't. */
 	capNotice = $state<string | null>(null);
-	loaded = $derived(this.store.file !== null);
+	loaded = $derived(this.games.current !== null);
+
+	/** Anything over the page that stops bind inputs: a drawer, Leave, the manifest. */
+	get blocked(): boolean {
+		return this.drawer !== null || this.leaving || this.manifest;
+	}
 
 	constructor(
 		readonly config: ResolvedConfig,
-		readonly base: string,
 		/** Shipped preset files by name, read at build time. */
 		readonly presetSources: Record<string, string>
 	) {
-		this.sim = config.sim;
 		this.hub.newDeviceId = simById(config.sim).newDeviceId ?? null;
-		// A remembered layout follows every edit.
-		this.store.onchange = () => this.persist();
 	}
 
 	openDrawer(kind: 'load' | 'devices') {
 		this.cancelCapture();
+		this.manifest = false;
 		this.drawer = kind;
 		if (kind === 'devices') this.armPairing();
 	}
@@ -109,10 +205,16 @@ export class OrbitalPreflight {
 		this.hub.pairNext(null);
 	}
 
-	/** The first device in the file with no controller paired to it. */
-	unpairedDevice(): string | null {
-		const devices = this.store.file?.parsed.devices ?? [];
-		return devices.find((d) => !this.hub.pads.some((p) => p.deviceId === d.id))?.id ?? null;
+	/**
+	 * The first device in the file with no controller paired to it. For a controller,
+	 * one of its own sort first: a gamepad pairs with the file's gamepad, a stick with a stick.
+	 */
+	unpairedDevice(pad?: BrowserPad): string | null {
+		const devices = (this.store.file?.parsed.devices ?? []).filter(
+			(d) => !this.hub.pads.some((p) => p.deviceId === d.id)
+		);
+		const sameSort = pad && devices.find((d) => Boolean(d.gamepad) === pad.standard);
+		return (sameSort ?? devices[0])?.id ?? null;
 	}
 
 	/**
@@ -125,7 +227,7 @@ export class OrbitalPreflight {
 			return;
 		}
 		this.hub.pairNext((pad) => {
-			const target = this.unpairedDevice();
+			const target = this.unpairedDevice(pad);
 			if (target) this.hub.pair(pad.index, target, 'press');
 			this.armPairing();
 		});
@@ -137,27 +239,16 @@ export class OrbitalPreflight {
 		this.armPairing();
 	}
 
-	/** Restores a remembered layout, or opens the pilot's default preset. */
+	/** First visit: the one game with binds opens on its first preset; otherwise the bay. */
 	init() {
-		const remembered = loadLayout(this.base);
-		if (remembered) {
-			try {
-				const parsed = simById(remembered.sim).parse?.(remembered.source);
-				if (parsed) {
-					this.#afterLoad(
-						parsed,
-						{ kind: 'remembered', label: remembered.label },
-						remembered.edits
-					);
-					this.remember = true;
-					return;
-				}
-			} catch {
-				clearLayout(this.base);
-			}
-		}
-		if (this.config.presets.length) this.loadPreset(0);
+		const route = firstVisit(this.config.presets, SIMS_WITH_DEFAULTS);
+		if (route.kind === 'preset') this.loadPreset(route.index);
 	}
+
+	/** The pilot's presets for the current game, with their index in the config. */
+	presets = $derived.by(() =>
+		this.config.presets.map((p, index) => ({ ...p, index })).filter((p) => p.sim === this.sim)
+	);
 
 	loadPreset(index: number) {
 		const preset = this.config.presets[index];
@@ -166,18 +257,20 @@ export class OrbitalPreflight {
 			this.loadError = `The preset file ${preset?.file ?? ''} is missing from static/binds/.`;
 			return;
 		}
-		this.loadText(text, { kind: 'preset', index, label: preset.label }, this.config.sim);
+		if (this.games.currentSim !== preset.sim) this.switchTo(preset.sim);
+		this.loadText(text, { kind: 'preset', index, label: preset.label }, preset.sim);
 	}
 
+	/** Loads a file for one game (the current one by default). Other games are not touched. */
 	loadText(text: string, origin: FileOrigin, simId: SimId = this.sim): boolean {
 		const sim = simById(simId);
-		if (!sim.parse) {
+		if (!sim.parse || sim.status !== 'ready') {
 			this.loadError = `${sim.name} files can't be read yet.`;
 			return false;
 		}
 		try {
 			this.#afterLoad(sim.parse(text), origin);
-			if (origin.kind !== 'remembered') reportBindsLoad(origin.kind, this.sim);
+			reportBindsLoad(origin.kind, sim.id);
 			return true;
 		} catch (error) {
 			this.loadError =
@@ -186,13 +279,25 @@ export class OrbitalPreflight {
 		}
 	}
 
+	/** Loads the current game's own default binds: what it opens on with no file or preset. */
+	loadDefaults(): boolean {
+		const sim = simById(this.sim);
+		if (!sim.defaults) return false;
+		return this.loadText(
+			sim.defaults.source,
+			{ kind: 'defaults', label: sim.defaults.label },
+			sim.id
+		);
+	}
+
 	/** Reads a dropped or chosen file in the tab. Nothing is uploaded. */
 	loadFile(file: File): Promise<boolean> {
+		const sim = this.sim;
 		return new Promise((resolve) => {
 			const reader = new FileReader();
 			reader.onload = () =>
 				resolve(
-					this.loadText(String(reader.result ?? ''), { kind: 'upload', fileName: file.name })
+					this.loadText(String(reader.result ?? ''), { kind: 'upload', fileName: file.name }, sim)
 				);
 			reader.onerror = () => {
 				this.loadError = "That file couldn't be read.";
@@ -202,38 +307,150 @@ export class OrbitalPreflight {
 		});
 	}
 
-	#afterLoad(
-		parsed: Parameters<BindStore['load']>[0],
-		origin: FileOrigin,
-		edits?: Parameters<BindStore['load']>[2]
-	) {
+	#afterLoad(parsed: ParsedBinds, origin: FileOrigin) {
 		this.cancelCapture();
-		this.store.load(withLocalActions(parsed), origin, edits);
-		this.sim = parsed.sim;
+		const session = this.games.open(parsed.sim);
+		session.store.load(withLocalActions(parsed), origin);
+		if (!session.modes.includes(session.mode)) session.mode = session.modes[0] ?? 'ship';
+		if (this.games.currentSim !== parsed.sim) this.games.currentSim = parsed.sim;
 		this.hub.devices = parsed.devices;
 		this.hub.newDeviceId = simById(parsed.sim).newDeviceId ?? null;
 		this.hub.repair();
 		this.loadError = null;
 		this.closeDrawer();
+		this.manifest = false;
 		this.cat = 'All';
 		this.filter = 'all';
 		this.q = '';
-		this.last = null;
-		this.lastActs = [];
-		// The camera is the pilot's choice, not the file's: it stays across loads.
-		this.flight = { ...initialFlight(), cam: this.flight.cam };
+		this.#freshFlight();
 		this.ed = { sel: null, cat: 'All', filter: 'all', q: '', pend: null };
-		this.persist();
+	}
+
+	/**
+	 * The mock flight starts over (throttle, gear and the rest); the camera is the pilot's
+	 * choice, not the file's or the game's, so it stays.
+	 */
+	#freshFlight() {
+		this.last = null;
+		this.lastMods = [];
+		this.lastActs = [];
+		this.flight = { ...initialFlight(), cam: this.flight.cam };
+		this.galaxy = initialGalaxy();
+		this.footStop = null;
+		this.footDone = [];
+	}
+
+	// Switching games.
+
+	/**
+	 * Makes `sim` the current game. A loaded game comes back exactly as it was left: file,
+	 * edits, mode and controller pairing. One with no file yet waits for one (the file
+	 * drop). Only the mock flight starts over. On the fly page the filters reset, as on
+	 * the board; in the editor, category, filter and search stay and the selection clears.
+	 */
+	switchTo(sim: SimId) {
+		this.manifest = false;
+		if (simById(sim).status !== 'ready') return;
+		if (sim === this.games.currentSim) return;
+		this.cancelCapture();
+		this.closeDrawer();
+		const leaving = this.games.current;
+		if (leaving) leaving.pairing = this.hub.pairing();
+		this.games.currentSim = sim;
+		const session = this.games.current;
+		const adapter = simById(sim);
+		this.hub.restore(
+			session?.store.file?.parsed.devices ?? [],
+			adapter.newDeviceId ?? null,
+			session?.pairing ?? []
+		);
+		this.loadError = null;
+		this.cat = 'All';
+		this.filter = 'all';
+		this.q = '';
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- a local lookup, not state
+		const cats = new Set(this.store.actionsIn(this.mode).map((a) => a.category));
+		this.ed = {
+			...this.ed,
+			cat: this.ed.cat === 'All' || cats.has(this.ed.cat) ? this.ed.cat : 'All',
+			sel: null,
+			pend: null
+		};
+		this.#freshFlight();
+		// A game with its own defaults and no pilot's preset opens on those defaults rather
+		// than asking for a file (Star Citizen). A preset, where there is one, wins.
+		if (!session && adapter.defaults && presetFor(this.config.presets, sim) < 0)
+			this.loadDefaults();
+	}
+
+	/** "Pick another game": back to the bay. Loaded games stay loaded. */
+	openBay() {
+		this.cancelCapture();
+		this.closeDrawer();
+		this.manifest = false;
+		const leaving = this.games.current;
+		if (leaving) leaving.pairing = this.hub.pairing();
+		this.games.currentSim = null;
+		this.hub.restore([], simById(this.config.sim).newDeviceId ?? null, []);
+		this.loadError = null;
+		this.#freshFlight();
+	}
+
+	/** A tile in the bay: a loaded game comes back; otherwise its pilot's preset or the file drop. */
+	pickInBay(sim: SimId) {
+		if (simById(sim).status !== 'ready') return;
+		const preset = presetFor(this.config.presets, sim);
+		this.switchTo(sim);
+		if (!this.games.get(sim) && preset >= 0) this.loadPreset(preset);
+	}
+
+	/** Every sim in registry order, for the bay and the manifest. */
+	gameRows = $derived.by((): GameRow[] =>
+		SIMS.map((sim) => {
+			const session = this.games.get(sim.id);
+			const current = this.games.currentSim === sim.id;
+			const changes = this.games.changesBySim.get(sim.id) ?? 0;
+			const preset = this.config.presets[presetFor(this.config.presets, sim.id)];
+			const modes = session ? session.modes : sim.modes;
+			const ready = sim.status === 'ready';
+			return {
+				sim,
+				loaded: Boolean(session),
+				current,
+				changes,
+				file: session
+					? fileLine(session)
+					: !ready
+						? sim.fileLabel
+						: preset
+							? `Pilot's binds · ${preset.label}`
+							: sim.defaults
+								? sim.defaults.label
+								: `Needs your ${sim.fileLabel}`,
+				modeList: modes.map((m) => this.modeName(m, sim.id)).join(' · '),
+				status: !ready
+					? 'Coming later'
+					: !session
+						? current
+							? 'Waiting for file'
+							: 'Not loaded'
+						: changes
+							? `${changes} unsaved`
+							: 'No changes'
+			};
+		})
+	);
+
+	toggleManifest(open = !this.manifest) {
+		if (open) {
+			this.cancelCapture();
+			this.closeDrawer();
+		}
+		this.manifest = open;
 	}
 
 	/** What the "Binding for" block's file line says. */
-	fileLine = $derived.by(() => {
-		const origin = this.store.file?.origin;
-		if (!origin) return '';
-		if (origin.kind === 'preset') return `Pilot's binds · ${origin.label}`;
-		if (origin.kind === 'upload') return origin.fileName;
-		return origin.label;
-	});
+	fileLine = $derived(fileLine(this.games.current));
 
 	setMode(mode: Mode) {
 		this.cancelCapture();
@@ -241,8 +458,11 @@ export class OrbitalPreflight {
 		this.cat = 'All';
 		this.q = '';
 		this.last = null;
+		this.lastMods = [];
 		this.lastActs = [];
 		this.flight = enterMode(this.flight);
+		this.galaxy = toggleMap(this.galaxy, false);
+		this.footStop = null;
 		this.ed = { ...this.ed, sel: null, cat: 'All', pend: null };
 	}
 
@@ -273,7 +493,7 @@ export class OrbitalPreflight {
 	}
 
 	/** Why a pressed input can't be bound, or null. */
-	#cannotBind(bind: Bind): string | null {
+	#cannotBind(bind: Bind, target: SlotRef): string | null {
 		const sim = simById(this.sim);
 		for (const input of [bind.input, ...(bind.modifiers ?? [])]) {
 			if ('deviceId' in input && input.deviceId.startsWith('browser-')) {
@@ -282,13 +502,42 @@ export class OrbitalPreflight {
 			const reason = sim.cannotBind?.(input);
 			if (reason) return reason;
 		}
-		return null;
+		const other = this.store.bindings[target.actionId]?.[target.slot === 0 ? 1 : 0] ?? null;
+		return sim.refuse?.(bind, other) ?? null;
+	}
+
+	/** The current game's word for `text`, where it has its own (Decoupled for FA off). */
+	say(text: string): string {
+		return simById(this.sim).words?.text?.[text] ?? text;
+	}
+
+	/** The current game's name for a mode tab: Vehicle in Star Citizen, SRV in Elite. */
+	modeName(mode: Mode, sim: SimId = this.sim): string {
+		return simById(sim).words?.modes?.[mode] ?? MODE_NAMES[mode];
+	}
+
+	/**
+	 * Effects some action in the current file has, by mode: a status chip or HUD readout
+	 * nothing can drive never shows.
+	 */
+	effectsIn = $derived(
+		Object.fromEntries(
+			MODES.map((m) => [
+				m,
+				this.store.actionsIn(m).flatMap((a) => (a.effect ? a.effect.split('|') : []))
+			])
+		) as Record<Mode, string[]>
+	);
+
+	/** Some action in `mode` (the current one by default) has `effect`. */
+	has(effect: string, mode: Mode = this.mode): boolean {
+		return this.effectsIn[mode].includes(effect);
 	}
 
 	#onCandidate(bind: Bind) {
 		const cap = this.cap;
 		if (!cap) return;
-		const reason = this.#cannotBind(bind);
+		const reason = this.#cannotBind(bind, cap.target);
 		if (reason) {
 			this.capNotice = `${reason} Try another.`;
 			return;
@@ -296,10 +545,7 @@ export class OrbitalPreflight {
 		this.capNotice = null;
 		const action = this.actionById(cap.target.actionId);
 		// An axis action takes the whole axis; a button action keeps the half it was pushed to.
-		const cand =
-			action?.axis && bind.input.kind === 'axis'
-				? { input: { ...bind.input, half: undefined } }
-				: bind;
+		const cand = action?.axis ? { input: wholeAxis(bind.input) } : bind;
 		if (this.editor) {
 			const holder = this.holderOf(cap.target, cand);
 			this.cap = null;
@@ -339,6 +585,7 @@ export class OrbitalPreflight {
 		this.store.settle(cap.target, { kind } as Resolution, cap.cand);
 		this.cancelCapture();
 		this.last = null;
+		this.lastMods = [];
 		this.lastActs = [];
 	}
 
@@ -351,10 +598,16 @@ export class OrbitalPreflight {
 
 	// Input dispatch.
 
-	/** Actions in the current mode that `input` fires, with the effect each one runs. */
-	matching(input: InputId): { action: Action; effect: string | undefined }[] {
+	/**
+	 * Actions that `input` fires, with the effect each one runs: by default the current
+	 * mode's, as the game reads them now (`liveActions`).
+	 */
+	matching(
+		input: InputId,
+		actions: readonly Action[] = this.liveActions
+	): { action: Action; effect: string | undefined }[] {
 		const held: { action: Action; effect: string | undefined; modifier: boolean }[] = [];
-		for (const action of this.store.actionsIn(this.mode)) {
+		for (const action of actions) {
 			const binding = this.store.bindings[action.id];
 			if (!binding) continue;
 			for (const slot of binding) {
@@ -366,12 +619,10 @@ export class OrbitalPreflight {
 							? undefined
 							: action.effect;
 				} else if (
-					input.kind === 'axis' &&
+					(input.kind === 'axis' || input.kind === 'pad') &&
 					input.half &&
-					slot.input.kind === 'axis' &&
-					!slot.input.half &&
-					slot.input.deviceId === input.deviceId &&
-					slot.input.axis === input.axis
+					axisValueKey(slot.input) !== null &&
+					sameInput(slot.input, wholeAxis(input))
 				) {
 					const [neg, pos] = (action.effect ?? '').split('|');
 					effect = input.half === 'neg' ? neg : pos;
@@ -390,23 +641,105 @@ export class OrbitalPreflight {
 		return (modified.length ? modified : held).map(({ action, effect }) => ({ action, effect }));
 	}
 
+	/**
+	 * The galaxy map's own binds: its camera, Map home, and menu select and back. They
+	 * sit in the ship's set, and the game reads them on the map from any mode.
+	 */
+	mapActions = $derived(
+		this.store
+			.actionsIn('ship')
+			.filter((a) => a.context === 'galaxy map' || a.id === 'UI_Select' || a.id === 'UI_Back')
+	);
+
+	/**
+	 * What the game reads now: on the galaxy map, the map's binds and the way back out;
+	 * otherwise the current mode's binds, less the map's, which do nothing off the map.
+	 */
+	liveActions = $derived.by(() => {
+		const inMode = this.store.actionsIn(this.mode);
+		if (!this.galaxy.open) return inMode.filter((a) => a.context !== 'galaxy map');
+		return [...this.mapActions, ...inMode.filter((a) => a.effect === 'galmap')];
+	});
+
+	/** The galaxy map can open: some action in the current mode opens it. */
+	get hasMap(): boolean {
+		return this.has('galmap');
+	}
+
+	#galaxyStep({ g, msg }: GalaxyStep, flight: FlightState): FlightState {
+		this.galaxy = g;
+		return msg ? { ...flight, msg, msgT: 40 } : flight;
+	}
+
+	/** On the map, a bound action does the map's job. */
+	#onMap(action: Action, effect: string | undefined, flight: FlightState): FlightState {
+		if (effect === 'galmap' || action.id === 'UI_Back') {
+			this.galaxy = toggleMap(this.galaxy, false);
+			return flight;
+		}
+		if (action.id === 'UI_Select') return this.#galaxyStep(mapSelect(this.galaxy), flight);
+		if (action.id === 'GalaxyMapHome') this.galaxy = mapHome(this.galaxy);
+		return flight;
+	}
+
+	/** In the cockpit, the effects that read the map's route. */
+	#withRoute(effect: string, flight: FlightState): FlightState | null {
+		if (effect === 'galmap') {
+			this.galaxy = toggleMap(this.galaxy, true);
+			return flight;
+		}
+		if (effect === 'route') return this.#galaxyStep(targetNext(this.galaxy), flight);
+		// With a system targeted the drive jumps to it; otherwise the board's message.
+		if (effect === 'fsd' && this.galaxy.target)
+			return this.#galaxyStep(engage(this.galaxy), flight);
+		return null;
+	}
+
+	// The galaxy map's panel and mouse: the same steps its binds take.
+
+	closeMap() {
+		this.galaxy = toggleMap(this.galaxy, false);
+	}
+
+	selectSystem(id: string) {
+		this.galaxy = select(this.galaxy, id);
+	}
+
+	plotRoute() {
+		this.flight = this.#galaxyStep(plot(this.galaxy), this.flight);
+	}
+
+	clearRoute() {
+		this.galaxy = clearRoute(this.galaxy);
+	}
+
+	moveMap(cam: MapCamera) {
+		this.galaxy = { ...this.galaxy, cam };
+	}
+
 	onInput({ input, pressed }: InputEvent) {
-		if (!pressed || !this.loaded || this.drawer || this.leaving) return;
+		if (!pressed || !this.loaded || this.blocked) return;
 		if (this.editor) {
 			// Not listening: a press jumps to the action it fires.
-			const owner = this.matching(input)[0]?.action;
+			const owner = this.matching(input, this.store.actionsIn(this.mode))[0]?.action;
 			if (owner) this.ed = { ...this.ed, sel: owner.id, cat: 'All', filter: 'all', q: '' };
 			return;
 		}
 		const hits = this.matching(input);
 		let flight = this.flight;
-		// As on the board, an action with no effect of its own says it "would open".
+		// Panels say they "would open" (their effect is `panel`). An action with no effect
+		// of its own only shows in the last-input toast: nothing would open for Thrust left.
+		// A game with no hardpoints to deploy (X4) fires whenever its guns are bound.
+		const stowable = this.has('hp');
+		const onMap = this.galaxy.open;
 		for (const { action, effect } of hits) {
-			if (effect) flight = act(flight, effect, action.name);
-			else if (!action.axis) flight = act(flight, 'panel', action.name);
+			if (onMap) flight = this.#onMap(action, effect, flight);
+			else if (effect)
+				flight = this.#withRoute(effect, flight) ?? act(flight, effect, action.name, stowable);
 		}
 		this.flight = flight;
 		this.last = input;
+		this.lastMods = this.hub.heldModifiers(input);
 		this.lastActs = hits.map((h) => h.action.id);
 	}
 
@@ -415,20 +748,21 @@ export class OrbitalPreflight {
 		if (this.mode !== 'ship') return;
 		const action = this.store.actionsIn('ship').find((a) => a.effect === 'throttle');
 		const input = action && this.store.bindings[action.id]?.[0]?.input;
-		if (input?.kind !== 'axis') return;
+		const key = input && axisValueKey(wholeAxis(input));
+		if (!key) return;
 		// The hub names a paired controller's axes by the file device it stands for.
-		const value = this.hub.axes.get(`${input.deviceId}:${input.axis}`);
+		const value = this.hub.axes.get(key);
 		if (value !== undefined) this.flight = setThrottle(this.flight, value);
 	}
 
 	/**
 	 * Bound axes in this mode as they are now, for the 3D scene to fly or drive by: pitch,
-	 * roll and yaw for the ship, steering and drive speed for the SRV. Nothing while
-	 * listening for a rebind or with a drawer open: the vehicle freezes, as the mock flight
-	 * does.
+	 * roll and yaw for the ship, steering and drive speed for the SRV, move and look on
+	 * foot. Nothing while listening for a rebind or with a drawer open: the vehicle (or
+	 * the pilot) freezes, as the mock flight does.
 	 */
 	analog = $derived.by((): Analog => {
-		const idle = this.cap !== null || this.drawer !== null || this.leaving || this.mode === 'foot';
+		const idle = this.cap !== null || this.blocked || this.galaxy.open;
 		return analogAxes(
 			this.store.actionsIn(this.mode),
 			this.store.bindings,
@@ -437,53 +771,101 @@ export class OrbitalPreflight {
 	});
 
 	/**
+	 * Effects whose binds are held down right now in this mode (walk directions, sprint),
+	 * for the on-foot walker: presses still fire through `onInput` as before; this only
+	 * says what is still down. Empty while listening for a rebind or with a drawer open.
+	 */
+	held = $derived.by((): ReadonlySet<string> => {
+		if (this.cap !== null || this.blocked || this.galaxy.open || this.mode !== 'foot')
+			return NO_HELD;
+		return heldEffects(this.store.actionsIn(this.mode), this.store.bindings, (input) =>
+			this.hub.held.has(inputKey(input))
+		);
+	});
+
+	/**
+	 * On foot, the 3D scene's stop zone the pilot stands in (1–7), and the stops visited
+	 * this visit. The scene reports them; the HUD shows the stop's prompts.
+	 */
+	footStop = $state<number | null>(null);
+	footDone = $state.raw<readonly number[]>([]);
+
+	/** The 3D on-foot scene says the pilot entered (or left) a stop zone. */
+	enterStop(n: number | null) {
+		this.footStop = n;
+		if (n !== null && !this.footDone.includes(n)) this.footDone = [...this.footDone, n];
+	}
+
+	/**
 	 * The viewport's camera button: the same as pressing a bound Toggle camera, so it's
 	 * ignored at the same times (listening for a rebind, a drawer or dialog open).
 	 */
 	toggleCamera() {
-		if (this.cap || this.drawer || this.leaving || !this.loaded) return;
+		if (this.cap || this.blocked || !this.loaded) return;
 		this.flight = act(this.flight, 'camera', 'Toggle camera');
 	}
 
 	step() {
-		if (this.loaded && !this.editor) this.flight = tick(this.flight, this.mode);
+		if (!this.loaded || this.editor) return;
+		let flight = tick(this.flight, this.mode);
+		flight = this.#galaxyStep(tickGalaxy(this.galaxy), flight);
+		if (this.galaxy.open && this.cap === null && !this.blocked) {
+			const drive = mapDrive(
+				this.mapActions.filter((a) => isMapCamera(a.id)),
+				this.store.bindings,
+				(input) => this.hub.held.has(inputKey(input)),
+				this.hub.axes
+			);
+			const cam = steer(this.galaxy.cam, drive, TICK_MS / 1000);
+			if (cam !== this.galaxy.cam) this.moveMap(cam);
+		}
+		this.flight = flight;
 	}
 
 	// Files out.
 
-	exportName(): string {
-		const name = this.store.file?.parsed.presetName || 'Custom';
-		return `${name} rebound`;
-	}
-
+	/** "Export <ABBR> preset": the current game, every mode. The original is never edited. */
 	exportPreset(): boolean {
-		const out = this.store.exportFile(this.exportName());
-		if (!out) return false;
-		download(out.fileName, out.text);
-		reportBindsExport(this.sim, this.store.changes);
-		return true;
+		const session = this.games.current;
+		return session ? exportSession(session) : false;
 	}
 
-	persist() {
-		const file = this.store.file;
-		if (!this.remember || !file) return;
-		saveLayout(this.base, {
-			sim: file.parsed.sim,
-			label: this.fileLine.replace(/^Pilot's binds · /, ''),
-			source: file.parsed.source,
-			edits: this.store.edits()
-		});
-	}
-
-	setRemember(on: boolean) {
-		this.remember = on;
-		if (on) this.persist();
-		else clearLayout(this.base);
+	/**
+	 * Leave's "Export all N games": one new preset file per game with changes, a moment
+	 * apart, as browsers are warier of several downloads fired at once. Resolves with how
+	 * many were handed to the browser.
+	 */
+	async exportAll(gap = 400): Promise<number> {
+		const changed = [...this.games.sessions.values()].filter((s) => s.store.changes > 0);
+		let n = 0;
+		for (const [i, session] of changed.entries()) {
+			if (i) await new Promise((r) => setTimeout(r, gap));
+			if (exportSession(session)) n++;
+		}
+		return n;
 	}
 
 	leaveNow() {
 		window.location.href = this.config.homeUrl;
 	}
+}
+
+/** What the "Binding for" block's file line says for a game. */
+export function fileLine(session: Session | null | undefined): string {
+	const origin = session?.store.file?.origin;
+	if (!origin) return '';
+	if (origin.kind === 'preset') return `Pilot's binds · ${origin.label}`;
+	if (origin.kind === 'upload') return origin.fileName;
+	return origin.label;
+}
+
+function exportSession(session: Session): boolean {
+	const name = session.store.file?.parsed.presetName || 'Custom';
+	const out = session.store.exportFile(`${name} rebound`);
+	if (!out) return false;
+	download(out.fileName, out.text);
+	reportBindsExport(session.sim, session.store.changes);
+	return true;
 }
 
 const KEY = Symbol('orbital-preflight');

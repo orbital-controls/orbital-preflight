@@ -11,6 +11,8 @@ export type Mode = 'ship' | 'srv' | 'foot';
 
 export const MODES: readonly Mode[] = ['ship', 'srv', 'foot'];
 
+export const MODE_NAMES: Record<Mode, string> = { ship: 'Ship', srv: 'SRV', foot: 'On foot' };
+
 export interface Action {
 	/** The sim's own id for the action, e.g. `ToggleFlightAssist`. */
 	id: string;
@@ -31,6 +33,12 @@ export interface Action {
 	 */
 	context?: string;
 	/**
+	 * Actions in the same group share inputs on purpose: the sim's own defaults put them on
+	 * one key (Star Citizen's Space jumps, fires the jump thrusters and climbs ledges). They
+	 * don't clash with each other, but still clash with any other action on that input.
+	 */
+	shares?: string;
+	/**
 	 * Which flight axis an analogue action drives, for the 3D scene: a bound stick or
 	 * throttle axis moves the ship directly rather than through the mock flight's steps.
 	 */
@@ -42,7 +50,8 @@ export interface Action {
 	local?: boolean;
 }
 
-export type AnalogRole = 'pitch' | 'roll' | 'yaw' | 'throttle' | 'steer' | 'drive';
+export type AnalogRole =
+	'pitch' | 'roll' | 'yaw' | 'throttle' | 'steer' | 'drive' | 'moveX' | 'moveY' | 'lookX' | 'lookY';
 
 export type HatDirection = 'up' | 'down' | 'left' | 'right';
 
@@ -59,7 +68,14 @@ export type InputId =
 	| { kind: 'button'; deviceId: string; button: number }
 	| { kind: 'hat'; deviceId: string; hat: number; dir: HatDirection }
 	| { kind: 'axis'; deviceId: string; axis: string; half?: 'pos' | 'neg' }
+	| { kind: 'pad'; deviceId: string; control: PadControl; half?: 'pos' | 'neg' }
 	| { kind: 'raw'; device: string; key: string };
+
+/**
+ * A gamepad control by the name Elite gives it after `GamePad_` (`FaceDown`, `LStickX`,
+ * `RTrigger`…). Sticks and triggers are axes; a `half` is one direction of one.
+ */
+export type PadControl = string;
 
 /**
  * One slot: an input, optionally held with modifiers (Shift, Ctrl, or a stick button).
@@ -86,6 +102,8 @@ export interface FileDevice {
 	id: string;
 	/** A readable name where we know one. */
 	name: string;
+	/** The file binds it by gamepad control names (`GamePad_FaceDown`), not `Joy_` ones. */
+	gamepad?: true;
 	/** USB vendor and product id (lowercase hex) where the file name gives them away. */
 	vendor?: string;
 	product?: string;

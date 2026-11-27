@@ -4,7 +4,16 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { inputKey } from '../bindings.ts';
 import type { Bind, FileDevice, InputId } from '../types.ts';
-import { AXIS_NAMES, hatDirections, looksLikeHat, matchDevice, parseGamepadId } from './gamepad.ts';
+import {
+	AXIS_NAMES,
+	hatDirections,
+	looksLikeHat,
+	matchDevice,
+	parseGamepadId,
+	STANDARD_AXES,
+	STANDARD_BUTTONS,
+	STANDARD_TRIGGERS
+} from './gamepad.ts';
 
 /** A controller the browser has shown us. */
 export interface BrowserPad {
@@ -14,6 +23,8 @@ export interface BrowserPad {
 	name: string;
 	buttons: number;
 	axes: number;
+	/** The browser maps it to the standard (Xbox-style) layout, so it reads as a gamepad. */
+	standard: boolean;
 	/**
 	 * The device id binds made on it carry: a device from the file once paired, or a new
 	 * one built from its USB id (`new`) when the file has no match. `null` when the
@@ -23,6 +34,9 @@ export interface BrowserPad {
 	/** Matched to the file by USB id, paired by the pilot pressing a button, or not in the file. */
 	pairedBy: 'usb' | 'press' | 'new' | null;
 }
+
+/** How one controller was paired, kept per game while another game is current. */
+export type PadPairing = Pick<BrowserPad, 'index' | 'id' | 'deviceId' | 'pairedBy'>;
 
 export interface InputEvent {
 	input: InputId;
@@ -82,7 +96,10 @@ export class InputHub {
 	/** A modifier pressed alone while listening; it becomes the bind if nothing joins it. */
 	#loneModifier: InputId | null = null;
 	#pairNext: ((pad: BrowserPad) => void) | null = null;
-	#padState = new Map<number, { buttons: boolean[]; axes: number[]; hats: Set<number> }>();
+	#padState = new Map<
+		number,
+		{ buttons: boolean[]; axes: number[]; triggers: number[]; hats: Set<number> }
+	>();
 	#frame = 0;
 
 	get capturing(): boolean {
@@ -127,7 +144,7 @@ export class InputHub {
 	}
 
 	/** Modifier keys held now, other than `input` itself. */
-	#heldModifiers(input: InputId): InputId[] {
+	heldModifiers(input: InputId): InputId[] {
 		const mods: InputId[] = [];
 		for (const [key, held] of this.#heldInputs) {
 			if (key !== inputKey(input) && isModifier(held)) mods.push(held);
@@ -150,7 +167,7 @@ export class InputHub {
 				return;
 			}
 			this.#loneModifier = null;
-			const modifiers = this.#heldModifiers(input);
+			const modifiers = this.heldModifiers(input);
 			this.#capture(modifiers.length ? { input, modifiers } : { input });
 			return;
 		}
@@ -296,11 +313,20 @@ export class InputHub {
 			const state = this.#padState.get(pad.index) ?? {
 				buttons: [],
 				axes: [],
+				triggers: [],
 				hats: new Set<number>()
 			};
 			this.#padState.set(pad.index, state);
 
+			// An Xbox-style pad in the browser's standard layout arrives by Elite's gamepad
+			// control names; sticks and throttles (no standard layout) as Joy_ buttons and axes.
+			const standard = pad.mapping === 'standard';
 			pad.buttons.forEach((button, i) => {
+				const control = standard ? STANDARD_BUTTONS[i] : undefined;
+				if (control && STANDARD_TRIGGERS.has(control)) {
+					this.#axis(deviceId, control, state.triggers[i] ?? 0, button.value, true);
+					state.triggers[i] = button.value;
+				}
 				const down = button.pressed || button.value > AXIS_PRESS;
 				if (down === Boolean(state.buttons[i])) return;
 				state.buttons[i] = down;
@@ -310,13 +336,21 @@ export class InputHub {
 					callback(info);
 					return;
 				}
-				const input: InputId = { kind: 'button', deviceId, button: i + 1 };
+				const input: InputId = control
+					? { kind: 'pad', deviceId, control }
+					: { kind: 'button', deviceId, button: i + 1 };
 				if (down) this.press(input);
 				else this.release(input);
 			});
 
 			let hatNumber = 0;
 			pad.axes.forEach((value, i) => {
+				const control = standard ? STANDARD_AXES[i] : undefined;
+				if (control) {
+					this.#axis(deviceId, control, state.axes[i] ?? 0, value, false);
+					state.axes[i] = value;
+					return;
+				}
 				if (looksLikeHat(value)) state.hats.add(i);
 				if (state.hats.has(i)) {
 					hatNumber += 1;
@@ -346,6 +380,28 @@ export class InputHub {
 					else this.release(input);
 				}
 			});
+		}
+	}
+
+	/**
+	 * A standard-layout stick or trigger moved: its value for the 3D scene, and crossing
+	 * halfway as a press of that half. A trigger only has a pos half (`Pos_GamePad_RTrigger`);
+	 * it also presses as a button (`GamePad_RTrigger`), from the buttons loop.
+	 */
+	#axis(deviceId: string, control: string, previous: number, value: number, trigger: boolean) {
+		if (Math.abs(value - previous) > 0.002) {
+			const axisKey = `${deviceId}:${control}`;
+			this.axes.set(axisKey, value);
+			for (const listener of this.#axisListeners) listener(axisKey, value);
+		}
+		for (const half of trigger ? (['pos'] as const) : (['pos', 'neg'] as const)) {
+			const sign = half === 'pos' ? 1 : -1;
+			const was = previous * sign > AXIS_PRESS;
+			const is = value * sign > AXIS_PRESS;
+			if (was === is) continue;
+			const input: InputId = { kind: 'pad', deviceId, control, half };
+			if (is) this.press(input);
+			else this.release(input);
 		}
 	}
 
@@ -382,6 +438,7 @@ export class InputHub {
 				name: parseGamepadId(g.id).name,
 				buttons: g.buttons.length,
 				axes: g.axes.length,
+				standard: g.mapping === 'standard',
 				deviceId: null,
 				pairedBy: null
 			};
@@ -422,6 +479,45 @@ export class InputHub {
 			// One controller per file device.
 			if (deviceId && p.deviceId === deviceId) return this.#unpaired(p);
 			return p;
+		});
+	}
+
+	/** The pairing as it is now, to keep with a game that stops being current. */
+	pairing(): PadPairing[] {
+		return this.pads.map(({ index, id, deviceId, pairedBy }) => ({
+			index,
+			id,
+			deviceId,
+			pairedBy
+		}));
+	}
+
+	/**
+	 * Another game's devices, and its pairing as it was left: a controller paired by USB
+	 * or by a press goes back to the same file device; one plugged in since (or never
+	 * paired) is matched by USB or waits, unpaired, for the Controllers drawer.
+	 */
+	restore(
+		devices: FileDevice[],
+		newDeviceId: ((vendor: string, product: string) => string | null) | null,
+		saved: readonly PadPairing[]
+	) {
+		this.releaseAll();
+		this.devices = devices;
+		this.newDeviceId = newDeviceId;
+		const kept = new Map(
+			saved
+				.filter(
+					(s) =>
+						(s.pairedBy === 'usb' || s.pairedBy === 'press') &&
+						devices.some((d) => d.id === s.deviceId)
+				)
+				.map((s) => [`${s.index}:${s.id}`, s])
+		);
+		const taken = new Set([...kept.values()].map((s) => s.deviceId!));
+		this.pads = this.pads.map((p) => {
+			const s = kept.get(`${p.index}:${p.id}`);
+			return s ? { ...p, deviceId: s.deviceId, pairedBy: s.pairedBy } : this.#assign(p, taken);
 		});
 	}
 

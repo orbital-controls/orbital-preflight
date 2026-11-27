@@ -1,46 +1,22 @@
 import type { SimId } from '../types.ts';
 import { elite } from './elite/index.ts';
+import { starCitizen } from './star-citizen/index.ts';
 import type { SimAdapter } from './types.ts';
+import { x4 } from './x4/index.ts';
 
 /**
- * Star Citizen and X4 are listed so the picker shows them, but neither format has been
- * checked against real files, so neither parses yet. DCS comes later. Copy is the
- * StandFly board's.
+ * The sim registry. Only a sim whose parser and writer have been checked against real
+ * files is `ready`; DCS isn't yet, so it shows as "Coming later" in the bay and the
+ * manifest, as it does on the boards.
  */
-const starCitizen: SimAdapter = {
-	id: 'star-citizen',
-	name: 'Star Citizen',
-	short: 'SC',
-	status: 'soon',
-	extensions: ['.xml'],
-	fileLabel: 'Coming soon',
-	help: {
-		step: 'Export first, in game: Options → Keybindings → Advanced controls customization → Control profiles → Save.',
-		path: '…\\StarCitizen\\LIVE\\USER\\Client\\0\\Controls\\Mappings\\',
-		tip: 'Pick the layout_…_exported.xml file you just saved.'
-	}
-};
-
-const x4: SimAdapter = {
-	id: 'x4',
-	name: 'X4: Foundations',
-	short: 'X4',
-	status: 'soon',
-	extensions: ['.xml'],
-	fileLabel: 'Coming soon',
-	help: {
-		path: 'Documents\\Egosoft\\X4\\[your id number]\\inputmap.xml',
-		tip: 'The number folder is your player id. There is usually only one.'
-	}
-};
-
 const dcs: SimAdapter = {
 	id: 'dcs',
 	name: 'DCS World',
 	short: 'DCS',
 	status: 'later',
 	extensions: ['.lua'],
-	fileLabel: 'Coming later',
+	fileLabel: 'One file per aircraft',
+	modes: [],
 	help: {
 		path: 'Saved Games\\DCS\\Config\\Input\\[aircraft]\\',
 		tip: 'DCS keeps one file per aircraft per device. Support comes after the first three.'
@@ -48,6 +24,11 @@ const dcs: SimAdapter = {
 };
 
 export const SIMS: readonly SimAdapter[] = [elite, starCitizen, x4, dcs];
+
+/** Ready sims that open on their game's own defaults: they always have binds to fly. */
+export const SIMS_WITH_DEFAULTS: readonly SimId[] = SIMS.filter(
+	(s) => s.status === 'ready' && s.defaults
+).map((s) => s.id);
 
 export function simById(id: SimId): SimAdapter {
 	const sim = SIMS.find((s) => s.id === id);

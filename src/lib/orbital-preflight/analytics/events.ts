@@ -1,3 +1,4 @@
+import type { FileOrigin } from '../binds.svelte.ts';
 import * as ga from './gtag.ts';
 import * as umami from './umami.ts';
 
@@ -23,8 +24,8 @@ export function reportPageView(location: string, title: string): void {
 	if (umami.scriptPresent()) umami.pageView(location, title);
 }
 
-/** A binds file opened: one of the pilot's presets, or the visitor's own. */
-export function reportBindsLoad(source: 'preset' | 'upload', sim: string): void {
+/** A binds file opened: one of the pilot's presets, the game's own defaults, or the visitor's own. */
+export function reportBindsLoad(source: FileOrigin['kind'], sim: string): void {
 	report('binds_load', { source, sim });
 }
 

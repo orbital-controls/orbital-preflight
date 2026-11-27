@@ -4,16 +4,18 @@
 	import { footHud, shipHud, srvHud, type SceneProps } from '#lib/orbital-preflight/flight.ts';
 	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
 	import FirstVisit from './FirstVisit.svelte';
+	import GalaxyMap from './GalaxyMap.svelte';
 	import Hud from './Hud.svelte';
 	import PlaceholderScene from './PlaceholderScene.svelte';
 	import Scene3D from './Scene3D.svelte';
 
 	/**
-	 * The flight view. The ship flies and the SRV drives in the 3D scene (`Scene3D`): it
-	 * gets the mock flight, the mode and the bound axes, renders, and reports nothing back
-	 * but whether WebGL came up. Where it can't (no WebGL, a lost context) and on foot,
-	 * which has no 3D scene yet, the boards' 2D placeholder draws. A `scene` snippet still
-	 * replaces both. The HUD is DOM on top and doesn't depend on either.
+	 * The flight view. The ship flies, the SRV drives and the pilot walks Pad 7 in the 3D
+	 * scene (`Scene3D`): it gets the mock flight, the mode, the bound axes and the held
+	 * binds, renders, and reports back only whether WebGL came up and, on foot, the stop
+	 * zone the pilot is in. Where it can't (no WebGL, a lost context) the boards' 2D
+	 * placeholder draws. A `scene` snippet still replaces both. The HUD is DOM on top, and
+	 * the galaxy map, while it's open, over all of it (and outside the mouse zone).
 	 */
 	interface Props {
 		scene?: Snippet<[SceneProps]>;
@@ -25,12 +27,12 @@
 
 	/** WebGL came up. A failure is kept in `app.sceneFailed`, for the rest of the visit. */
 	let ready = $state(false);
-	/** Modes with a 3D scene so far. */
-	const IN_3D = new Set(['ship', 'srv']);
-	const live = $derived(!scene && ready && !app.sceneFailed && IN_3D.has(app.mode));
+	/** Modes with a 3D scene. */
+	const IN_3D = new Set(['ship', 'srv', 'foot']);
+	const live = $derived(app.loaded && !scene && ready && !app.sceneFailed && IN_3D.has(app.mode));
 	// The full editor replaces the page, so the viewport unmounts (and the engine is
 	// disposed) rather than being covered.
-	const covered = $derived(app.drawer !== null || app.leaving);
+	const covered = $derived(app.drawer !== null || app.leaving || app.galaxy.open);
 
 	const cameraKey = $derived.by(() => {
 		const action = app.store.actionsIn(app.mode).find((a) => a.effect === 'camera');
@@ -40,15 +42,12 @@
 
 	const SCENE_COPY = {
 		ship: {
-			tag: 'SHIP',
 			text: 'Real-time 3D flight view, chase camera. Ship, gear, hardpoints, lights, flame and weapon fire all react to live input.'
 		},
 		srv: {
-			tag: 'SRV',
 			text: 'Real-time 3D surface drive, third person. Wheels, suspension, thrusters, headlights and turret react to live input.'
 		},
 		foot: {
-			tag: 'ON FOOT',
 			text: 'Real-time first-person view inside a station. Movement, crouch, weapon, flashlight and prompts react to live input.'
 		}
 	};
@@ -73,8 +72,16 @@
 			return `Placeholder for the 3D SRV driving view. Speed ${h.spd} metres per second, ${h.assist}.`;
 		}
 		const h = footHud(s);
+		if (live) {
+			const at = app.footStop ? `, at stop ${app.footStop} of 7` : '';
+			return `3D first-person view on Pad 7${at}. Health ${h.health} percent, ${h.ammo} rounds loaded.`;
+		}
 		return `Placeholder for the 3D first-person view. Health ${h.health} percent, ${h.ammo} rounds loaded.`;
 	});
+
+	// The crosshair, as the on-foot placeholder draws it.
+	const gap = $derived(app.flight.aim ? 6 : app.flight.walkT > 0 ? 18 : 12);
+	const tick = $derived(app.flight.aim ? 8 : 12);
 </script>
 
 <!-- The camera button sits outside the mouse zone, so clicking it isn't a mouse bind, and a
@@ -101,10 +108,12 @@
 								analog={app.analog}
 								covered={covered || !live}
 								frozen={app.cap !== null}
+								held={app.held}
 								onstatus={(status) => {
 									if (status === 'ready') ready = true;
 									else app.sceneFailed = true;
 								}}
+								onstop={(n) => app.enterStop(n)}
 							/>
 						</div>
 					{/if}
@@ -123,6 +132,29 @@
 							>
 						</svg>
 					{/if}
+					{#if live && app.mode === 'foot' && !app.flight.holster}
+						<!-- The crosshair, as the on-foot placeholder draws it: rounds go here. -->
+						<svg
+							class="pointer-events-none absolute inset-0"
+							viewBox="0 0 900 560"
+							aria-hidden="true"
+							data-op-crosshair
+						>
+							<g stroke="var(--color-ink-200)" stroke-width="1.6"
+								><line x1="450" y1={280 - gap - tick} x2="450" y2={280 - gap} /><line
+									x1="450"
+									y1={280 + gap}
+									x2="450"
+									y2={280 + gap + tick}
+								/><line x1={450 - gap - tick} y1="280" x2={450 - gap} y2="280" /><line
+									x1={450 + gap}
+									y1="280"
+									x2={450 + gap + tick}
+									y2="280"
+								/></g
+							>
+						</svg>
+					{/if}
 				{/if}
 			{:else}
 				<PlaceholderScene flight={app.flight} mode="ship" empty />
@@ -137,19 +169,22 @@
 				>
 					<span
 						class="border border-dashed border-course/60 bg-abyss/60 px-[10px] py-1 font-mono text-[11px] font-bold tracking-[.14em] text-course notch op-notch-xs"
-						>PLACEHOLDER · 3D SCENE · {SCENE_COPY[app.mode].tag}</span
+						>PLACEHOLDER · 3D SCENE · {app.modeName(app.mode).toUpperCase()}</span
 					>
 					<span class="max-w-[440px] font-mono text-[13px] text-ink-900"
 						>{SCENE_COPY[app.mode].text}</span
 					>
 				</div>
 			{/if}
-			<Hud />
+			<Hud live3d={live} />
 		{:else}
 			<FirstVisit {onwhere} />
 		{/if}
 	</div>
-	{#if live}
+	{#if app.loaded && app.galaxy.open}
+		<GalaxyMap />
+	{/if}
+	{#if live && app.mode !== 'foot' && !app.galaxy.open}
 		<button
 			type="button"
 			aria-pressed={app.flight.cam === 'cockpit'}

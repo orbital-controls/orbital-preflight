@@ -7,30 +7,58 @@ import type { Bind, FileDevice, HatDirection, InputId, Slot } from './types.ts';
 
 export interface DeviceRole {
 	id: string;
-	/** "Stick", "Throttle", "Stick 2"… */
+	/** "Stick", "Throttle", "Stick 2", "Gamepad"… */
 	long: string;
-	/** "Stk", "Thr", "Stk2"… */
+	/** "Stk", "Thr", "Stk2", "Pad"… */
 	short: string;
-	kind: 'stick' | 'throttle';
+	kind: 'stick' | 'throttle' | 'pad';
 }
 
-/** Names each device in the file as a stick or a throttle, numbering repeats. */
+const ROLE_NAMES = {
+	stick: ['Stick', 'Stk'],
+	throttle: ['Throttle', 'Thr'],
+	pad: ['Gamepad', 'Pad']
+} as const;
+
+/** Names each device in the file as a stick, a throttle or a gamepad, numbering repeats. */
 export function deviceRoles(devices: FileDevice[]): DeviceRole[] {
-	const isThrottle = (d: FileDevice) => /throttle|twcs|thr\b/i.test(`${d.id} ${d.name}`);
-	const counts = { stick: 0, throttle: 0 };
-	const totals = {
-		stick: devices.filter((d) => !isThrottle(d)).length,
-		throttle: devices.filter(isThrottle).length
-	};
+	const kindOf = (d: FileDevice): DeviceRole['kind'] =>
+		d.gamepad ? 'pad' : /throttle|twcs|thr\b/i.test(`${d.id} ${d.name}`) ? 'throttle' : 'stick';
+	const counts = { stick: 0, throttle: 0, pad: 0 };
+	const totals = { stick: 0, throttle: 0, pad: 0 };
+	for (const d of devices) totals[kindOf(d)] += 1;
 	return devices.map((d) => {
-		const kind = isThrottle(d) ? 'throttle' : 'stick';
+		const kind = kindOf(d);
 		counts[kind] += 1;
 		const n = totals[kind] > 1 ? counts[kind] : 0;
-		const long = `${kind === 'stick' ? 'Stick' : 'Throttle'}${n ? ` ${n}` : ''}`;
-		const short = `${kind === 'stick' ? 'Stk' : 'Thr'}${n || ''}`;
-		return { id: d.id, long, short, kind };
+		const [long, short] = ROLE_NAMES[kind];
+		return { id: d.id, long: `${long}${n ? ` ${n}` : ''}`, short: `${short}${n || ''}`, kind };
 	});
 }
+
+/** Gamepad controls by their Xbox names, as Elite's own gamepad prompts show them. */
+const PAD_LABELS: Record<string, string> = {
+	FaceDown: 'A',
+	FaceRight: 'B',
+	FaceLeft: 'X',
+	FaceUp: 'Y',
+	LBumper: 'LB',
+	RBumper: 'RB',
+	LTrigger: 'LT',
+	RTrigger: 'RT',
+	LThumb: 'LS',
+	RThumb: 'RS',
+	Back: 'Back',
+	Start: 'Start',
+	DPadUp: 'D↑',
+	DPadDown: 'D↓',
+	DPadLeft: 'D←',
+	DPadRight: 'D→',
+	LStickX: 'LS X',
+	LStickY: 'LS Y',
+	RStickX: 'RS X',
+	RStickY: 'RS Y'
+};
 
 const KEY_LABELS: Record<string, string> = {
 	Space: 'Space',
@@ -111,9 +139,27 @@ export function inputLabel(input: InputId, roles: DeviceRole[], long = false): s
 			const half = input.half === 'pos' ? '+' : input.half === 'neg' ? '−' : '';
 			return `${device(input.deviceId)} ${input.axis}${half}${long ? ' axis' : ''}`;
 		}
-		case 'raw':
+		case 'pad': {
+			const half = input.half === 'pos' ? '+' : input.half === 'neg' ? '−' : '';
+			const r = role(input.deviceId);
+			const name = r ? (long ? r.long : r.short) : 'Pad';
+			return `${name} ${PAD_LABELS[input.control] ?? input.control}${half}`;
+		}
+		case 'raw': {
+			// Mouse axes, which a sim may bind but the deck has no key for.
+			const axis = /^maxis_([xyz])$/i.exec(input.key);
+			if (axis) return `Mouse ${axis[1].toUpperCase()}${long ? ' axis' : ''}`;
 			return long ? `${input.device} ${input.key}` : input.key;
+		}
 	}
+}
+
+/** A controller input as a deck key prints it, under its device's name: "B5", "H↑", "TRG", "A". */
+export function deckLabel(input: InputId, roles: DeviceRole[]): string {
+	const label = inputLabel(input, roles);
+	return input.kind === 'pad'
+		? label.replace(/^\S+ /, '')
+		: label.replace(/^\S+ (?=H|TRG|B\d)/, '');
 }
 
 /** A slot as the boards print it: "—" when empty, "Shift+W" with a modifier. */
