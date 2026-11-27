@@ -6,7 +6,8 @@ const VARIANTS = [
 	{ name: 'root', port: 4173, base: '', tests: ['root', 'scene'] },
 	{ name: 'base', port: 4174, base: '/orbital-preflight', tests: ['base'] },
 	{ name: 'theme', port: 4175, base: '', tests: ['theme'] },
-	{ name: 'multi', port: 4176, base: '', tests: ['multi'] }
+	{ name: 'multi', port: 4176, base: '', tests: ['multi'] },
+	{ name: 'analytics', port: 4177, base: '', tests: ['analytics'] }
 ];
 
 export default defineConfig({

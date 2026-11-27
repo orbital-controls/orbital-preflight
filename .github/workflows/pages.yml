@@ -4,6 +4,10 @@ name: Deploy to GitHub Pages
 # (Settings → Pages). To build with a config other than orbital-preflight.config.ts,
 # set the repository variable ORBITAL_PREFLIGHT_CONFIG to its path: Phil's instance
 # uses instances/orbitalcontrols/orbital-preflight.config.ts.
+#
+# Analytics are off unless these repository variables are set (README, "Analytics"):
+# GA_MEASUREMENT_ID, UMAMI_WEBSITE_ID and UMAMI_HOST. Variables, not secrets: the IDs
+# are public in every page's HTML.
 
 on:
   push:
@@ -37,6 +41,9 @@ jobs:
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
           ORBITAL_PREFLIGHT_CONFIG: ${{ vars.ORBITAL_PREFLIGHT_CONFIG || 'orbital-preflight.config.ts' }}
+          GA_MEASUREMENT_ID: ${{ vars.GA_MEASUREMENT_ID }}
+          UMAMI_WEBSITE_ID: ${{ vars.UMAMI_WEBSITE_ID }}
+          UMAMI_HOST: ${{ vars.UMAMI_HOST }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: build

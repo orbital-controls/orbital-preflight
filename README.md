@@ -1,6 +1,6 @@
 # Orbital Preflight
 
-Load the keybinds file from your space sim, connect your controllers, test every bind against a mock flight, rebind anything and export a new preset. It runs entirely in the browser tab: files are read with `FileReader`, nothing is uploaded, and there is no account and no analytics.
+Load the keybinds file from your space sim, connect your controllers, test every bind against a mock flight, rebind anything and export a new preset. It runs entirely in the browser tab: files are read with `FileReader`, nothing is uploaded, and there is no account. Analytics are off unless the deploy turns them on (see [Analytics](#analytics)), and never see your binds.
 
 It's also a framework. Fork this repo onto GitHub Pages to show off your own binds: visitors test them with their own stick and keyboard, and download them as they are or after changing them.
 
@@ -61,7 +61,7 @@ export default defineConfig({
 - **One game with binds**: presets for one sim (the old single-sim shape too: `sim` plus `presets` with no `sim` of their own), and no other game with binds. A first visit skips the game picker and opens with the first preset loaded; the top bar reads "Pilot's binds · ‹label›". Star Citizen and X4 always have binds (their games' defaults), so while both are listed this doesn't happen: there are always at least two games with binds, and a first visit is the bay.
 - **Two or more games with binds**: a first visit shows the bay, one tile per game. Games with presets read "Pilot's binds · ‹label›" and picking one loads its first preset; Star Citizen with no preset reads "Star Citizen 4.10.2 defaults" and opens on them, and X4 reads "X4 9.00 defaults". With Elite presets alone, that's the bay with Elite, Star Citizen and X4. A sim that isn't supported yet shows as "Coming later" and can't be picked.
 - **No presets**: the bay; Elite asks for the visitor's own file, and Star Citizen and X4 open on their games' defaults.
-- **Nothing is kept between visits**: the app stores nothing in the browser, so every visit starts from this routing.
+- **No game is remembered between visits**: the app doesn't keep which game or binds were open, so every visit starts from this routing.
 
 ```ts
 presets: [
@@ -69,6 +69,29 @@ presets: [
 	{ file: 'layout_vex_exported.xml', label: 'My SC layout', sim: 'star-citizen' }
 ];
 ```
+
+### Analytics
+
+None by default: a build with no analytics IDs writes no tag, sets no cookie, shows no banner and makes no third-party request. The IDs come from the build's environment, not the config, so they stay out of the repository and a fork never inherits yours. In the Pages workflow they are repository variables (Settings → Secrets and variables → Actions → **Variables**; not secrets, since the IDs are public in every page's HTML):
+
+| Variable            | What                                                                               |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| `GA_MEASUREMENT_ID` | A GA4 measurement ID, `G-XXXXXXXXXX`.                                              |
+| `UMAMI_WEBSITE_ID`  | The website ID (a UUID) the Umami dashboard shows for the site.                    |
+| `UMAMI_HOST`        | Optional. Where the Umami script is served from; default `https://cloud.umami.is`. |
+
+For a local build, set them in the shell: `GA_MEASUREMENT_ID=G-XXXXXXXXXX pnpm build`. A value in the wrong shape fails the build.
+
+- **Google Analytics 4** sets a cookie, so a banner asks first. Until a visitor allows it, the page contacts no Google endpoint: only an inline bootstrap with Consent Mode defaults (everything `denied`) is in the HTML, and the `gtag/js` script is added on Allow. The answer is kept per base path, so two forks on one github.io origin ask separately.
+- **Umami** sets no cookie and stores no identifier, so it needs no consent and runs either way; the banner says so when it is on. Ad blockers drop the Google tag for much of this audience, and Umami counts some of those visits. `cloud.umami.is` is on the same blocklists, so a self-hosted `umamiHost` on your own domain counts more.
+
+The tags are written into the prerendered HTML at build time (`src/hooks.server.ts` fills a placeholder in `src/app.html`; nothing runs on a server). Events are sent from `src/lib/orbital-preflight/analytics/events.ts`, the only file the app calls; nothing about a visitor's binds or file names is sent:
+
+| Event          | When                                                                | Data                                               |
+| -------------- | ------------------------------------------------------------------- | -------------------------------------------------- |
+| page view      | each navigation                                                     | URL and title                                      |
+| `binds_load`   | a binds file opens for a game                                       | `source` (`preset`, `defaults` or `upload`), `sim` |
+| `binds_export` | a game's rebound preset is downloaded, once per game for Export all | `sim`, `changes` (binds changed)                   |
 
 The look comes from [`@orbital-controls/theme`](https://www.npmjs.com/package/@orbital-controls/theme), installed from npm: Tailwind v4 tokens, the motif utilities and three self-hosted font families. Re-theme through `theme`, not by copying its values.
 
@@ -87,6 +110,7 @@ and deploys with the same GitHub Pages workflow as a fork, served at `preflight.
 3. At the DNS host for orbitalcontrols.com, add a `CNAME` record from `preflight` to `orbital-controls.github.io`. Verifying the domain for the `orbital-controls` organisation (Settings → Pages → Verified domains) stops anyone else claiming it.
 4. Push to `main`. With a custom domain the base path is empty, so the app is served at the root.
 5. Uncomment `siteUrl` in `instances/orbitalcontrols/orbital-preflight.config.ts`, so the page gets its canonical and Open Graph tags.
+6. For analytics, create a GA4 web data stream and an Umami website for `preflight.orbitalcontrols.com`, and set their IDs as the repository variables `GA_MEASUREMENT_ID` and `UMAMI_WEBSITE_ID` (see [Analytics](#analytics)).
 
 The build output is plain static files, so any static host works too.
 
@@ -124,6 +148,7 @@ The multi-game variant (`tests/fixtures/multi.config.ts`) has presets for Elite 
 | `src/lib/orbital-preflight/galaxy.ts`          | The galaxy map: the systems, its camera, the route plotter and jumps. Pure.       |
 | `src/lib/orbital-preflight/inputs/`            | Keyboard, mouse and Gamepad API input, and controller pairing.                    |
 | `src/lib/orbital-preflight/scene/`             | The 3D viewport: pure flight → part mappings, and the three.js engine.            |
+| `src/lib/orbital-preflight/analytics/`         | Optional Google Analytics and Umami: head tags, consent, events.                  |
 | `src/lib/components/`                          | One component per UI piece.                                                       |
 
 ### The 3D scene

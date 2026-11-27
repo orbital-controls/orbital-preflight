@@ -1,3 +1,4 @@
+import { reportBindsExport, reportBindsLoad } from './analytics/events.ts';
 import { getContext, setContext } from 'svelte';
 import { BindStore, download, type FileOrigin } from './binds.svelte.ts';
 import {
@@ -269,6 +270,7 @@ export class OrbitalPreflight {
 		}
 		try {
 			this.#afterLoad(sim.parse(text), origin);
+			reportBindsLoad(origin.kind, sim.id);
 			return true;
 		} catch (error) {
 			this.loadError =
@@ -862,6 +864,7 @@ function exportSession(session: Session): boolean {
 	const out = session.store.exportFile(`${name} rebound`);
 	if (!out) return false;
 	download(out.fileName, out.text);
+	reportBindsExport(session.sim, session.store.changes);
 	return true;
 }
 

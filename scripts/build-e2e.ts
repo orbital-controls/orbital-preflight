@@ -5,6 +5,7 @@
  * - base:  the same under /orbital-preflight, as a GitHub Pages project site serves it
  * - theme: tests/fixtures/theme.config.ts, a theme override with no presets
  * - multi: tests/fixtures/multi.config.ts, presets for Elite Dangerous and Star Citizen
+ * - analytics: the shipped config with both providers on, as the Pages workflow would set them
  */
 import { execFileSync } from 'node:child_process';
 
@@ -20,15 +21,28 @@ export const VARIANTS = {
 		port: 4176,
 		base: '',
 		env: { ORBITAL_PREFLIGHT_CONFIG: 'tests/fixtures/multi.config.ts' }
+	},
+	analytics: {
+		port: 4177,
+		base: '',
+		env: {
+			GA_MEASUREMENT_ID: 'G-TEST000000',
+			UMAMI_WEBSITE_ID: '00000000-0000-4000-8000-000000000000',
+			UMAMI_HOST: 'https://umami.invalid'
+		}
 	}
 } as const;
+
+// Analytics IDs only reach the variant that sets them, never from the shell.
+const { GA_MEASUREMENT_ID, UMAMI_WEBSITE_ID, UMAMI_HOST, ...shell } = process.env;
+void [GA_MEASUREMENT_ID, UMAMI_WEBSITE_ID, UMAMI_HOST];
 
 if (import.meta.main) {
 	for (const [name, variant] of Object.entries(VARIANTS)) {
 		console.log(`Building ${name}…`);
 		execFileSync('pnpm', ['exec', 'vite', 'build', '--logLevel', 'warn'], {
 			stdio: 'inherit',
-			env: { ...process.env, ...variant.env, BUILD_DIR: `build-e2e/${name}` }
+			env: { ...shell, ...variant.env, BUILD_DIR: `build-e2e/${name}` }
 		});
 	}
 }

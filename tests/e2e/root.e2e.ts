@@ -31,6 +31,14 @@ test('a first visit is the bay: the pilot’s Elite preset and Star Citizen’s 
 	await expect(page.getByRole('tab', { name: /Ship/ })).toHaveAttribute('aria-selected', 'true');
 });
 
+test('a config with no analytics IDs writes no tags and asks nothing', async ({ page }) => {
+	await page.goto('./');
+	await expect(page.locator('[data-ready="true"]')).toHaveCount(1);
+	await expect(page.locator('#op-umami, script[src*="googletagmanager"]')).toHaveCount(0);
+	await expect(page.getByRole('region', { name: 'Analytics consent' })).toHaveCount(0);
+	expect(await page.evaluate(() => 'dataLayer' in window)).toBe(false);
+});
+
 test('a key press fires its binds and the HUD says so', async ({ page }) => {
 	await openElite(page);
 	await ready(page);
