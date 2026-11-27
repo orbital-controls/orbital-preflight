@@ -26,20 +26,6 @@ export interface OrbitalPreflightConfig {
 	theme?: Record<`--${string}`, string>;
 	/** A small "Powered by Orbital Preflight" link. On unless set to `false`. */
 	poweredBy?: boolean;
-	/** Google Analytics and Umami. Off unless an ID is set. */
-	analytics?: AnalyticsConfig;
-}
-
-export interface AnalyticsConfig {
-	/**
-	 * A Google Analytics 4 measurement ID (`G-XXXXXXXXXX`). Sets a cookie, so it is held
-	 * behind a consent banner and nothing is sent to Google until a visitor allows it.
-	 */
-	googleMeasurementId?: string;
-	/** An Umami website ID (the UUID the Umami dashboard shows). Cookieless, no banner. */
-	umamiWebsiteId?: string;
-	/** Where the Umami script is served from: scheme and host only. Default `https://cloud.umami.is`. */
-	umamiHost?: string;
 }
 
 export interface PresetConfig {
@@ -84,14 +70,6 @@ export interface ResolvedConfig {
 	brand: { wordmark: string; label: string; mark?: string; markSmall?: string };
 	theme: [string, string][];
 	poweredBy: boolean;
-	analytics: ResolvedAnalytics;
-}
-
-export interface ResolvedAnalytics {
-	/** The GA4 measurement ID, or null for no Google tag. */
-	google: string | null;
-	/** The Umami website ID and the origin its script comes from, or null for no Umami. */
-	umami: { websiteId: string; host: string } | null;
 }
 
 const VARIABLE = /^--[a-z0-9-]+$/i;
@@ -129,40 +107,8 @@ export function resolveConfig(config: OrbitalPreflightConfig): ResolvedConfig {
 		presets,
 		brand: resolveBrand(config),
 		theme,
-		poweredBy: config.poweredBy !== false,
-		analytics: resolveAnalytics(config.analytics ?? {})
+		poweredBy: config.poweredBy !== false
 	};
-}
-
-// The IDs end up inside a <script> and its attributes, where escaping means nothing, so
-// they are checked against their real shapes and refused otherwise.
-const TAG_ID = /^(G|GT|AW)-[A-Z0-9]+$/i;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ORIGIN = /^https:\/\/[a-z0-9.-]+(:\d+)?$/i;
-const UMAMI_CLOUD = 'https://cloud.umami.is';
-
-function resolveAnalytics(analytics: AnalyticsConfig): ResolvedAnalytics {
-	const google = analytics.googleMeasurementId?.trim() || null;
-	if (google && !TAG_ID.test(google)) {
-		throw new Error(
-			`orbital-preflight.config.ts: analytics.googleMeasurementId "${google}" is not a measurement ID (G-XXXXXXXXXX)`
-		);
-	}
-
-	const websiteId = analytics.umamiWebsiteId?.trim() || null;
-	if (websiteId && !UUID.test(websiteId)) {
-		throw new Error(
-			`orbital-preflight.config.ts: analytics.umamiWebsiteId "${websiteId}" is not the UUID Umami shows for the site`
-		);
-	}
-	const host = analytics.umamiHost?.trim().replace(/\/+$/, '') || UMAMI_CLOUD;
-	if (!ORIGIN.test(host)) {
-		throw new Error(
-			`orbital-preflight.config.ts: analytics.umamiHost "${host}" must be an https origin with no path, e.g. https://umami.example.com`
-		);
-	}
-
-	return { google, umami: websiteId ? { websiteId, host } : null };
 }
 
 function resolveBrand(config: OrbitalPreflightConfig): ResolvedConfig['brand'] {

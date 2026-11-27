@@ -1,4 +1,4 @@
-import type { ResolvedAnalytics } from '../config.ts';
+import type { AnalyticsSettings } from './settings.ts';
 import { consentKey } from './consent.ts';
 import { GA_LOADER, GA_SCRIPT_ID } from './gtag.ts';
 import { UMAMI_SCRIPT_ID } from './umami.ts';
@@ -9,12 +9,12 @@ import { UMAMI_SCRIPT_ID } from './umami.ts';
  *
  * In the served file rather than added after hydration, so Consent Mode defaults exist
  * before the app runs and an installation check finds the tag. The IDs were validated by
- * `resolveConfig`; nothing here escapes them.
+ * `analyticsSettings`; nothing here escapes them.
  *
- * Empty when the config sets no IDs: no tag, no cookie, no request, which is what a fork
+ * Empty when the build sets no IDs: no tag, no cookie, no request, which is what a fork
  * that hasn't opted in ships.
  */
-export function analyticsHead(analytics: ResolvedAnalytics, base: string): string {
+export function analyticsHead(analytics: AnalyticsSettings, base: string): string {
 	return [googleSnippet(analytics.google, base), umamiSnippet(analytics.umami)]
 		.filter(Boolean)
 		.join('\n\t\t');
@@ -69,7 +69,7 @@ export function googleSnippet(id: string | null, base: string): string {
  * stub: the tracker installs itself with `if (!window.umami)`, so a placeholder would
  * stop the real one loading.
  */
-export function umamiSnippet(umami: ResolvedAnalytics['umami']): string {
+export function umamiSnippet(umami: AnalyticsSettings['umami']): string {
 	if (!umami) return '';
 	return [
 		'<!-- Umami, cookieless -->',

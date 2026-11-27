@@ -5,7 +5,7 @@
 	/**
 	 * Sends a page view per navigation to whichever providers the build carries. The tags
 	 * are already in the head (`src/hooks.server.ts`), each told not to count views itself.
-	 * Renders nothing, and reports nothing when the config sets no IDs.
+	 * Renders nothing, and reports nothing when the build sets no IDs.
 	 */
 	afterNavigate(({ shallow, type }) => {
 		if (shallow && type === 'goto') return;

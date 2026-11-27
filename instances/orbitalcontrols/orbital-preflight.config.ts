@@ -21,9 +21,4 @@ export default defineConfig({
 	presets: [],
 	// The default brand: the Orbital Controls mark and "Preflight".
 	brand: { label: 'Orbital Controls Preflight' }
-	// Turn on once a GA4 web data stream and an Umami website exist for the subdomain.
-	// analytics: {
-	// 	googleMeasurementId: 'G-XXXXXXXXXX',
-	// 	umamiWebsiteId: '00000000-0000-0000-0000-000000000000'
-	// }
 });
