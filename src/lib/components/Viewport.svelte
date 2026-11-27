@@ -4,6 +4,7 @@
 	import { footHud, shipHud, srvHud, type SceneProps } from '#lib/orbital-preflight/flight.ts';
 	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
 	import FirstVisit from './FirstVisit.svelte';
+	import GalaxyMap from './GalaxyMap.svelte';
 	import Hud from './Hud.svelte';
 	import PlaceholderScene from './PlaceholderScene.svelte';
 	import Scene3D from './Scene3D.svelte';
@@ -13,7 +14,8 @@
 	 * scene (`Scene3D`): it gets the mock flight, the mode, the bound axes and the held
 	 * binds, renders, and reports back only whether WebGL came up and, on foot, the stop
 	 * zone the pilot is in. Where it can't (no WebGL, a lost context) the boards' 2D
-	 * placeholder draws. A `scene` snippet still replaces both. The HUD is DOM on top.
+	 * placeholder draws. A `scene` snippet still replaces both. The HUD is DOM on top, and
+	 * the galaxy map, while it's open, over all of it (and outside the mouse zone).
 	 */
 	interface Props {
 		scene?: Snippet<[SceneProps]>;
@@ -30,7 +32,7 @@
 	const live = $derived(app.loaded && !scene && ready && !app.sceneFailed && IN_3D.has(app.mode));
 	// The full editor replaces the page, so the viewport unmounts (and the engine is
 	// disposed) rather than being covered.
-	const covered = $derived(app.drawer !== null || app.leaving);
+	const covered = $derived(app.drawer !== null || app.leaving || app.galaxy.open);
 
 	const cameraKey = $derived.by(() => {
 		const action = app.store.actionsIn(app.mode).find((a) => a.effect === 'camera');
@@ -179,7 +181,10 @@
 			<FirstVisit {onwhere} />
 		{/if}
 	</div>
-	{#if live && app.mode !== 'foot'}
+	{#if app.loaded && app.galaxy.open}
+		<GalaxyMap />
+	{/if}
+	{#if live && app.mode !== 'foot' && !app.galaxy.open}
 		<button
 			type="button"
 			aria-pressed={app.flight.cam === 'cockpit'}

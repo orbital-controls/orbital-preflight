@@ -11,7 +11,33 @@ import {
 	type SlotRef
 } from './bindings.ts';
 import { firstVisit, presetFor, type ResolvedConfig } from './config.ts';
-import { act, enterMode, initialFlight, setThrottle, tick, type FlightState } from './flight.ts';
+import {
+	act,
+	enterMode,
+	initialFlight,
+	setThrottle,
+	tick,
+	TICK_MS,
+	type FlightState
+} from './flight.ts';
+import {
+	clearRoute,
+	engage,
+	initialGalaxy,
+	isMapCamera,
+	mapDrive,
+	mapHome,
+	mapSelect,
+	plot,
+	select,
+	steer,
+	targetNext,
+	tickGalaxy,
+	toggleMap,
+	type GalaxyState,
+	type GalaxyStep,
+	type MapCamera
+} from './galaxy.ts';
 import { InputHub, type BrowserPad, type InputEvent } from './inputs/hub.svelte.ts';
 import { deviceRoles } from './labels.ts';
 import { withLocalActions } from './local-actions.ts';
@@ -116,7 +142,14 @@ export class OrbitalPreflight {
 	editor = $state(false);
 	ed = $state<EditorView>({ sel: null, cat: 'All', filter: 'all', q: '', pend: null });
 	flight = $state.raw<FlightState>(initialFlight());
+	/**
+	 * The galaxy map: open or not, its camera, where the ship is and the plotted route.
+	 * Part of the mock flight: it starts over when the flight does.
+	 */
+	galaxy = $state.raw<GalaxyState>(initialGalaxy());
 	last = $state.raw<InputId | null>(null);
+	/** Modifier keys held with `last`, so the toast says Shift+M rather than M. */
+	lastMods = $state.raw<InputId[]>([]);
 	lastActs = $state.raw<string[]>([]);
 	loadError = $state<string | null>(null);
 	/**
@@ -297,8 +330,10 @@ export class OrbitalPreflight {
 	 */
 	#freshFlight() {
 		this.last = null;
+		this.lastMods = [];
 		this.lastActs = [];
 		this.flight = { ...initialFlight(), cam: this.flight.cam };
+		this.galaxy = initialGalaxy();
 		this.footStop = null;
 		this.footDone = [];
 	}
@@ -421,8 +456,10 @@ export class OrbitalPreflight {
 		this.cat = 'All';
 		this.q = '';
 		this.last = null;
+		this.lastMods = [];
 		this.lastActs = [];
 		this.flight = enterMode(this.flight);
+		this.galaxy = toggleMap(this.galaxy, false);
 		this.footStop = null;
 		this.ed = { ...this.ed, sel: null, cat: 'All', pend: null };
 	}
@@ -546,6 +583,7 @@ export class OrbitalPreflight {
 		this.store.settle(cap.target, { kind } as Resolution, cap.cand);
 		this.cancelCapture();
 		this.last = null;
+		this.lastMods = [];
 		this.lastActs = [];
 	}
 
@@ -558,10 +596,16 @@ export class OrbitalPreflight {
 
 	// Input dispatch.
 
-	/** Actions in the current mode that `input` fires, with the effect each one runs. */
-	matching(input: InputId): { action: Action; effect: string | undefined }[] {
+	/**
+	 * Actions that `input` fires, with the effect each one runs: by default the current
+	 * mode's, as the game reads them now (`liveActions`).
+	 */
+	matching(
+		input: InputId,
+		actions: readonly Action[] = this.liveActions
+	): { action: Action; effect: string | undefined }[] {
 		const held: { action: Action; effect: string | undefined; modifier: boolean }[] = [];
-		for (const action of this.store.actionsIn(this.mode)) {
+		for (const action of actions) {
 			const binding = this.store.bindings[action.id];
 			if (!binding) continue;
 			for (const slot of binding) {
@@ -595,11 +639,87 @@ export class OrbitalPreflight {
 		return (modified.length ? modified : held).map(({ action, effect }) => ({ action, effect }));
 	}
 
+	/**
+	 * The galaxy map's own binds: its camera, Map home, and menu select and back. They
+	 * sit in the ship's set, and the game reads them on the map from any mode.
+	 */
+	mapActions = $derived(
+		this.store
+			.actionsIn('ship')
+			.filter((a) => a.context === 'galaxy map' || a.id === 'UI_Select' || a.id === 'UI_Back')
+	);
+
+	/**
+	 * What the game reads now: on the galaxy map, the map's binds and the way back out;
+	 * otherwise the current mode's binds, less the map's, which do nothing off the map.
+	 */
+	liveActions = $derived.by(() => {
+		const inMode = this.store.actionsIn(this.mode);
+		if (!this.galaxy.open) return inMode.filter((a) => a.context !== 'galaxy map');
+		return [...this.mapActions, ...inMode.filter((a) => a.effect === 'galmap')];
+	});
+
+	/** The galaxy map can open: some action in the current mode opens it. */
+	get hasMap(): boolean {
+		return this.has('galmap');
+	}
+
+	#galaxyStep({ g, msg }: GalaxyStep, flight: FlightState): FlightState {
+		this.galaxy = g;
+		return msg ? { ...flight, msg, msgT: 40 } : flight;
+	}
+
+	/** On the map, a bound action does the map's job. */
+	#onMap(action: Action, effect: string | undefined, flight: FlightState): FlightState {
+		if (effect === 'galmap' || action.id === 'UI_Back') {
+			this.galaxy = toggleMap(this.galaxy, false);
+			return flight;
+		}
+		if (action.id === 'UI_Select') return this.#galaxyStep(mapSelect(this.galaxy), flight);
+		if (action.id === 'GalaxyMapHome') this.galaxy = mapHome(this.galaxy);
+		return flight;
+	}
+
+	/** In the cockpit, the effects that read the map's route. */
+	#withRoute(effect: string, flight: FlightState): FlightState | null {
+		if (effect === 'galmap') {
+			this.galaxy = toggleMap(this.galaxy, true);
+			return flight;
+		}
+		if (effect === 'route') return this.#galaxyStep(targetNext(this.galaxy), flight);
+		// With a system targeted the drive jumps to it; otherwise the board's message.
+		if (effect === 'fsd' && this.galaxy.target)
+			return this.#galaxyStep(engage(this.galaxy), flight);
+		return null;
+	}
+
+	// The galaxy map's panel and mouse: the same steps its binds take.
+
+	closeMap() {
+		this.galaxy = toggleMap(this.galaxy, false);
+	}
+
+	selectSystem(id: string) {
+		this.galaxy = select(this.galaxy, id);
+	}
+
+	plotRoute() {
+		this.flight = this.#galaxyStep(plot(this.galaxy), this.flight);
+	}
+
+	clearRoute() {
+		this.galaxy = clearRoute(this.galaxy);
+	}
+
+	moveMap(cam: MapCamera) {
+		this.galaxy = { ...this.galaxy, cam };
+	}
+
 	onInput({ input, pressed }: InputEvent) {
 		if (!pressed || !this.loaded || this.blocked) return;
 		if (this.editor) {
 			// Not listening: a press jumps to the action it fires.
-			const owner = this.matching(input)[0]?.action;
+			const owner = this.matching(input, this.store.actionsIn(this.mode))[0]?.action;
 			if (owner) this.ed = { ...this.ed, sel: owner.id, cat: 'All', filter: 'all', q: '' };
 			return;
 		}
@@ -609,11 +729,15 @@ export class OrbitalPreflight {
 		// of its own only shows in the last-input toast: nothing would open for Thrust left.
 		// A game with no hardpoints to deploy (X4) fires whenever its guns are bound.
 		const stowable = this.has('hp');
+		const onMap = this.galaxy.open;
 		for (const { action, effect } of hits) {
-			if (effect) flight = act(flight, effect, action.name, stowable);
+			if (onMap) flight = this.#onMap(action, effect, flight);
+			else if (effect)
+				flight = this.#withRoute(effect, flight) ?? act(flight, effect, action.name, stowable);
 		}
 		this.flight = flight;
 		this.last = input;
+		this.lastMods = this.hub.heldModifiers(input);
 		this.lastActs = hits.map((h) => h.action.id);
 	}
 
@@ -636,7 +760,7 @@ export class OrbitalPreflight {
 	 * the pilot) freezes, as the mock flight does.
 	 */
 	analog = $derived.by((): Analog => {
-		const idle = this.cap !== null || this.blocked;
+		const idle = this.cap !== null || this.blocked || this.galaxy.open;
 		return analogAxes(
 			this.store.actionsIn(this.mode),
 			this.store.bindings,
@@ -650,7 +774,8 @@ export class OrbitalPreflight {
 	 * says what is still down. Empty while listening for a rebind or with a drawer open.
 	 */
 	held = $derived.by((): ReadonlySet<string> => {
-		if (this.cap !== null || this.blocked || this.mode !== 'foot') return NO_HELD;
+		if (this.cap !== null || this.blocked || this.galaxy.open || this.mode !== 'foot')
+			return NO_HELD;
 		return heldEffects(this.store.actionsIn(this.mode), this.store.bindings, (input) =>
 			this.hub.held.has(inputKey(input))
 		);
@@ -679,7 +804,20 @@ export class OrbitalPreflight {
 	}
 
 	step() {
-		if (this.loaded && !this.editor) this.flight = tick(this.flight, this.mode);
+		if (!this.loaded || this.editor) return;
+		let flight = tick(this.flight, this.mode);
+		flight = this.#galaxyStep(tickGalaxy(this.galaxy), flight);
+		if (this.galaxy.open && this.cap === null && !this.blocked) {
+			const drive = mapDrive(
+				this.mapActions.filter((a) => isMapCamera(a.id)),
+				this.store.bindings,
+				(input) => this.hub.held.has(inputKey(input)),
+				this.hub.axes
+			);
+			const cam = steer(this.galaxy.cam, drive, TICK_MS / 1000);
+			if (cam !== this.galaxy.cam) this.moveMap(cam);
+		}
+		this.flight = flight;
 	}
 
 	// Files out.

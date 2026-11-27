@@ -144,7 +144,7 @@ export class InputHub {
 	}
 
 	/** Modifier keys held now, other than `input` itself. */
-	#heldModifiers(input: InputId): InputId[] {
+	heldModifiers(input: InputId): InputId[] {
 		const mods: InputId[] = [];
 		for (const [key, held] of this.#heldInputs) {
 			if (key !== inputKey(input) && isModifier(held)) mods.push(held);
@@ -167,7 +167,7 @@ export class InputHub {
 				return;
 			}
 			this.#loneModifier = null;
-			const modifiers = this.#heldModifiers(input);
+			const modifiers = this.heldModifiers(input);
 			this.#capture(modifiers.length ? { input, modifiers } : { input });
 			return;
 		}
