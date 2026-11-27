@@ -270,15 +270,14 @@ export function act(s: FlightState, effect: string, name: string, stowable = tru
 			p.faOff = !s.faOff;
 			msg(s.faOff ? 'Flight assist on' : 'Flight assist off');
 			break;
+		// The galaxy map's route (`galaxy.ts`) handles Target next system in route, and the
+		// drive when a system is targeted; this is the drive with nothing to jump to.
 		case 'fsd':
 			msg('FSD charging · mass locked', 50);
 			break;
 		case 'sc':
 			p.sc = !s.sc;
 			msg(s.sc ? 'Dropped from supercruise' : 'Supercruise engaged');
-			break;
-		case 'route':
-			msg('Next system in route targeted');
 			break;
 		case 'orbit':
 			msg('Orbit lines toggled');

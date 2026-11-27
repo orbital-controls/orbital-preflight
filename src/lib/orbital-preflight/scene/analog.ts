@@ -46,7 +46,7 @@ export const NO_ANALOG: Analog = {
 /** Below this, a centred stick reads as centred. */
 export const DEADZONE = 0.06;
 
-function shape(value: number): number {
+export function shape(value: number): number {
 	const v = Math.max(-1, Math.min(1, value));
 	if (Math.abs(v) < DEADZONE) return 0;
 	return (Math.sign(v) * (Math.abs(v) - DEADZONE)) / (1 - DEADZONE);

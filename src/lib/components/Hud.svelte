@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { footHud, pips, shipHud, srvHud, statusChips } from '#lib/orbital-preflight/flight.ts';
+	import { systemById } from '#lib/orbital-preflight/galaxy.ts';
 	import { bindLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
 	import { STOPS } from '#lib/orbital-preflight/scene/pad.ts';
 	import { stopPrompts } from '#lib/orbital-preflight/scene/prompts.ts';
@@ -30,6 +31,8 @@
 	const hasHeat = $derived(['heatsink', 'silent'].some((e) => app.has(e, 'ship')));
 	const hasSidearm = $derived(['primary', 'reload'].some((e) => app.has(e, 'foot')));
 	const modeName = $derived(app.modeName(mode));
+	// The galaxy map's targeted system, for the frame shift drive to jump to.
+	const jumpTo = $derived(systemById(app.galaxy.target));
 
 	const interact = $derived.by(() => {
 		const action = app.store.actionsIn('foot').find((a) => a.effect === 'interact');
@@ -104,6 +107,12 @@
 					<span class="op-hud">m/s</span><span class="op-hud text-trail">{app.say(ship.mode)}</span>
 				</div>
 				{#if hasPips}{@render pipRow()}{/if}
+				{#if jumpTo}
+					<span class="op-hud" data-op-next-jump
+						>Next jump · <span class="text-trail">{jumpTo.name}</span>{#if app.galaxy.chargeT > 0}
+							<span class="pulse"> · charging</span>{/if}</span
+					>
+				{/if}
 			</div>
 			{#if hasHeat}
 				<div class="absolute right-[18px] bottom-4 flex w-[170px] flex-col gap-[6px]">

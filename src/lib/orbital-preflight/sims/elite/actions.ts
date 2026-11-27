@@ -86,7 +86,7 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 		Navigation: [
 			['HyperSuperCombination', 'Frame shift drive', 'fsd'],
 			['Supercruise', 'Supercruise', 'sc'],
-			['GalaxyMapOpen', 'Galaxy map', 'panel'],
+			['GalaxyMapOpen', 'Galaxy map', 'galmap'],
 			['TargetNextRouteSystem', 'Target next system in route', 'route'],
 			['OrbitLinesToggle', 'Orbit lines', 'orbit'],
 			['Hyperspace', 'Hyperspace jump'],
@@ -376,7 +376,7 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 			['FocusCommsPanel_Buggy', 'Comms panel', 'panel'],
 			['FocusRadarPanel_Buggy', 'Role panel', 'panel'],
 			['FocusRightPanel_Buggy', 'Right panel', 'panel'],
-			['GalaxyMapOpen_Buggy', 'Galaxy map', 'panel'],
+			['GalaxyMapOpen_Buggy', 'Galaxy map', 'galmap'],
 			['SystemMapOpen_Buggy', 'System map', 'panel'],
 			['QuickCommsPanel_Buggy', 'Quick comms', 'panel'],
 			['OpenCodexGoToDiscovery_Buggy', 'Codex discovery', 'panel'],
@@ -440,7 +440,7 @@ const CATALOGUE: Record<Mode, Record<string, Entry[]>> = {
 		Panels: [
 			['HumanoidEmoteWheelButton', 'Emote wheel', 'panel'],
 			['HumanoidItemWheelButton', 'Item wheel', 'panel'],
-			['GalaxyMapOpen_Humanoid', 'Galaxy map', 'panel'],
+			['GalaxyMapOpen_Humanoid', 'Galaxy map', 'galmap'],
 			['SystemMapOpen_Humanoid', 'System map', 'panel'],
 			['FocusCommsPanel_Humanoid', 'Comms panel', 'panel'],
 			['QuickCommsPanel_Humanoid', 'Quick comms', 'panel'],

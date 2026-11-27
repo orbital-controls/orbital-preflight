@@ -1,6 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { fakeGamepads, hold, press, unplug } from './controllers.ts';
 import { readFile } from 'node:fs/promises';
+import {
+	HOME,
+	homeCamera,
+	MAP_H,
+	MAP_W,
+	plotRoute,
+	project,
+	SYSTEMS,
+	systemById
+} from '../../src/lib/orbital-preflight/galaxy.ts';
 import { exportAndParse, openElite, openLoad, ready, rebind } from './helpers.ts';
 
 test('a first visit is the bay: the pilot’s Elite preset and Star Citizen’s defaults', async ({
@@ -26,6 +36,38 @@ test('a key press fires its binds and the HUD says so', async ({ page }) => {
 	await ready(page);
 	await page.keyboard.press('KeyU');
 	await expect(page.locator('[aria-live="polite"]')).toContainText('Deploy hardpoints');
+});
+
+test('the galaxy map opens, plots a route and the drive jumps along it', async ({ page }) => {
+	await openElite(page);
+	await ready(page);
+	await page.keyboard.down('ShiftLeft');
+	await page.keyboard.press('KeyM');
+	await page.keyboard.up('ShiftLeft');
+	const map = page.getByRole('region', { name: 'Galaxy map' });
+	await expect(map).toBeVisible();
+	await expect(map.getByText('Location · Halden')).toBeVisible();
+	// On the map, W moves the map rather than pitching the ship.
+	await page.keyboard.press('KeyW');
+	await expect(map.getByText('Last input · Map forward')).toBeVisible();
+	await page.keyboard.press('Home');
+
+	// Click a system two or more jumps out, where the map draws it, and plot a route.
+	const far = SYSTEMS.find((s) => (plotRoute(HOME, s.id)?.length ?? 0) >= 2)!;
+	const at = project(homeCamera(), far.pos, MAP_W, MAP_H)!;
+	const box = (await map.locator('canvas').boundingBox())!;
+	await page.mouse.click(box.x + (at.x * box.width) / MAP_W, box.y + (at.y * box.height) / MAP_H);
+	await expect(map.getByRole('heading', { name: far.name })).toBeVisible();
+	await map.getByRole('button', { name: 'Plot route' }).click();
+	const first = systemById(plotRoute(HOME, far.id)![0])!.name;
+	await expect(map.getByRole('listitem').filter({ hasText: first })).toBeVisible();
+
+	// Back to the cockpit: the HUD names the target, and the drive jumps there.
+	await page.keyboard.press('Backspace');
+	await expect(map).toBeHidden();
+	await expect(page.locator('[data-op-next-jump]')).toContainText(first);
+	await page.keyboard.press('KeyJ');
+	await expect(page.getByText(`Arrived at ${first}`)).toBeVisible({ timeout: 8000 });
 });
 
 test('rebind one action, export, and parse the export', async ({ page }) => {
