@@ -67,7 +67,12 @@ test('the galaxy map opens, plots a route and the drive jumps along it', async (
 	await expect(map).toBeHidden();
 	await expect(page.locator('[data-op-next-jump]')).toContainText(first);
 	await page.keyboard.press('KeyJ');
-	await expect(page.getByText(`Arrived at ${first}`)).toBeVisible({ timeout: 8000 });
+	const nextJump = page.locator('[data-op-next-jump]');
+	await expect(nextJump).toContainText('charging');
+	// The arrival toast lasts two seconds, so check what stays: the next system is targeted.
+	const second = systemById(plotRoute(HOME, far.id)![1])!.name;
+	await expect(nextJump).toContainText(second, { timeout: 20_000 });
+	await expect(nextJump).not.toContainText('charging');
 });
 
 test('rebind one action, export, and parse the export', async ({ page }) => {
