@@ -61,7 +61,7 @@ export default defineConfig({
 - **One game with binds**: presets for one sim (the old single-sim shape too: `sim` plus `presets` with no `sim` of their own), and no other game with binds. A first visit skips the game picker and opens with the first preset loaded; the top bar reads "Pilot's binds · ‹label›". Star Citizen and X4 always have binds (their games' defaults), so while both are listed this doesn't happen: there are always at least two games with binds, and a first visit is the bay.
 - **Two or more games with binds**: a first visit shows the bay, one tile per game. Games with presets read "Pilot's binds · ‹label›" and picking one loads its first preset; Star Citizen with no preset reads "Star Citizen 4.10.2 defaults" and opens on them, and X4 reads "X4 9.00 defaults". With Elite presets alone, that's the bay with Elite, Star Citizen and X4. A sim that isn't supported yet shows as "Coming later" and can't be picked.
 - **No presets**: the bay; Elite asks for the visitor's own file, and Star Citizen and X4 open on their games' defaults.
-- **Nothing is kept between visits**: the app stores nothing in the browser, so every visit starts from this routing. (The one exception is a build with Google Analytics on: the visitor's consent answer is kept so the banner isn't shown again. See [Analytics](#analytics).)
+- **No game is remembered between visits**: the app doesn't keep which game or binds were open, so every visit starts from this routing.
 
 ```ts
 presets: [
