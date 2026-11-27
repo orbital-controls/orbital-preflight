@@ -21,6 +21,18 @@ describe('OrbitalPreflight', () => {
 		expect(app.flight.msg).toBe('System map would open');
 	});
 
+	it('remembers the modifiers held with the last input, for the toast', () => {
+		const app = loaded();
+		const key = (code: string) => ({ kind: 'key' as const, code });
+		app.hub.press(key('ShiftLeft'));
+		app.onInput({ input: key('KeyM'), pressed: true });
+		expect(app.lastActs).toEqual(['GalaxyMapOpen']);
+		expect(app.lastMods).toEqual([key('ShiftLeft')]);
+		app.hub.release(key('ShiftLeft'));
+		app.onInput({ input: key('KeyM'), pressed: true });
+		expect(app.lastMods).toEqual([]);
+	});
+
 	describe('the galaxy map', () => {
 		const key = (code: string) => ({ kind: 'key' as const, code });
 		function onMap() {

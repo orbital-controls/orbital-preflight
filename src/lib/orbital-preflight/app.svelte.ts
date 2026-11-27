@@ -148,6 +148,8 @@ export class OrbitalPreflight {
 	 */
 	galaxy = $state.raw<GalaxyState>(initialGalaxy());
 	last = $state.raw<InputId | null>(null);
+	/** Modifier keys held with `last`, so the toast says Shift+M rather than M. */
+	lastMods = $state.raw<InputId[]>([]);
 	lastActs = $state.raw<string[]>([]);
 	loadError = $state<string | null>(null);
 	/**
@@ -328,6 +330,7 @@ export class OrbitalPreflight {
 	 */
 	#freshFlight() {
 		this.last = null;
+		this.lastMods = [];
 		this.lastActs = [];
 		this.flight = { ...initialFlight(), cam: this.flight.cam };
 		this.galaxy = initialGalaxy();
@@ -453,6 +456,7 @@ export class OrbitalPreflight {
 		this.cat = 'All';
 		this.q = '';
 		this.last = null;
+		this.lastMods = [];
 		this.lastActs = [];
 		this.flight = enterMode(this.flight);
 		this.galaxy = toggleMap(this.galaxy, false);
@@ -579,6 +583,7 @@ export class OrbitalPreflight {
 		this.store.settle(cap.target, { kind } as Resolution, cap.cand);
 		this.cancelCapture();
 		this.last = null;
+		this.lastMods = [];
 		this.lastActs = [];
 	}
 
@@ -732,6 +737,7 @@ export class OrbitalPreflight {
 		}
 		this.flight = flight;
 		this.last = input;
+		this.lastMods = this.hub.heldModifiers(input);
 		this.lastActs = hits.map((h) => h.action.id);
 	}
 

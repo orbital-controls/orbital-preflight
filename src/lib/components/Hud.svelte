@@ -2,7 +2,7 @@
 	import { useOrbitalPreflight } from '#lib/orbital-preflight/app.svelte.ts';
 	import { footHud, pips, shipHud, srvHud, statusChips } from '#lib/orbital-preflight/flight.ts';
 	import { systemById } from '#lib/orbital-preflight/galaxy.ts';
-	import { bindLabel, inputLabel } from '#lib/orbital-preflight/labels.ts';
+	import { bindLabel } from '#lib/orbital-preflight/labels.ts';
 	import { STOPS } from '#lib/orbital-preflight/scene/pad.ts';
 	import { stopPrompts } from '#lib/orbital-preflight/scene/prompts.ts';
 
@@ -59,7 +59,11 @@
 		// Several actions on one input is a clash unless the sim overloads it on purpose
 		// (Star Citizen's Right mouse aims, throws and fires a tool): the store knows which.
 		const clash = names.length > 1 && app.lastActs.some((id) => app.store.clashes[mode].has(id));
-		return { head: inputLabel(app.last, app.roles, true), lines: names, clash };
+		return {
+			head: bindLabel({ input: app.last, modifiers: app.lastMods }, app.roles, true),
+			lines: names,
+			clash
+		};
 	});
 
 	const capAction = $derived(app.cap ? app.actionById(app.cap.target.actionId) : null);
