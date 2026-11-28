@@ -116,7 +116,7 @@ The build output is plain static files, so any static host works too.
 
 ## Develop
 
-Node 26 and pnpm, at the versions in `.tool-versions` (mise and asdf read it).
+Node 26 (the version in `.tool-versions`, which mise and asdf read) and the pnpm named in `packageManager`.
 
 ```sh
 pnpm install
